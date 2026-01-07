@@ -1,3 +1,5 @@
+console.log("JS carregado do arquivo externo!");
+
 let points = 3; // simula pontos iniciais
 let skillsState = JSON.parse(localStorage.getItem("skillsState") || "{}");
 
