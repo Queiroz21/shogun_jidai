@@ -72,3 +72,65 @@ h1 {
 .child {
   margin-top: 40px;
 }
+
+/* Grade principal: 5 raízes alinhadas */
+.tree {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Wrapper da habilidade raiz */
+.node {
+  position: relative;
+  text-align: center;
+}
+
+/* Skill card reaproveitado */
+.skill {
+  background: #16161d;
+  padding: 12px;
+  border-radius: 14px;
+  width: 120px;
+  cursor: pointer;
+  transition: transform .2s;
+  box-shadow: 0 0 6px #000;
+}
+
+.skill:hover:not(.locked):not(.mastered) {
+  transform: scale(1.06);
+}
+
+/* Filhos em linha, abaixo do pai */
+.children {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Desenho das linhas da árvore */
+.node::after, .child-connector::before {
+  content: "";
+  position: absolute;
+  width: 2px;
+  background: #888;
+}
+
+.node.has-children::after {
+  height: 18px;
+  top: 62px; /* ajusta até baixo do card */
+  left: 50%;
+}
+
+/* Linha horizontal entre filhos */
+.child-connector {
+  position: absolute;
+  top: 80px;
+  left: 5%;
+  width: 90%;
+  border-top: 2px solid #888;
+}
+

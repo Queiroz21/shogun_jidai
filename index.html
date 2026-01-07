@@ -7,26 +7,11 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <h1>Árvore de Habilidades</h1>
+    <div id="points"></div>
 
-<h1>Árvore de Habilidades</h1>
-<div id="points">Pontos disponíveis: 100</div>
+    <div id="tree" class="tree"></div>
 
-<div class="tree">
-    <svg id="lines"></svg>
-    <div class="skill-container">
-        <!-- Skills principais -->
-        <div class="skill" data-skill="chakra">Chakra</div>
-        <div class="skill" data-skill="fisico">Físico</div>
-        <div class="skill" data-skill="mental">Mental</div>
-        <div class="skill" data-skill="construcao">Construção</div>
-        <div class="skill" data-skill="jin">Jin</div>
-
-        <!-- Filhos Só do Chakra -->
-        <div class="skill locked child" data-skill="katon">Katon</div>
-        <div class="skill locked child" data-skill="suiton">Suiton</div>
-    </div>
-</div>
-
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

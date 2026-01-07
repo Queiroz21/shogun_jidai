@@ -1,74 +1,90 @@
-let totalPoints = 100;
+let skillsState = JSON.parse(localStorage.getItem("skillsState") || "{}");
 
-const skills = {
-  chakra: { points: 0, children: ["katon", "suiton"] },
-  fisico: { points: 0 },
-  mental: { points: 0 },
-  construcao: { points: 0 },
-  jin: { points: 0 },
-  katon: { points: 0, parent: "chakra" },
-  suiton: { points: 0, parent: "chakra" }
-};
+const skills = [
+    { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", level: 0, max: 5, children: ["katon","suiton"] },
+    { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", level: 0, max: 5 },
+    { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", level: 0, max: 5 },
+    { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", level: 0, max: 5 },
+    { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", level: 0, max: 5 },
+    { id: "katon", name: "Elemento Katon", img: "assets/icons/fogo.png", level: 0, max: 5, parent: "chakra" },
+    { id: "suiton", name: "Elemento Suiton", img: "assets/icons/agua.png", level: 0, max: 5, parent: "chakra" }
+];
+
+// aplica níveis que já existiam
+skills.forEach(sk => sk.level = skillsState[sk.id] || 0);
+
+let points = 100;
 
 function render() {
-  document.getElementById("points").textContent = `Pontos disponíveis: ${totalPoints}`;
+    document.getElementById('points').textContent = `Pontos: ${points}`;    
 
-  document.querySelectorAll(".skill").forEach(el => {
-    const id = el.dataset.skill;
-    const s = skills[id];
+    const tree = document.getElementById('tree');
+    tree.innerHTML = "";
 
-    // lock/unlock filhos do chakra
-    if (s.parent === "chakra") {
-      if (skills.chakra.points >= 2) el.classList.remove("locked");
-      else el.classList.add("locked");
+    const roots = skills.filter(s => !s.parent);
+
+    roots.forEach(root => {
+        const wrapper = document.createElement('div');
+        wrapper.className = "node";
+
+        const card = buildCard(root);
+        wrapper.appendChild(card);
+
+        const children = skills.filter(s => s.parent === root.id);
+
+        if (children.length > 0 && root.level >= 2) {
+            wrapper.classList.add("has-children");
+
+            const connector = document.createElement('div');
+            connector.className = "child-connector";
+            wrapper.appendChild(connector);
+
+            const holder = document.createElement('div');
+            holder.className = "children";
+
+            children.forEach(ch => holder.appendChild(buildCard(ch)));
+            wrapper.appendChild(holder);
+        }
+
+        tree.appendChild(wrapper);
+    });
+}
+
+function buildCard(sk) {
+    const el = document.createElement('div');
+    el.className = "skill";
+
+    if (sk.level >= sk.max) el.classList.add("mastered");
+    else if (points <= 0 || (sk.parent && skills.find(s=>s.id===sk.parent).level < 2))
+        el.classList.add("locked");
+
+    el.innerHTML = `
+        <img src="${sk.img}">
+        <div>${sk.name}</div>
+        <div>(${sk.level}/${sk.max})</div>
+    `;
+
+    el.onclick = () => levelUp(sk.id);
+    return el;
+}
+
+function levelUp(id) {
+    const sk = skills.find(s => s.id === id);
+
+    if (!sk) return;
+    if (points <= 0) return;
+    if (sk.parent) {
+        const prnt = skills.find(s => s.id === sk.parent);
+        if (prnt.level < 2) return;
     }
 
-    // ajusta borda masterizada
-    if (s.points >= 5) el.classList.add("mastered");
-    else el.classList.remove("mastered");
-
-    el.textContent = `${id} (${s.points}/5)`;
-  });
-
-  drawLines();
-}
-
-function spendPoint(id) {
-  const s = skills[id];
-
-  // bloqueado?
-  if (document.querySelector(`[data-skill=${id}]`).classList.contains("locked")) return;
-  if (s.points >= 5) return;
-  if (totalPoints <= 0) return;
-
-  s.points++;
-  totalPoints--;
-  render();
-}
-
-document.querySelectorAll(".skill").forEach(el =>
-  el.addEventListener("click", () => spendPoint(el.dataset.skill))
-);
-
-function drawLines() {
-  const svg = document.getElementById("lines");
-  svg.innerHTML = "";
-
-  skills.chakra.children.forEach(child => {
-    const parentEl = document.querySelector(`[data-skill='chakra']`);
-    const childEl = document.querySelector(`[data-skill='${child}']`);
-
-    const p = parentEl.getBoundingClientRect();
-    const c = childEl.getBoundingClientRect();
-
-    const x1 = p.left + p.width / 2;
-    const y1 = p.top + p.height;
-    const x2 = c.left + c.width / 2;
-    const y2 = c.top;
-
-    const line = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="cyan" stroke-width="2"/>`;
-    svg.innerHTML += line;
-  });
+    if (sk.level < sk.max) {
+        sk.level++;
+        points--;
+        skillsState[sk.id] = sk.level;
+        localStorage.setItem("skillsState", JSON.stringify(skillsState));
+        render();
+    }
 }
 
 render();
