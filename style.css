@@ -1,96 +1,76 @@
-/* 🌌 Céu Estrelado */
 body {
-    margin: 0;
-    overflow: hidden;
-    background: radial-gradient(circle, #000 0%, #02030a 100%);
-    color: #e0e0e0;
-    font-family: Arial, sans-serif;
-    text-align: center;
+  background: #0e0e13;
+  color: #e0e0e0;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 20px;
 }
 
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: url(assets/stars.png); /* imagem de estrelas pequena repetida */
-    background-size: cover;
-    opacity: .45;
-    animation: stars 60s linear infinite;
+.skill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 28px;
+  max-width: 1080px;
+  margin: auto;
 }
 
-@keyframes stars { 
-    from { transform: translateY(0); }
-    to { transform: translateY(-300px); }
-}
-
-/* Título e pontos */
-h1 { color: #8af; margin-top: 20px; text-shadow: 0 0 10px #48f; }
-#points { font-size: 22px; margin-bottom: 10px; }
-
-/* MAPA */
-#map-wrapper {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    cursor: grab;
-}
-
-#map-wrapper:active { cursor: grabbing; }
-
-#map {
-    position: absolute;
-    width: 2000px;
-    height: 1200px;
-    transform-origin: center center;
-}
-
-/* Conexões */
-#links {
-    position: absolute;
-    width: 2000px;
-    height: 1200px;
-    pointer-events: none;
-}
-
-/* SKILLS */
+/* Skill base */
 .skill {
-    position: absolute;
-    width: 110px;
-    height: 110px;
-    padding: 10px;
-    background: rgba(20,20,30,.85);
-    border-radius: 50%;
-    border: 2px solid #555;
-    box-shadow: 0 0 8px #000;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    text-align: center;
+  width: 150px;
+  background: #16161d;
+  border-radius: 16px;
+  padding: 15px;
+  box-shadow: 0 0 8px #000;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  transform-origin: center;
+  text-align: center;
+}
+
+.skill:hover:not(.locked):not(.mastered) {
+  transform: scale(1.06);
+  box-shadow: 0 0 12px #39f;
 }
 
 .skill.locked {
-    filter: grayscale(1);
-    opacity: 0.45;
-    cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: .4;
+  cursor: not-allowed;
 }
 
-.skill:hover:not(.locked) {
-    transform: scale(1.12);
-    box-shadow: 0 0 12px #39f;
+/* Mastered */
+.skill.mastered {
+  border: 2px solid gold;
+  box-shadow: 0 0 12px gold;
+  animation: pulse-gold 3s ease-in-out infinite;
+  transform: scale(1.08);
 }
 
 .skill img {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 6px;
 }
 
-/* MASTERIZADA */
-.skill.mastered {
-    border-color: gold;
-    animation: pulse-gold 2s infinite;
+.progress {
+  background: #222;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
 }
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #34ff9e, #00f2ff);
+  width: 0%;
+  transition: width .25s;
+}
+
 @keyframes pulse-gold {
-    0% { box-shadow: 0 0 4px rgba(255,215,0,.3); }
-    50% { box-shadow: 0 0 12px rgba(255,215,0,.9); }
-    100% { box-shadow: 0 0 4px rgba(255,215,0,.3); }
+ 0% { box-shadow: 0 0 4px rgba(255,215,0,.2); }
+ 50% { box-shadow: 0 0 14px rgba(255,215,0,1); }
+ 100% { box-shadow: 0 0 4px rgba(255,215,0,.2); }
 }

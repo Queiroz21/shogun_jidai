@@ -1,108 +1,69 @@
-// Progresso salvo
-let save = JSON.parse(localStorage.getItem("skillTree") || "{}");
-let points = save.points ?? 5;
+// Carregar progresso salvo
+let skillsState = JSON.parse(localStorage.getItem("skillsState") || "{}");
 
-// Lista com coordenadas + dependências
+let points = 100;
+
+// Base de habilidades
 const skills = [
-    { id: "fisico", name:"Treino Físico",  x:650, y:500, max:5, link:[] },
-    { id: "chakra", name:"Controle de Chakra", x:450, y:350, max:5, link:["fisico"] },
-    { id: "mental", name:"Disciplina Mental", x:850, y:350, max:5, link:["fisico"] },
-    { id: "jinchuriki", name:"Força Jinchūriki", x:450, y:650, max:5, link:["fisico"] },
-    { id: "construcao", name:"Construção Aldeia", x:850, y:650, max:5, link:["fisico"] },
-
-    // NOVAS — Derivam da primeira habilidade
-    { id:"teste1", name:"Teste Avançado 1", x:650, y:300, max:5, link:["fisico"] },
-    { id:"teste2", name:"Teste Avançado 2", x:650, y:750, max:5, link:["fisico"] }
+    { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 100 },
+    { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 100 },
+    { id: "katon", name: "Katon (Fogo)", img: "assets/icons/katon.png", max: 100, parent: "chakra", req: 20 },
+    { id: "suiton", name: "Suiton (Água)", img: "assets/icons/suiton.png", max: 100, parent: "chakra", req: 20 },
+    { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 100 },
+    { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 100 },
+    { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 100 }
 ];
 
-// aplica progresso
-skills.forEach(sk => sk.level = save[sk.id] ?? 0);
+// aplica progresso salvo
+skills.forEach(sk => sk.level = skillsState[sk.id] || 0);
 
-
-// ==================== RENDER =====================
+// render
 function render() {
     document.getElementById("points").textContent = `Pontos: ${points}`;
-    const map = document.getElementById("map");
-    const svg = document.getElementById("links");
-    map.innerHTML = "";
-    svg.innerHTML = "";
+    const container = document.getElementById("skills");
+    container.innerHTML = "";
 
     skills.forEach((sk, idx) => {
-        const box = document.createElement('div');
-        box.className = "skill";
+        const wrapper = document.createElement("div");
+        wrapper.className = "skill";
 
-        if (sk.level >= sk.max) box.classList.add("mastered");
-        else if (points <= 0)   box.classList.add("locked");
+        // trava derivadas se requisito não cumprido
+        const lockedByTree = sk.parent && skills.find(s => s.id === sk.parent).level < sk.req;
 
-        box.style.left = sk.x + "px";
-        box.style.top  = sk.y + "px";
+        if (sk.level >= sk.max) {
+            wrapper.classList.add("mastered");
+        }
+        else if (points <= 0 || lockedByTree) {
+            wrapper.classList.add("locked");
+        }
 
-        box.innerHTML = `
-            <img src="assets/icons/${sk.id}.png">
+        wrapper.innerHTML = `
+            <img src="${sk.img}" />
             <div>${sk.name}</div>
-            <small>${sk.level}/${sk.max}</small>
+            <div>(${sk.level}/${sk.max})</div>
+            <div class="progress">
+                <div class="progress-bar" style="width:${(sk.level/sk.max)*100}%"></div>
+            </div>
         `;
 
-        box.onclick = () => levelUp(idx);
-        map.appendChild(box);
-
-        // Desenha linhas de dependência
-        sk.link.forEach(parentID => {
-            const parent = skills.find(s => s.id === parentID);
-            if (!parent) return;
-
-            let line = document.createElementNS("http://www.w3.org/2000/svg","line");
-            line.setAttribute("x1", parent.x + 55);
-            line.setAttribute("y1", parent.y + 55);
-            line.setAttribute("x2", sk.x + 55);
-            line.setAttribute("y2", sk.y + 55);
-            line.setAttribute("stroke", "rgba(200,200,255,0.6)");
-            line.setAttribute("stroke-width", "2");
-            svg.appendChild(line);
-        });
+        wrapper.addEventListener("click", () => levelUp(idx));
+        container.appendChild(wrapper);
     });
 }
 
-
-// ==================== LEVEL UP =====================
 function levelUp(i) {
     const sk = skills[i];
 
-    // Checa dependências
-    const locked = sk.link.some(parentID => {
-        const parent = skills.find(s => s.id === parentID);
-        return parent.level < 1;  // requer 1 ponto
-    });
-    if (locked) return;
+    // requisito da árvore
+    if (sk.parent && skills.find(s => s.id === sk.parent).level < sk.req) return;
 
     if (points > 0 && sk.level < sk.max) {
         sk.level++;
         points--;
-        save[sk.id] = sk.level;
-        save.points = points;
-        localStorage.setItem("skillTree", JSON.stringify(save));
+        skillsState[sk.id] = sk.level;
+        localStorage.setItem("skillsState", JSON.stringify(skillsState));
         render();
     }
 }
-
-
-// ===================== ZOOM + PAN ======================
-let scale = 1;
-const wrapper = document.getElementById("map-wrapper");
-
-wrapper.addEventListener("wheel", e => {
-    scale += (e.deltaY < 0 ? 0.1 : -0.1);
-    scale = Math.max(0.4, Math.min(2.5, scale));
-    document.getElementById("map").style.transform = `scale(${scale})`;
-});
-
-let dragging = false, startX=0, startY=0, origX=0, origY=0;
-wrapper.addEventListener("mousedown", e => { dragging=true; startX=e.clientX; startY=e.clientY; origX=wrapper.scrollLeft; origY=wrapper.scrollTop; });
-wrapper.addEventListener("mouseup", ()=> dragging=false);
-wrapper.addEventListener("mousemove", e => {
-    if (!dragging) return;
-    wrapper.scrollLeft = origX + (startX - e.clientX);
-    wrapper.scrollTop  = origY + (startY - e.clientY);
-});
 
 render();
