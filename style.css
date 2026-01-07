@@ -99,10 +99,6 @@ h1 {
   box-shadow: 0 0 6px #000;
 }
 
-.skill:hover:not(.locked):not(.mastered) {
-  transform: scale(1.06);
-}
-
 /* Filhos em linha, abaixo do pai */
 .children {
   display: flex;
@@ -188,11 +184,9 @@ h1 {
 
 .skill:hover:not(.locked):not(.mastered) {
   transform: scale(1.08);
-}
-
-.skill-node.state-available:hover {
   filter: drop-shadow(0 0 6px cyan);
 }
+
 
 /* Cinza bloqueado */
 .skill.locked {
