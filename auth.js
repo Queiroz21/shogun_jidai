@@ -14,26 +14,30 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 /* ------------------------
-   SE ESTOU NA TELA DE CADASTRO,
-   CARREGO OS CLÃS NO SELECT
+   CARREGAR LISTA DE CLÃS
 ------------------------- */
-if (document.getElementById("claSelect")) {
-  db.collection("clas").get().then(snapshot => {
-    const select = document.getElementById("claSelect");
-    snapshot.forEach(doc => {
-      const opt = document.createElement("option");
-      opt.value = doc.id;
-      opt.textContent = doc.data().nome;
-      select.appendChild(opt);
-    });
-  });
+const claSelect = document.getElementById("claSelect"); // pega select da página
+
+if (claSelect) {
+  db.collection("clas").get()
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const c = doc.data();
+        const opt = document.createElement("option");
+        opt.value = doc.id;
+        opt.textContent = c.nome;
+        claSelect.appendChild(opt);
+      });
+    })
+    .catch(e => console.error("Erro ao carregar clãs:", e));
 }
 
 /* ------------------------
    LOGIN
 ------------------------- */
-if (document.getElementById("btnLogin")) {
-  document.getElementById("btnLogin").onclick = () => {
+const btnLogin = document.getElementById("btnLogin");
+if (btnLogin) {
+  btnLogin.onclick = () => {
     const emailV = email.value;
     const senhaV = senha.value;
 
@@ -44,22 +48,33 @@ if (document.getElementById("btnLogin")) {
 }
 
 /* ------------------------
-   CRIA CONTA
+   CRIAR CONTA
 ------------------------- */
-if (document.getElementById("btnCriar")) {
-  document.getElementById("btnCriar").onclick = async () => {
+const btnCriar = document.getElementById("btnCriar");
+if (btnCriar) {
+  btnCriar.onclick = async () => {
     const emailV = email.value;
     const senhaV = senha.value;
     const idadeV = parseInt(idade.value || "0", 10);
     const claID = claSelect.value;
 
     try {
+      // cria autenticação
       const userCred = await auth.createUserWithEmailAndPassword(emailV, senhaV);
       const uid = userCred.user.uid;
 
-      // pega dados do clã escolhido
+      // pega os dados do clã
       const claDoc = await db.collection("clas").doc(claID).get();
       const claData = claDoc.data();
+
+      // monta skills com base nos bônus do clã
+      const skillsBase = {
+        fisico: claData.bonus_fisico || 0,
+        chakra: claData.bonus_chakra || 0,
+        mental: claData.bonus_mental || 0,
+        construcao: claData.bonus_construcao || 0,
+        jinchuriki: claData.bonus_jin || 0
+      };
 
       await db.collection("fichas").doc(uid).set({
         email: emailV,
@@ -69,8 +84,8 @@ if (document.getElementById("btnCriar")) {
         reencarnacao: null,
         doujutsu: null,
         maldicao: null,
-        experiencia: 100,
-        skills: claData.bonus,
+        experiencia: 0,
+        skills: skillsBase,
         admin: false
       });
 
