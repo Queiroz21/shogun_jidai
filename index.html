@@ -1,19 +1,133 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Árvore de Habilidades</title>
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Árvore de Habilidades</title>
+
+<style>
+    body {
+        background: #0e0e13;
+        color: #e0e0e0;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 20px;
+        color: #8af;
+        text-shadow: 0 0 6px #48f;
+    }
+
+    #points {
+        font-size: 22px;
+        margin-bottom: 25px;
+    }
+
+    .skill-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 25px;
+        max-width: 900px;
+        margin: auto;
+    }
+
+    .skill {
+        background: #16161d;
+        border-radius: 16px;
+        padding: 15px;
+        box-shadow: 0 0 8px #000;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .skill.locked {
+        filter: grayscale(1);
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .skill:hover:not(.locked) {
+        transform: scale(1.07);
+        box-shadow: 0 0 12px #39f;
+    }
+
+    .skill img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin-bottom: 6px;
+        transition: all 0.2s;
+    }
+
+    .progress {
+        background: #222;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 6px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg,#34ff9e,#00f2ff);
+        width: 0%;
+        transition: width 0.25s;
+    }
+
+</style>
 </head>
 <body>
 
-<header>
-  <h1>Árvore de Habilidades</h1>
-  <div id="points">Pontos: <span id="points-value">0</span></div>
-</header>
+<h1>Árvore Ninja de Habilidades</h1>
+<div id="points">Pontos: 3</div>
 
-<main id="skills-container"></main>
+<div class="skill-grid" id="skills"></div>
 
-<script src="app.js"></script>
+<script>
+const skills = [
+    { name: "Treino Físico", img: "fisico.png", level: 3, max: 5 },
+    { name: "Controle de Chakra", img: "chakra.png", level: 1, max: 5 },
+    { name: "Disciplina Mental", img: "mental.png", level: 0, max: 5 },
+    { name: "Força do Jinchūriki", img: "jinchuriki.png", level: 0, max: 5 },
+    { name: "Construção da Aldeia", img: "construcao.png", level: 0, max: 5 }
+];
+
+let points = 3;
+
+function render() {
+    document.getElementById('points').textContent = `Pontos: ${points}`;
+    const container = document.getElementById('skills');
+    container.innerHTML = "";
+
+    skills.forEach((sk, idx) => {
+        const locked = points === 0 && sk.level === sk.max;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = "skill" + (sk.level >= sk.max ? " locked" : "");
+        wrapper.innerHTML = `
+            <img src="${sk.img}" />
+            <div>${sk.name}</div>
+            <div>(${sk.level}/${sk.max})</div>
+            <div class="progress"><div class="progress-bar" style="width:${(sk.level/sk.max)*100}%"></div></div>
+        `;
+
+        wrapper.addEventListener('click', () => levelUp(idx));
+        container.appendChild(wrapper);
+    });
+}
+
+function levelUp(i) {
+    if (points > 0 && skills[i].level < skills[i].max) {
+        skills[i].level++;
+        points--;
+        render();
+    }
+}
+
+render();
+</script>
+
 </body>
 </html>
