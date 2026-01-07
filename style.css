@@ -16,3 +16,13 @@
   box-shadow: 0 0 14px rgba(255, 215, 0, 1);
   transform: scale(1.08);
 }
+
+@keyframes pulse-gold {
+  0% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(255, 215, 0, 0.8); }
+  100% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.3); }
+}
+
+.skill.mastered {
+  animation: pulse-gold 2.5s ease-in-out infinite;
+}
