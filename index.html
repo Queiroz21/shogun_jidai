@@ -79,55 +79,14 @@
 </style>
 </head>
 <body>
+<script src="./app.js"></script>
+
 
 <h1>Árvore Ninja de Habilidades</h1>
 <div id="points">Pontos: 3</div>
 
 <div class="skill-grid" id="skills"></div>
-<script src="./app.js"></script>
-<script>
-const skills = [
-    { name: "Treino Físico", img: "assets/icons/fisico.png", level: 3, max: 5 },
-    { name: "Controle de Chakra", img: "assets/icons/chakra.png", level: 1, max: 5 },
-    { name: "Disciplina Mental", img: "assets/icons/mental.png", level: 0, max: 5 },
-    { name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", level: 0, max: 5 },
-    { name: "Construção da Aldeia", img: "assets/icons	/construcao.png", level: 0, max: 5 }
-];
 
-let points = 3;
-
-function render() {
-    document.getElementById('points').textContent = `Pontos: ${points}`;
-    const container = document.getElementById('skills');
-    container.innerHTML = "";
-
-    skills.forEach((sk, idx) => {
-        const locked = points === 0 && sk.level === sk.max;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = "skill" + (sk.level >= sk.max ? " locked" : "");
-        wrapper.innerHTML = `
-            <img src="${sk.img}" />
-            <div>${sk.name}</div>
-            <div>(${sk.level}/${sk.max})</div>
-            <div class="progress"><div class="progress-bar" style="width:${(sk.level/sk.max)*100}%"></div></div>
-        `;
-
-        wrapper.addEventListener('click', () => levelUp(idx));
-        container.appendChild(wrapper);
-    });
-}
-
-function levelUp(i) {
-    if (points > 0 && skills[i].level < skills[i].max) {
-        skills[i].level++;
-        points--;
-        render();
-    }
-}
-
-render();
-</script>
 
 </body>
 </html>

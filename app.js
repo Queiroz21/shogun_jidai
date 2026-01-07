@@ -1,96 +1,68 @@
-console.log("JS carregado do arquivo externo!");
-
-let points = 3; // simula pontos iniciais
+// Carregar progresso salvo
 let skillsState = JSON.parse(localStorage.getItem("skillsState") || "{}");
 
-document.getElementById("points-value").textContent = points;
+// Dados base (se não existirem salvamentos)
+const skills = [
+    { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 5 },
+    { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 5 },
+    { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 5 },
+    { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 5 },
+    { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 5 }
+];
 
-async function load() {
-  const res = await fetch("data/skills.json");
-  const skills = await res.json();
-  render(skills);
+// Carregar níveis preservados
+skills.forEach(sk => {
+    sk.level = skillsState[sk.id] || 0;
+});
+
+let points = 3;
+
+// Atualiza contadores e cards
+function render() {
+    document.getElementById('points').textContent = `Pontos: ${points}`;
+    const container = document.getElementById('skills');
+    container.innerHTML = "";
+
+    skills.forEach((sk, idx) => {
+        const wrapper = document.createElement('div');
+
+        wrapper.className = "skill";
+
+        // estados da classe
+        if (sk.level >= sk.max) {
+            wrapper.classList.add("mastered"); // pulsante dourado
+        } else if (points <= 0) {
+            wrapper.classList.add("locked");
+        }
+
+        wrapper.innerHTML = `
+            <img src="${sk.img}" />
+            <div>${sk.name}</div>
+            <div>(${sk.level}/${sk.max})</div>
+
+            <div class="progress">
+                <div class="progress-bar" style="width:${(sk.level/sk.max)*100}%"></div>
+            </div>
+        `;
+
+        wrapper.addEventListener('click', () => levelUp(idx));
+        container.appendChild(wrapper);
+    });
 }
 
-function render(skills) {
-  const container = document.getElementById("skills-container");
+// Comprar 1 ponto
+function levelUp(i) {
+    const sk = skills[i];
+    if (points > 0 && sk.level < sk.max) {
+        sk.level++;
+        points--;
 
-  skills.forEach(skill => {
-    const id = skill.id;
-    const fragments = skillsState[id] || 0;
+        // salva progresso
+        skillsState[sk.id] = sk.level;
+        localStorage.setItem("skillsState", JSON.stringify(skillsState));
 
-    const card = document.createElement("div");
-    card.className = "skill-card";
-
-    const svg = makePizza(`assets/icons/${skill.icon}`, fragments);
-    if (fragments >= 5) {
-	  svg.classList.add("state-mastered");
-	  svg.classList.remove("state-locked");
-	  svg.classList.remove("state-available");
-	} 
-	else if (fragments > 0) {
-	  svg.classList.add("state-available");
-	  svg.classList.remove("state-locked");
-	  svg.classList.remove("state-mastered");
-	}
-	else {
-	  svg.classList.add("state-locked");
-	  svg.classList.remove("state-mastered");
-	  svg.classList.remove("state-available");
-	}
-
-    svg.addEventListener("click", () => buy(id));
-
-    const label = document.createElement("p");
-    label.textContent = skill.name;
-
-    const tooltip = document.createElement("div");
-    tooltip.className = "tooltip";
-    tooltip.textContent = `${skill.name} (${fragments}/5)`;
-
-    card.append(svg, label, tooltip);
-    container.append(card);
-  });
+        render();
+    }
 }
 
-function buy(id) {
-  if (points <= 0) return;
-  skillsState[id] = (skillsState[id] || 0) + 1;
-  points--;
-  localStorage.setItem("skillsState", JSON.stringify(skillsState));
-  location.reload();
-}
-
-function makePizza(icon, fragments) {
-  const svgns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgns, "svg");
-  svg.setAttribute("viewBox", "0 0 100 100");
-  svg.setAttribute("width", "100");
-
-  const angles = [
-    [50,50,50,0,97,35],
-    [50,50,97,35,79,90],
-    [50,50,79,90,21,90],
-    [50,50,21,90,3,35],
-    [50,50,3,35,50,0]
-  ];
-
-  angles.forEach((p, i) => {
-    const path = document.createElementNS(svgns, "path");
-    path.setAttribute("d", `M${p[0]},${p[1]} L${p[2]},${p[3]} A50,50 0 0,1 ${p[4]},${p[5]} Z`);
-    path.setAttribute("class", "slice");
-    if (i < fragments) path.classList.add("acquired");
-    svg.appendChild(path);
-  });
-
-  const img = document.createElementNS(svgns, "image");
-  img.setAttribute("href", icon);
-  img.setAttribute("x", "22");
-  img.setAttribute("y", "22");
-  img.setAttribute("width", "56");
-  img.setAttribute("height", "56");
-  svg.appendChild(img);
-
-  return svg;
-}
-
-load();
+render();
