@@ -1,0 +1,7 @@
+[
+  { "id": "fisico", "name": "Treino Físico", "icon": "fisico.png" },
+  { "id": "chakra", "name": "Controle de Chakra", "icon": "chakra.png" },
+  { "id": "mental", "name": "Disciplina Mental", "icon": "mental.png" },
+  { "id": "jinchuriki", "name": "Linhagem Jinchūriki", "icon": "jinchuriki.png" },
+  { "id": "construcao", "name": "Evolução da Aldeia", "icon": "construcao.png" }
+]
