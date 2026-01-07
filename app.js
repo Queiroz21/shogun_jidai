@@ -20,11 +20,21 @@ function render(skills) {
     card.className = "skill-card";
 
     const svg = makePizza(`assets/icons/${skill.icon}`, fragments);
-    svg.classList.add(
-      fragments >= 5 ? "state-mastered" :
-      fragments > 0 ? "state-available" :
-      "state-locked"
-    );
+    if (fragments >= 5) {
+	  svg.classList.add("state-mastered");
+	  svg.classList.remove("state-locked");
+	  svg.classList.remove("state-available");
+	} 
+	else if (fragments > 0) {
+	  svg.classList.add("state-available");
+	  svg.classList.remove("state-locked");
+	  svg.classList.remove("state-mastered");
+	}
+	else {
+	  svg.classList.add("state-locked");
+	  svg.classList.remove("state-mastered");
+	  svg.classList.remove("state-available");
+	}
 
     svg.addEventListener("click", () => buy(id));
 
