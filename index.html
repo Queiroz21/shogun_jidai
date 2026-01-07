@@ -5,82 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Árvore de Habilidades</title>
 
-<style>
-    body {
-        background: #0e0e13;
-        color: #e0e0e0;
-        font-family: Arial, sans-serif;
-        text-align: center;
-        padding: 20px;
-    }
-
-    h1 {
-        margin-bottom: 20px;
-        color: #8af;
-        text-shadow: 0 0 6px #48f;
-    }
-
-    #points {
-        font-size: 22px;
-        margin-bottom: 25px;
-    }
-
-    .skill-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 25px;
-        max-width: 900px;
-        margin: auto;
-    }
-
-    .skill {
-        background: #16161d;
-        border-radius: 16px;
-        padding: 15px;
-        box-shadow: 0 0 8px #000;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .skill.locked {
-        filter: grayscale(1);
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-
-    .skill:hover:not(.locked) {
-        transform: scale(1.07);
-        box-shadow: 0 0 12px #39f;
-    }
-
-    .skill img {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        margin-bottom: 6px;
-        transition: all 0.2s;
-    }
-
-    .progress {
-        background: #222;
-        height: 8px;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-top: 6px;
-    }
-
-    .progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg,#34ff9e,#00f2ff);
-        width: 0%;
-        transition: width 0.25s;
-    }
-
-</style>
 </head>
 <body>
-
-
 
 <h1>Árvore Ninja de Habilidades</h1>
 <div id="points">Pontos: 3</div>
