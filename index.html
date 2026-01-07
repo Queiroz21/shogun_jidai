@@ -1,22 +1,31 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Árvore de Habilidades Shogun Jidai</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Árvore de Habilidades Naruto</title>
 <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <h1>Árvore de Habilidades</h1>
-    <div id="points">Pontos: 0</div>
-	
-	<div id="skills" class="skill-grid"></div>
 
-    <div id="map-wrapper">
-        <svg id="links"></svg>
-        <div id="map"></div>
+<h1>Árvore de Habilidades</h1>
+<div id="points">Pontos disponíveis: 100</div>
+
+<div class="tree">
+    <svg id="lines"></svg>
+    <div class="skill-container">
+        <!-- Skills principais -->
+        <div class="skill" data-skill="chakra">Chakra</div>
+        <div class="skill" data-skill="fisico">Físico</div>
+        <div class="skill" data-skill="mental">Mental</div>
+        <div class="skill" data-skill="construcao">Construção</div>
+        <div class="skill" data-skill="jin">Jin</div>
+
+        <!-- Filhos Só do Chakra -->
+        <div class="skill locked child" data-skill="katon">Katon</div>
+        <div class="skill locked child" data-skill="suiton">Suiton</div>
     </div>
+</div>
 
 <script src="app.js"></script>
 </body>

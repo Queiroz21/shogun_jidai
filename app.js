@@ -1,69 +1,74 @@
-// Carregar progresso salvo
-let skillsState = JSON.parse(localStorage.getItem("skillsState") || "{}");
+let totalPoints = 100;
 
-let points = 100;
+const skills = {
+  chakra: { points: 0, children: ["katon", "suiton"] },
+  fisico: { points: 0 },
+  mental: { points: 0 },
+  construcao: { points: 0 },
+  jin: { points: 0 },
+  katon: { points: 0, parent: "chakra" },
+  suiton: { points: 0, parent: "chakra" }
+};
 
-// Base de habilidades
-const skills = [
-    { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 100 },
-    { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 100 },
-    { id: "katon", name: "Katon (Fogo)", img: "assets/icons/katon.png", max: 100, parent: "chakra", req: 20 },
-    { id: "suiton", name: "Suiton (Água)", img: "assets/icons/suiton.png", max: 100, parent: "chakra", req: 20 },
-    { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 100 },
-    { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 100 },
-    { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 100 }
-];
-
-// aplica progresso salvo
-skills.forEach(sk => sk.level = skillsState[sk.id] || 0);
-
-// render
 function render() {
-    document.getElementById("points").textContent = `Pontos: ${points}`;
-    const container = document.getElementById("skills");
-    container.innerHTML = "";
+  document.getElementById("points").textContent = `Pontos disponíveis: ${totalPoints}`;
 
-    skills.forEach((sk, idx) => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "skill";
+  document.querySelectorAll(".skill").forEach(el => {
+    const id = el.dataset.skill;
+    const s = skills[id];
 
-        // trava derivadas se requisito não cumprido
-        const lockedByTree = sk.parent && skills.find(s => s.id === sk.parent).level < sk.req;
+    // lock/unlock filhos do chakra
+    if (s.parent === "chakra") {
+      if (skills.chakra.points >= 2) el.classList.remove("locked");
+      else el.classList.add("locked");
+    }
 
-        if (sk.level >= sk.max) {
-            wrapper.classList.add("mastered");
-        }
-        else if (points <= 0 || lockedByTree) {
-            wrapper.classList.add("locked");
-        }
+    // ajusta borda masterizada
+    if (s.points >= 5) el.classList.add("mastered");
+    else el.classList.remove("mastered");
 
-        wrapper.innerHTML = `
-            <img src="${sk.img}" />
-            <div>${sk.name}</div>
-            <div>(${sk.level}/${sk.max})</div>
-            <div class="progress">
-                <div class="progress-bar" style="width:${(sk.level/sk.max)*100}%"></div>
-            </div>
-        `;
+    el.textContent = `${id} (${s.points}/5)`;
+  });
 
-        wrapper.addEventListener("click", () => levelUp(idx));
-        container.appendChild(wrapper);
-    });
+  drawLines();
 }
 
-function levelUp(i) {
-    const sk = skills[i];
+function spendPoint(id) {
+  const s = skills[id];
 
-    // requisito da árvore
-    if (sk.parent && skills.find(s => s.id === sk.parent).level < sk.req) return;
+  // bloqueado?
+  if (document.querySelector(`[data-skill=${id}]`).classList.contains("locked")) return;
+  if (s.points >= 5) return;
+  if (totalPoints <= 0) return;
 
-    if (points > 0 && sk.level < sk.max) {
-        sk.level++;
-        points--;
-        skillsState[sk.id] = sk.level;
-        localStorage.setItem("skillsState", JSON.stringify(skillsState));
-        render();
-    }
+  s.points++;
+  totalPoints--;
+  render();
+}
+
+document.querySelectorAll(".skill").forEach(el =>
+  el.addEventListener("click", () => spendPoint(el.dataset.skill))
+);
+
+function drawLines() {
+  const svg = document.getElementById("lines");
+  svg.innerHTML = "";
+
+  skills.chakra.children.forEach(child => {
+    const parentEl = document.querySelector(`[data-skill='chakra']`);
+    const childEl = document.querySelector(`[data-skill='${child}']`);
+
+    const p = parentEl.getBoundingClientRect();
+    const c = childEl.getBoundingClientRect();
+
+    const x1 = p.left + p.width / 2;
+    const y1 = p.top + p.height;
+    const x2 = c.left + c.width / 2;
+    const y2 = c.top;
+
+    const line = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="cyan" stroke-width="2"/>`;
+    svg.innerHTML += line;
+  });
 }
 
 render();
