@@ -134,3 +134,67 @@ h1 {
   border-top: 2px solid #888;
 }
 
+/* Contêiner vertical do organograma */
+#org-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+/* Linha dos diretores principais */
+.directors {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+/* Cada bloco com possível subárvore abaixo */
+.branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Linha vertical da ramificação */
+.branch-line {
+  width: 2px;
+  height: 25px;
+  background: #666;
+  margin: 8px 0;
+}
+
+/* Linha horizontal ligando filhos */
+.child-row {
+  display: flex;
+  gap: 20px;
+  border-top: 2px solid #666;
+  padding-top: 12px;
+}
+
+/* Card das skills (usa o mesmo estilo existente) */
+.skill {
+  background: #16161d;
+  padding: 12px;
+  border-radius: 14px;
+  width: 130px;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 0 6px #000;
+  transition: transform .2s;
+}
+
+.skill:hover:not(.locked):not(.mastered) {
+  transform: scale(1.08);
+}
+
+/* Cinza bloqueado */
+.skill.locked {
+  filter: grayscale(1);
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Mestre dourado já existe, segue igual! */
