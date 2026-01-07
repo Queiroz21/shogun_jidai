@@ -1,131 +1,117 @@
-// CONFIG FIREBASE
-// app.js
-// usa a instância já criada em oauth.js
+// --------------------------------------------------
+//  SHOGUN JIDAI - ÁRVORE DE HABILIDADES
+//  MODIFICAR DEPOIS: pontos iniciais = 5
+// --------------------------------------------------
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Estado do usuário
-let currentUID = null;
-let skillsState = {};
-let points = 100;
+let uid = null;
+let ficha = null;
+let pontosLivres = 0;
+let skills = {};
 
-// Quando logar / sair
+// --------------------------------------------------
+//  GARANTIR LOGIN
+// --------------------------------------------------
 auth.onAuthStateChanged(async user => {
   if (!user) {
     window.location.href = "index.html";
     return;
   }
 
-  currentUID = user.uid;
+  uid = user.uid;
 
-  const snap = await db.collection("fichas").doc(currentUID).get();
-  const data = snap.data();
+  // Carregar ficha
+  const fichaSnap = await db.collection("fichas").doc(uid).get();
 
-  points = data.experiencia ?? 100;
-  skillsState = data.skills ?? {};
+  if (!fichaSnap.exists) {
+    alert("Ficha não encontrada. Contate o mestre!");
+    return;
+  }
 
-  // Carrega níveis nas skills
-  skills.forEach(s => s.level = skillsState[s.id] || 0);
+  ficha = fichaSnap.data();
+  skills = ficha.skills;
+  
+  // MODIFICAR DEPOIS: definir com a staff
+  pontosLivres = 5;
 
-  render();
+  renderInfoTopo();
+  renderSkills();
 });
 
-// Definição das habilidades
-const skills = [
-  { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 5, children: ["katon","suiton"] },
-  { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 5 },
-  { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 5 },
-  { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 5 },
-  { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 5 },
-  { id: "katon", name: "Elemento Katon", img: "assets/icons/fogo.png", max: 5, parent: "chakra" },
-  { id: "suiton", name: "Elemento Suiton", img: "assets/icons/agua.png", max: 5, parent: "chakra" }
-];
 
-// Renderiza a árvore
-function render() {
-  document.getElementById("points").textContent = `Pontos: ${points}`;
-  const chart = document.getElementById("org-chart");
-  chart.innerHTML = "";
-
-  const parents = skills.filter(s => !s.parent);
-
-  const parentRow = document.createElement("div");
-  parentRow.className = "directors";
-
-  parents.forEach(parent => {
-    const branch = document.createElement("div");
-    branch.className = "branch";
-
-    branch.appendChild(makeCard(parent));
-
-    const kids = skills.filter(s => s.parent === parent.id);
-    if (kids.length && parent.level >= 2) {
-      branch.appendChild(line());
-      branch.appendChild(childRow(kids));
-    }
-
-    parentRow.appendChild(branch);
-  });
-
-  chart.appendChild(parentRow);
-}
-
-// Cria card
-function makeCard(sk) {
-  const el = document.createElement("div");
-  el.className = "skill";
-
-  if (sk.level >= sk.max) el.classList.add("mastered");
-  else if (points <= 0 || (sk.parent && parentLevel(sk.parent) < 2))
-    el.classList.add("locked");
-
-  el.innerHTML = `
-      <img src="${sk.img}">
-      <div>${sk.name}</div>
-      <small>(${sk.level}/${sk.max})</small>
+// --------------------------------------------------
+//  MOSTRAR INFORMAÇÕES NO TOPO DA TELA
+// --------------------------------------------------
+function renderInfoTopo() {
+  const topo = document.getElementById("infoTopo");
+  topo.innerHTML = `
+    <div style="
+      display:flex;
+      justify-content: space-around;
+      padding:10px;
+      background:#222;
+      color:white;
+      font-size:14px;
+      border-bottom:2px solid #444;">
+      
+      <span><b>Email:</b> ${ficha.email}</span>
+      <span><b>Clã:</b> ${ficha.cla}</span>
+      <span><b>Idade:</b> ${ficha.idade}</span>
+	  <span><b>Nick:</b> ${ficha.nick}</span>
+      <span><b>Pontos Disponíveis:</b> ${pontosLivres}</span>
+      <span><b>XP:</b> ${ficha.experiencia}</span>
+    </div>
   `;
-
-  el.onclick = () => levelUp(sk.id);
-  return el;
 }
 
-function parentLevel(id) {
-  const pr = skills.find(s => s.id === id);
-  return pr ? pr.level : 0;
+
+// --------------------------------------------------
+//  MOSTRAR SKILLS NA ÁRVORE
+//  (coloque IDs nas bolhas de cada habilidade)
+// --------------------------------------------------
+function renderSkills() {
+  // Exemplo de IDs:
+  // chakraValue, fisicoValue, mentalValue, construcaoValue, jinchurikiValue
+  
+  document.getElementById("chakraValue").textContent = skills.chakra;
+  document.getElementById("fisicoValue").textContent = skills.fisico;
+  document.getElementById("mentalValue").textContent = skills.mental;
+  document.getElementById("construcaoValue").textContent = skills.construcao;
+  document.getElementById("jinchurikiValue").textContent = skills.jinchuriki;
+
+  renderInfoTopo();
 }
 
-function line() {
-  const bar = document.createElement("div");
-  bar.className = "branch-line";
-  return bar;
-}
 
-function childRow(arr) {
-  const row = document.createElement("div");
-  row.className = "child-row";
-  arr.forEach(ch => row.appendChild(makeCard(ch)));
-  return row;
-}
+// --------------------------------------------------
+//  AUMENTAR SKILL (+1)
+// --------------------------------------------------
+async function addPonto(skillName) {
+  if (pontosLivres <= 0) {
+    alert("Sem pontos disponíveis!");
+    return;
+  }
 
-// Upar habilidade
-async function levelUp(id) {
-  const sk = skills.find(s => s.id === id);
-  if (!sk) return;
-  if (points <= 0) return;
-  if (sk.parent && parentLevel(sk.parent) < 2) return;
-  if (sk.level >= sk.max) return;
+  skills[skillName]++;
+  pontosLivres--;
 
-  sk.level++;
-  points--;
+  renderSkills();
 
-  // salva em memória
-  skillsState[sk.id] = sk.level;
-
-  // salva no firebase
-  await db.collection("fichas").doc(currentUID).update({
-    skills: skillsState,
-    experiencia: points
+  await db.collection("fichas").doc(uid).update({
+    skills: skills
   });
-
-  render();
 }
+
+
+// --------------------------------------------------
+//  XP PLACEHOLDER (MODIFICAR DEPOIS)
+// --------------------------------------------------
+document.getElementById("xpBar").textContent = `XP: ${ficha?.experiencia ?? 0}`;
+
+
+// --------------------------------------------------
+//  EXEMPLOS DE BOTÕES (coloque no HTML):
+//  <button onclick="addPonto('chakra')">+</button>
+// --------------------------------------------------
