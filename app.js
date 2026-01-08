@@ -77,6 +77,7 @@ function makeCard(skill) {
 
 // 🎨 Renderiza tudo
 function render() {
+  // Topo antigo
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
 
@@ -86,6 +87,21 @@ function render() {
   document.getElementById("points").textContent =
     `Pontos Disponíveis: ${userData.pontos}`;
 
+  // 🌟 Novo HUD: Level + XP + Barra
+  const xpNeeded = userData.nivel * 20;
+  const xpCurrent = userData.xp;
+  const pct = Math.min((xpCurrent / xpNeeded) * 100, 100);
+
+  document.getElementById("player-level").textContent =
+    `Level: ${userData.nivel}`;
+
+  document.getElementById("player-xp").textContent =
+    `XP: ${xpCurrent} / ${xpNeeded}`;
+
+  const xpBar = document.getElementById("xp-bar");
+  xpBar.style.width = pct + "%";
+
+  // 🌳 Render árvore normalmente
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
@@ -117,6 +133,7 @@ function render() {
 
   chart.appendChild(container);
 }
+
 
 // ⬆️ Para evoluir uma skill (gasta pontos)
 async function levelUp(id) {
