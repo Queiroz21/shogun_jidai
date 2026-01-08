@@ -87,19 +87,19 @@ function render() {
   document.getElementById("points").textContent =
     `Pontos Disponíveis: ${userData.pontos}`;
 
+	
   // 🌟 Novo HUD: Level + XP + Barra
   const xpNeeded = userData.nivel * 20;
   const xpCurrent = userData.xp;
   const pct = Math.min((xpCurrent / xpNeeded) * 100, 100);
 
-  document.getElementById("player-level").textContent =
+ document.getElementById("player-level").textContent =
     `Level: ${userData.nivel}`;
 
   document.getElementById("player-xp").textContent =
     `XP: ${xpCurrent} / ${xpNeeded}`;
 
-  const xpBar = document.getElementById("xp-bar");
-  xpBar.style.width = pct + "%";
+  document.getElementById("xp-bar").style.width = pct + "%";
 
   // 🌳 Render árvore normalmente
   const chart = document.getElementById("org-chart");
