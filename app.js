@@ -1,4 +1,5 @@
-// app.js - FINAL para seu style.css antigo
+// app.js — versão FINAL oficial do projeto
+
 import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc
@@ -6,7 +7,6 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
-let points = 5;
 let skillsState = {};
 let userData = {};
 
@@ -20,6 +20,7 @@ const skills = [
   { id: "suiton", parent: "chakra", name: "Elemento Suiton", img: "assets/icons/agua.png", max: 5 }
 ];
 
+// 🔥 Login detectado
 onAuthStateChanged(auth, async user => {
   if (!user) {
     window.location.href = "index.html";
@@ -30,22 +31,32 @@ onAuthStateChanged(auth, async user => {
 
   const fichaRef = doc(db, "fichas", currentUID);
   const snap = await getDoc(fichaRef);
-
   userData = snap.data() ?? {};
 
-  points = userData.experiencia ?? 5;
-  skillsState = userData.skills ?? {};
+  // Segurança para campos novos
+  userData.xp = userData.xp ?? 0;
+  userData.nivel = userData.nivel ?? 1;
+  userData.pontos = userData.pontos ?? 0;
+  userData.skills = userData.skills ?? {};
 
-  skills.forEach(s => s.level = skillsState[s.id] || 0);
+  skillsState = { ...userData.skills };
 
+  // Atribui level interno
+  skills.forEach(s => {
+    s.level = skillsState[s.id] ?? 0;
+  });
+
+  await checkLevelUp();
   render();
 });
 
+// 🔍 Verifica se existe um pai e seu level
 function parentLevel(id) {
   const p = skills.find(s => s.id === id);
   return p ? p.level : 0;
 }
 
+// 🔳 Monta cada card
 function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
@@ -64,12 +75,16 @@ function makeCard(skill) {
   return el;
 }
 
+// 🎨 Renderiza tudo
 function render() {
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
 
-  document.getElementById("xpBar").textContent = `XP: ${points}`;
-  document.getElementById("points").textContent = `Pontos Disponíveis: ${points}`;
+  document.getElementById("xpBar").textContent =
+    `Nível ${userData.nivel} | XP: ${userData.xp}`;
+
+  document.getElementById("points").textContent =
+    `Pontos Disponíveis: ${userData.pontos}`;
 
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
@@ -103,20 +118,41 @@ function render() {
   chart.appendChild(container);
 }
 
+// ⬆️ Para evoluir uma skill (gasta pontos)
 async function levelUp(id) {
-	console.log("clicou em:", id);
   const sk = skills.find(s => s.id === id);
-  if (!sk || points <= 0 || sk.level >= sk.max) return;
+  if (!sk) return;
+  if (userData.pontos <= 0) return;
+  if (sk.level >= sk.max) return;
   if (sk.parent && parentLevel(sk.parent) < 2) return;
 
   sk.level++;
-  points--;
+  userData.pontos--;
   skillsState[id] = sk.level;
 
   await updateDoc(doc(db, "fichas", currentUID), {
     skills: skillsState,
-    experiencia: points
+    pontos: userData.pontos
   });
 
   render();
+}
+
+// 🧠 Se recebeu XP suficiente do mestre, sobe nível e ganha pontos
+async function checkLevelUp() {
+  let oldLevel = userData.nivel;
+  let newLevel = 1 + Math.floor(userData.xp / 20);
+
+  if (newLevel > oldLevel) {
+    let ganhos = (newLevel - oldLevel) * 2;
+    userData.nivel = newLevel;
+    userData.pontos += ganhos;
+
+    await updateDoc(doc(db, "fichas", currentUID), {
+      nivel: userData.nivel,
+      pontos: userData.pontos
+    });
+
+    alert(`🎉 Parabéns! Subiu para nível ${newLevel} e ganhou ${ganhos} pontos!`);
+  }
 }
