@@ -1,4 +1,4 @@
-// app.js modular v10
+// app.js - FINAL para seu style.css antigo
 import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc
@@ -6,7 +6,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
-let points = 20;
+let points = 5;
 let skillsState = {};
 let userData = {};
 
@@ -51,7 +51,8 @@ function makeCard(skill) {
   el.className = "skill";
 
   if (skill.level >= skill.max) el.classList.add("mastered");
-  else if (skill.parent && parentLevel(skill.parent) < 2) el.classList.add("locked");
+  else if (skill.parent && parentLevel(skill.parent) < 2)
+    el.classList.add("locked");
 
   el.innerHTML = `
     <img src="${skill.img}">
@@ -64,17 +65,17 @@ function makeCard(skill) {
 }
 
 function render() {
-  // TOP INFO
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
 
-  // XP bar placeholder
   document.getElementById("xpBar").textContent = `XP: ${points}`;
-
   document.getElementById("points").textContent = `Pontos Disponíveis: ${points}`;
 
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
+
+  const container = document.createElement("div");
+  container.className = "directors";
 
   const parents = skills.filter(s => !s.parent);
 
@@ -86,14 +87,20 @@ function render() {
 
     const kids = skills.filter(s => s.parent === parent.id);
     if (kids.length && parent.level >= 2) {
+      const bar = document.createElement("div");
+      bar.className = "branch-line";
+      branch.appendChild(bar);
+
       const row = document.createElement("div");
       row.className = "child-row";
       kids.forEach(ch => row.appendChild(makeCard(ch)));
       branch.appendChild(row);
     }
 
-    chart.appendChild(branch);
+    container.appendChild(branch);
   });
+
+  chart.appendChild(container);
 }
 
 async function levelUp(id) {
