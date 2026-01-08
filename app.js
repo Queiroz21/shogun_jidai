@@ -104,6 +104,7 @@ function render() {
 }
 
 async function levelUp(id) {
+	console.log("clicou em:", id);
   const sk = skills.find(s => s.id === id);
   if (!sk || points <= 0 || sk.level >= sk.max) return;
   if (sk.parent && parentLevel(sk.parent) < 2) return;
