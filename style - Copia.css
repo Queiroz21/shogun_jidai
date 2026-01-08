@@ -1,4 +1,3 @@
-/* Fundo e tipografia */
 body {
   background: url('stars.jpg') repeat #000;
   background-size: cover;
@@ -11,26 +10,31 @@ h1 {
   margin-top: 15px;
 }
 
-/* Pontos */
 #points {
   font-size: 24px;
   margin-bottom: 15px;
 }
 
-/* Wrapper geral da árvore */
+/* Área da árvore */
 .tree {
   position: relative;
   width: 100%;
   max-width: 900px;
   margin: auto;
   margin-top: 20px;
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 20px;
 }
 
-/* GRID fixo para habilidades */
+/* SVG para as linhas */
+#lines {
+  position: absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events: none;
+}
+
+/* Colocação fixa das skills */
 .skill-container {
   display: grid;
   grid-template-columns: repeat(5,1fr);
@@ -38,33 +42,21 @@ h1 {
   padding: 20px;
 }
 
-/* Estilo base das habilidades */
 .skill {
-  background: #16161d;
+  background: rgba(40,40,60,0.8);
   padding: 12px;
-  border-radius: 14px;
-  width: 130px;
+  border-radius: 10px;
   cursor: pointer;
-  text-align: center;
   border: 2px solid transparent;
-  box-shadow: 0 0 6px #000;
-  transition: transform .2s, filter .2s, border-color .2s;
+  transition: all .2s;
 }
 
-/* Hover das habilidades ativas */
-.skill:hover:not(.locked):not(.mastered) {
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 6px cyan);
-}
-
-/* Skills bloqueadas */
 .skill.locked {
-  filter: grayscale(1);
-  opacity: .45;
+  filter: grayscale(.9);
+  opacity: .5;
   cursor: not-allowed;
 }
 
-/* Skills dominadas */
 .skill.mastered {
   border-color: gold;
   animation: glow 2s infinite ease-in-out;
@@ -76,15 +68,38 @@ h1 {
   100% { box-shadow: 0 0 4px gold; }
 }
 
-/* Estrutura hierárquica */
+/* Filhos ficam na linha de baixo */
+.child {
+  margin-top: 40px;
+}
 
-/* Nó pai */
+/* Grade principal: 5 raízes alinhadas */
+.tree {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Wrapper da habilidade raiz */
 .node {
   position: relative;
   text-align: center;
 }
 
-/* wrapper de filhos */
+/* Skill card reaproveitado */
+.skill {
+  background: #16161d;
+  padding: 12px;
+  border-radius: 14px;
+  width: 120px;
+  cursor: pointer;
+  transition: transform .2s;
+  box-shadow: 0 0 6px #000;
+}
+
+/* Filhos em linha, abaixo do pai */
 .children {
   display: flex;
   justify-content: space-between;
@@ -92,28 +107,21 @@ h1 {
   margin-top: 20px;
 }
 
-/* Card filho */
-.child {
-  margin-top: 40px;
-}
-
-/* Linhas verticais e horizontais */
-.node::after,
-.child-connector::before {
+/* Desenho das linhas da árvore */
+.node::after, .child-connector::before {
   content: "";
   position: absolute;
   width: 2px;
   background: #888;
 }
 
-/* Linha vertical do pai até os filhos */
 .node.has-children::after {
   height: 18px;
-  top: 62px;
+  top: 62px; /* ajusta até baixo do card */
   left: 50%;
 }
 
-/* Linha horizontal conectando os filhos */
+/* Linha horizontal entre filhos */
 .child-connector {
   position: absolute;
   top: 80px;
@@ -122,7 +130,7 @@ h1 {
   border-top: 2px solid #888;
 }
 
-/* Organograma principal */
+/* Contêiner vertical do organograma */
 #org-chart {
   display: flex;
   flex-direction: column;
@@ -131,7 +139,7 @@ h1 {
   margin-top: 20px;
 }
 
-/* Linha com raízes principais */
+/* Linha dos diretores principais */
 .directors {
   display: flex;
   justify-content: center;
@@ -139,14 +147,14 @@ h1 {
   gap: 30px;
 }
 
-/* Cada ramo */
+/* Cada bloco com possível subárvore abaixo */
 .branch {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* Linha vertical entre níveis */
+/* Linha vertical da ramificação */
 .branch-line {
   width: 2px;
   height: 25px;
@@ -154,10 +162,37 @@ h1 {
   margin: 8px 0;
 }
 
-/* Linha horizontal grupo filhos */
+/* Linha horizontal ligando filhos */
 .child-row {
   display: flex;
   gap: 20px;
   border-top: 2px solid #666;
   padding-top: 12px;
 }
+
+/* Card das skills (usa o mesmo estilo existente) */
+.skill {
+  background: #16161d;
+  padding: 12px;
+  border-radius: 14px;
+  width: 130px;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 0 6px #000;
+  transition: transform .2s;
+}
+
+.skill:hover:not(.locked):not(.mastered) {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 6px cyan);
+}
+
+
+/* Cinza bloqueado */
+.skill.locked {
+  filter: grayscale(1);
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Mestre dourado já existe, segue igual! */

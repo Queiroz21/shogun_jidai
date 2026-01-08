@@ -1,21 +1,23 @@
+// app.js modular v10
 import { auth, db } from "./oauth.js";
-import { 
-  doc, 
-  getDoc, 
-  updateDoc 
+import {
+  doc, getDoc, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
-let points = 5;               // TODO: mudar depois com staff
+let points = 20;
 let skillsState = {};
+let userData = {};
 
 const skills = [
-  { id: "chakra", name: "Controle de Chakra", max: 5 },
-  { id: "fisico", name: "Treino Físico", max: 5 },
-  { id: "mental", name: "Disciplina Mental", max: 5 },
-  { id: "construcao", name: "Construção da Aldeia", max: 5 },
-  { id: "jinchuriki", name: "Força Jinchūriki", max: 5 },
+  { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 5, children: ["katon", "suiton"] },
+  { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 5 },
+  { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 5 },
+  { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 5 },
+  { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 5 },
+  { id: "katon", parent: "chakra", name: "Elemento Katon", img: "assets/icons/fogo.png", max: 5 },
+  { id: "suiton", parent: "chakra", name: "Elemento Suiton", img: "assets/icons/agua.png", max: 5 }
 ];
 
 onAuthStateChanged(auth, async user => {
@@ -28,20 +30,76 @@ onAuthStateChanged(auth, async user => {
 
   const fichaRef = doc(db, "fichas", currentUID);
   const snap = await getDoc(fichaRef);
-  const data = snap.data();
 
-  points = data.experiencia ?? 5;
-  skillsState = data.skills ?? {};
+  userData = snap.data() ?? {};
+
+  points = userData.experiencia ?? 5;
+  skillsState = userData.skills ?? {};
 
   skills.forEach(s => s.level = skillsState[s.id] || 0);
 
   render();
 });
 
+function parentLevel(id) {
+  const p = skills.find(s => s.id === id);
+  return p ? p.level : 0;
+}
+
+function makeCard(skill) {
+  const el = document.createElement("div");
+  el.className = "skill";
+
+  if (skill.level >= skill.max) el.classList.add("mastered");
+  else if (skill.parent && parentLevel(skill.parent) < 2) el.classList.add("locked");
+
+  el.innerHTML = `
+    <img src="${skill.img}">
+    <div>${skill.name}</div>
+    <small>(${skill.level}/${skill.max})</small>
+  `;
+
+  el.onclick = () => levelUp(skill.id);
+  return el;
+}
+
+function render() {
+  // TOP INFO
+  document.getElementById("infoTopo").textContent =
+    `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
+
+  // XP bar placeholder
+  document.getElementById("xpBar").textContent = `XP: ${points}`;
+
+  document.getElementById("points").textContent = `Pontos Disponíveis: ${points}`;
+
+  const chart = document.getElementById("org-chart");
+  chart.innerHTML = "";
+
+  const parents = skills.filter(s => !s.parent);
+
+  parents.forEach(parent => {
+    const branch = document.createElement("div");
+    branch.className = "branch";
+
+    branch.appendChild(makeCard(parent));
+
+    const kids = skills.filter(s => s.parent === parent.id);
+    if (kids.length && parent.level >= 2) {
+      const row = document.createElement("div");
+      row.className = "child-row";
+      kids.forEach(ch => row.appendChild(makeCard(ch)));
+      branch.appendChild(row);
+    }
+
+    chart.appendChild(branch);
+  });
+}
+
 async function levelUp(id) {
-  if (points <= 0) return;
   const sk = skills.find(s => s.id === id);
-  if (sk.level >= sk.max) return;
+  if (!sk || points <= 0 || sk.level >= sk.max) return;
+  if (sk.parent && parentLevel(sk.parent) < 2) return;
 
   sk.level++;
   points--;
@@ -53,8 +111,4 @@ async function levelUp(id) {
   });
 
   render();
-}
-
-function render(){
-  document.getElementById("points").textContent = `Pontos: ${points}`;
 }
