@@ -6,8 +6,8 @@
 <title>Árvore de Habilidades Naruto</title>
 <link rel="stylesheet" href="style.css">
 
-<script src="oauth.js"></script>
-<script src="app.js"></script>
+<script type="module" src="oauth.js"></script>
+<script type="module" src="app.js"></script>
 </head>
 <body>
     <h1>Árvore de Habilidades</h1>
@@ -26,11 +26,6 @@
 	<div>Construção: <span id="construcaoValue"></span> <button onclick="addPonto('construcao')">+</button></div>
 	<div>Jinchuriki: <span id="jinchurikiValue"></span> <button onclick="addPonto('jinchuriki')">+</button></div>
 
-
-	<script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js"></script>
-    
 	<script>
 		firebase.auth().onAuthStateChanged(user => {
 		  if (!user) {

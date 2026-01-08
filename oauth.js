@@ -1,3 +1,9 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } 
+  from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+import { getFirestore } 
+  from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+  
 // CONFIGURE COM SUAS CHAVES DO FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyC_jD2hYyzfoKNB1IO1_A3H-pUD2Ldph3s",
@@ -10,8 +16,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 /* ------------------------
    CARREGAR CLÃS
