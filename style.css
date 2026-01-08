@@ -177,7 +177,7 @@ h1 {
 #xp-bar {
   height: 100%;
   width: 0%;
-  background: limegreen;
+  background: green;
   transition: width 0.4s ease-in-out;
   border-radius: 10px;
 }
