@@ -1,36 +1,16 @@
-// CONFIG FIREBASE
 // app.js
-// usa a instância já criada em oauth.js
-const auth = firebase.auth();
-const db = firebase.firestore();
+import { auth, db } from "./oauth.js";
+import { doc, getDoc, updateDoc } 
+  from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+import { onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-// Estado do usuário
+// ESTADO
 let currentUID = null;
 let skillsState = {};
-let points = 100;
+let points = 5; // TODO: modificar depois com a staff
 
-// Quando logar / sair
-auth.onAuthStateChanged(async user => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
-
-  currentUID = user.uid;
-
-  const snap = await db.collection("fichas").doc(currentUID).get();
-  const data = snap.data();
-
-  points = data.experiencia ?? 100;
-  skillsState = data.skills ?? {};
-
-  // Carrega níveis nas skills
-  skills.forEach(s => s.level = skillsState[s.id] || 0);
-
-  render();
-});
-
-// Definição das habilidades
+// DEFINIÇÃO DAS SKILLS
 const skills = [
   { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 5, children: ["katon","suiton"] },
   { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 5 },
@@ -41,14 +21,35 @@ const skills = [
   { id: "suiton", name: "Elemento Suiton", img: "assets/icons/agua.png", max: 5, parent: "chakra" }
 ];
 
-// Renderiza a árvore
+// AUTENTICAÇÃO
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  currentUID = user.uid;
+
+  const ref = doc(db, "fichas", currentUID);
+  const snap = await getDoc(ref);
+
+  const data = snap.data() || {};
+
+  points = data.experiencia ?? 5;
+  skillsState = data.skills ?? {};
+
+  skills.forEach(s => s.level = skillsState[s.id] || 0);
+
+  render();
+});
+
+// RENDERIZA TELA
 function render() {
-  document.getElementById("points").textContent = `Pontos: ${points}`;
+  document.getElementById("points").textContent = `Pontos restantes: ${points}`;
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
   const parents = skills.filter(s => !s.parent);
-
   const parentRow = document.createElement("div");
   parentRow.className = "directors";
 
@@ -70,7 +71,7 @@ function render() {
   chart.appendChild(parentRow);
 }
 
-// Cria card
+// UI helpers
 function makeCard(sk) {
   const el = document.createElement("div");
   el.className = "skill";
@@ -84,7 +85,6 @@ function makeCard(sk) {
       <div>${sk.name}</div>
       <small>(${sk.level}/${sk.max})</small>
   `;
-
   el.onclick = () => levelUp(sk.id);
   return el;
 }
@@ -107,7 +107,7 @@ function childRow(arr) {
   return row;
 }
 
-// Upar habilidade
+// LEVEL UP
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   if (!sk) return;
@@ -117,12 +117,10 @@ async function levelUp(id) {
 
   sk.level++;
   points--;
-
-  // salva em memória
   skillsState[sk.id] = sk.level;
 
-  // salva no firebase
-  await db.collection("fichas").doc(currentUID).update({
+  const ref = doc(db, "fichas", currentUID);
+  await updateDoc(ref, {
     skills: skillsState,
     experiencia: points
   });

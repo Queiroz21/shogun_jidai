@@ -5,33 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Árvore de Habilidades Naruto</title>
 <link rel="stylesheet" href="style.css">
-
-<script type="module" src="oauth.js"></script>
-<script type="module" src="app.js"></script>
 </head>
+
 <body>
     <h1>Árvore de Habilidades</h1>
-	<div id="infoTopo"></div>
 	
+	<div id="infoTopo"></div>
 	<div id="xpBar" style="margin-top:12px; color:white;"></div>
-
     <div id="points"></div>
-
     <div id="org-chart"></div>
 
-
+	<!-- Botões antigos que você quer remover em breve -->
 	<div>Chakra: <span id="chakraValue"></span> <button onclick="addPonto('chakra')">+</button></div>
 	<div>Físico: <span id="fisicoValue"></span> <button onclick="addPonto('fisico')">+</button></div>
 	<div>Mental: <span id="mentalValue"></span> <button onclick="addPonto('mental')">+</button></div>
 	<div>Construção: <span id="construcaoValue"></span> <button onclick="addPonto('construcao')">+</button></div>
 	<div>Jinchuriki: <span id="jinchurikiValue"></span> <button onclick="addPonto('jinchuriki')">+</button></div>
 
-	<script>
-		firebase.auth().onAuthStateChanged(user => {
-		  if (!user) {
-			window.location.href = "index.html"; // deslogado? volta pro login
-		  }
-		});
-	</script>
+	<script type="module" src="./oauth.js"></script>
+	<script type="module" src="./app.js"></script>
 </body>
 </html>
