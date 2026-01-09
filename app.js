@@ -100,6 +100,8 @@ function render() {
     `XP: ${xpCurrent} / ${xpNeeded}`;
 
   document.getElementById("xp-bar").style.width = pct + "%";
+  
+  updateTreeImage("fisico");
 
   // 🌳 Render árvore normalmente
   const chart = document.getElementById("org-chart");
@@ -172,4 +174,13 @@ async function checkLevelUp() {
 
     alert(`🎉 Parabéns! Subiu para nível ${newLevel} e ganhou ${ganhos} pontos!`);
   }
+}
+
+function updateTreeImage(treeType = "fisico") {
+  const img = document.getElementById("tree-image");
+
+  // Garante que fica entre 1 e 5
+  const index = Math.max(1, Math.min(userData.nivel, 5));
+
+  img.src = `./imgs/${treeType}_${index}.png`;
 }
