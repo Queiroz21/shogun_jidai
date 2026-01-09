@@ -88,7 +88,7 @@ function makeCard(skill) {
   const index = Math.max(1, Math.min(skill.level, skill.max));
 
   // monta caminho da imagem ( novos arquivos em /imgs )
-  const imgSrc = `./imgs/${skill.id}_${index}.png`;
+  const imgSrc = `./assets/icons//${skill.id}_${index}.png`;
 
   el.innerHTML = `
     <img src="${imgSrc}">
