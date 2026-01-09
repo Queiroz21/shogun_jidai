@@ -57,7 +57,7 @@ function parentLevel(id) {
 }
 
 // 🔳 Monta cada card
-function makeCard(skill) {
+/*function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
@@ -73,7 +73,33 @@ function makeCard(skill) {
 
   el.onclick = () => levelUp(skill.id);
   return el;
+}*/
+
+// 🔳 Monta cada card
+function makeCard(skill) {
+  const el = document.createElement("div");
+  el.className = "skill";
+
+  if (skill.level >= skill.max) el.classList.add("mastered");
+  else if (skill.parent && parentLevel(skill.parent) < 2)
+    el.classList.add("locked");
+
+  // Define nível entre 1 e skill.max
+  const index = Math.max(1, Math.min(skill.level, skill.max));
+
+  // monta caminho da imagem ( novos arquivos em /imgs )
+  const imgSrc = `./imgs/${skill.id}_${index}.png`;
+
+  el.innerHTML = `
+    <img src="${imgSrc}">
+    <div>${skill.name}</div>
+    <small>(${skill.level}/${skill.max})</small>
+  `;
+
+  el.onclick = () => levelUp(skill.id);
+  return el;
 }
+
 
 // 🎨 Renderiza tudo
 function render() {
@@ -100,8 +126,7 @@ function render() {
     `XP: ${xpCurrent} / ${xpNeeded}`;
 
   document.getElementById("xp-bar").style.width = pct + "%";
-  
-  updateTreeImage("fisico");
+
 
   // 🌳 Render árvore normalmente
   const chart = document.getElementById("org-chart");
