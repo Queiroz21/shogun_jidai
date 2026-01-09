@@ -85,7 +85,7 @@ function makeCard(skill) {
     el.classList.add("locked");
 
   // Define nível entre 1 e skill.max
-  const index = Math.max(1, Math.min(skill.level, skill.max));
+  const index = Math.min(skill.level, skill.max);
 
   // monta caminho da imagem ( novos arquivos em /imgs )
   const imgSrc = `./assets/icons/${skill.id}_${index}.png`;
