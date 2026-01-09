@@ -88,7 +88,7 @@ function makeCard(skill) {
   const index = Math.max(1, Math.min(skill.level, skill.max));
 
   // monta caminho da imagem ( novos arquivos em /imgs )
-  const imgSrc = `./assets/icons//${skill.id}_${index}.png`;
+  const imgSrc = `./assets/icons/${skill.id}_${index}.png`;
 
   el.innerHTML = `
     <img src="${imgSrc}">
@@ -207,5 +207,5 @@ function updateTreeImage(treeType = "fisico") {
   // Garante que fica entre 1 e 5
   const index = Math.max(1, Math.min(userData.nivel, 5));
 
-  img.src = `./imgs/${treeType}_${index}.png`;
+  img.src = `./assets/icons/${treeType}_${index}.png`;
 }
