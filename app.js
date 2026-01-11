@@ -1,4 +1,4 @@
-// app.js — versão FINAL oficial do projeto
+// app.js — versão com glow + árvore recursiva + imagens dinâmicas
 
 import { auth, db } from "./oauth.js";
 import {
@@ -10,17 +10,26 @@ let currentUID = null;
 let skillsState = {};
 let userData = {};
 
+// 📌 Agora cada skill tem um TYPE para o glow
 const skills = [
-  { id: "chakra", name: "Controle de Chakra", img: "assets/icons/chakra.png", max: 5, children: ["katon", "suiton"] },
-  { id: "fisico", name: "Treino Físico", img: "assets/icons/fisico.png", max: 5 },
-  { id: "mental", name: "Disciplina Mental", img: "assets/icons/mental.png", max: 5 },
-  { id: "construcao", name: "Construção da Aldeia", img: "assets/icons/construcao.png", max: 5 },
-  { id: "jinchuriki", name: "Força do Jinchūriki", img: "assets/icons/jinchuriki.png", max: 5 },
-  { id: "katon", parent: "chakra", name: "Elemento Katon", img: "assets/icons/fogo.png", max: 5 },
-  { id: "suiton", parent: "chakra", name: "Elemento Suiton", img: "assets/icons/agua.png", max: 5 }
+  { id: "chakra",  type:"chakra",  name: "Controle de Chakra", img: "chakra", max: 5 },
+  { id: "fisico",  type:"fisico",  name: "Treino Físico",     img: "fisico", max: 5 },
+  { id: "mental",  type:"mental",  name: "Disciplina Mental", img: "mental", max: 5 },
+  { id: "construcao", type:"civil", name: "Construir Aldeia",img:"construcao", max:5 },
+  { id: "jinchuriki", type:"chakra", name:"Força Jinchūriki",img:"jinchuriki",max:5 },
+
+  // 🌊 Elementos
+  { id: "katon", type: "chakra", parent: "chakra", name: "Katon", img:"katon", max: 5 },
+  { id: "suiton", type: "chakra", parent: "chakra", name: "Suiton", img:"suiton", max: 5 }
+  
+  { id: "suitonDeAgua", type: "chakra", parent: "suiton", name: "Suiton", img:"suiton", max: 5 }
+  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton", img:"katon", max: 5 }
+  
+  
+  { id: "suitonEspecialVermelho", type: "chakra", parent: "suitonDefogo", name: "mental", img:"suiton", max: 5 }
 ];
 
-// 🔥 Login detectado
+// 🔥 Detect login
 onAuthStateChanged(auth, async user => {
   if (!user) {
     window.location.href = "index.html";
@@ -28,20 +37,19 @@ onAuthStateChanged(auth, async user => {
   }
 
   currentUID = user.uid;
-
   const fichaRef = doc(db, "fichas", currentUID);
   const snap = await getDoc(fichaRef);
   userData = snap.data() ?? {};
 
-  // Segurança para campos novos
-  userData.xp = userData.xp ?? 0;
-  userData.nivel = userData.nivel ?? 1;
-  userData.pontos = userData.pontos ?? 0;
-  userData.skills = userData.skills ?? {};
+  // Valores padrão
+  userData.xp     ??= 0;
+  userData.nivel  ??= 1;
+  userData.pontos ??= 0;
+  userData.skills ??= {};
 
   skillsState = { ...userData.skills };
 
-  // Atribui level interno
+  // Coloca level interno em cada skill
   skills.forEach(s => {
     s.level = skillsState[s.id] ?? 0;
   });
@@ -50,45 +58,27 @@ onAuthStateChanged(auth, async user => {
   render();
 });
 
-// 🔍 Verifica se existe um pai e seu level
+// 🔎 Pega nível do pai
 function parentLevel(id) {
   const p = skills.find(s => s.id === id);
   return p ? p.level : 0;
 }
 
-// 🔳 Monta cada card
-/*function makeCard(skill) {
-  const el = document.createElement("div");
-  el.className = "skill";
-
-  if (skill.level >= skill.max) el.classList.add("mastered");
-  else if (skill.parent && parentLevel(skill.parent) < 2)
-    el.classList.add("locked");
-
-  el.innerHTML = `
-    <img src="${skill.img}">
-    <div>${skill.name}</div>
-    <small>(${skill.level}/${skill.max})</small>
-  `;
-
-  el.onclick = () => levelUp(skill.id);
-  return el;
-}*/
-
-// 🔳 Monta cada card
+// 🔳 Cartão com glow + animação
 function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
+  // Atribui classe da categoria
+  el.classList.add(skill.type);
+
   if (skill.level >= skill.max) el.classList.add("mastered");
-  else if (skill.parent && parentLevel(skill.parent) < 2)
+  else if (skill.parent && parentLevel(skill.parent) < 1)
     el.classList.add("locked");
 
-  // Define nível entre 1 e skill.max
+  // Nível da imagem
   const index = Math.min(skill.level, skill.max);
-
-  // monta caminho da imagem ( novos arquivos em /imgs )
-  const imgSrc = `./assets/icons/${skill.id}_${index}.png`;
+  const imgSrc = `./assets/icons/${skill.img}_${index}.png`;
 
   el.innerHTML = `
     <img src="${imgSrc}">
@@ -96,79 +86,70 @@ function makeCard(skill) {
     <small>(${skill.level}/${skill.max})</small>
   `;
 
-  el.onclick = () => levelUp(skill.id);
+  el.onclick = () => {
+    levelUp(skill.id);
+    el.classList.add("level-up");
+    setTimeout(() => el.classList.remove("level-up"), 400);
+  };
+
   return el;
 }
 
+// 🌳 CRIA ÁRVORE RECURSIVA
+function buildBranch(parent) {
+  const branch = document.createElement("div");
+  branch.className = "branch";
 
-// 🎨 Renderiza tudo
+  branch.appendChild(makeCard(parent));
+  const kids = skills.filter(s => s.parent === parent.id);
+
+  if (kids.length && parent.level >= 1) {
+    const bar = document.createElement("div");
+    bar.className = "branch-line";
+    branch.appendChild(bar);
+
+    const row = document.createElement("div");
+    row.className = "child-row";
+
+    kids.forEach(ch => row.appendChild(buildBranch(ch)));
+    branch.appendChild(row);
+  }
+  return branch;
+}
+
+// 🎨 Renderiza HUD + árvore
 function render() {
-  // Topo antigo
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
-
-  document.getElementById("xpBar").textContent =
-    `Nível ${userData.nivel} | XP: ${userData.xp}`;
 
   document.getElementById("points").textContent =
     `Pontos Disponíveis: ${userData.pontos}`;
 
-	
-  // 🌟 Novo HUD: Level + XP + Barra
   const xpNeeded = userData.nivel * 20;
-  const xpCurrent = userData.xp;
-  const pct = Math.min((xpCurrent / xpNeeded) * 100, 100);
+  const pct = Math.min((userData.xp / xpNeeded) * 100, 100);
 
- document.getElementById("player-level").textContent =
+  document.getElementById("player-level").textContent =
     `Level: ${userData.nivel}`;
-
   document.getElementById("player-xp").textContent =
-    `XP: ${xpCurrent} / ${xpNeeded}`;
-
+    `XP: ${userData.xp} / ${xpNeeded}`;
   document.getElementById("xp-bar").style.width = pct + "%";
 
-
-  // 🌳 Render árvore normalmente
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
+  const parents = skills.filter(s => !s.parent);
   const container = document.createElement("div");
   container.className = "directors";
 
-  const parents = skills.filter(s => !s.parent);
-
-  parents.forEach(parent => {
-    const branch = document.createElement("div");
-    branch.className = "branch";
-
-    branch.appendChild(makeCard(parent));
-
-    const kids = skills.filter(s => s.parent === parent.id);
-    if (kids.length && parent.level >= 2) {
-      const bar = document.createElement("div");
-      bar.className = "branch-line";
-      branch.appendChild(bar);
-
-      const row = document.createElement("div");
-      row.className = "child-row";
-      kids.forEach(ch => row.appendChild(makeCard(ch)));
-      branch.appendChild(row);
-    }
-
-    container.appendChild(branch);
-  });
-
+  parents.forEach(p => container.appendChild(buildBranch(p)));
   chart.appendChild(container);
 }
 
-
-// ⬆️ Para evoluir uma skill (gasta pontos)
+// 🌟 Gasta ponto e upa skill
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
-  if (!sk) return;
-  if (userData.pontos <= 0) return;
-  if (sk.level >= sk.max) return;
-  if (sk.parent && parentLevel(sk.parent) < 2) return;
+  if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
+  if (sk.parent && parentLevel(sk.parent) < 1) return;
 
   sk.level++;
   userData.pontos--;
@@ -182,30 +163,21 @@ async function levelUp(id) {
   render();
 }
 
-// 🧠 Se recebeu XP suficiente do mestre, sobe nível e ganha pontos
+// 🎁 Sobe de level ao ganhar XP
 async function checkLevelUp() {
   let oldLevel = userData.nivel;
   let newLevel = 1 + Math.floor(userData.xp / 20);
 
   if (newLevel > oldLevel) {
-    let ganhos = (newLevel - oldLevel) * 2;
+    let ganho = (newLevel - oldLevel) * 2;
     userData.nivel = newLevel;
-    userData.pontos += ganhos;
+    userData.pontos += ganho;
 
     await updateDoc(doc(db, "fichas", currentUID), {
       nivel: userData.nivel,
       pontos: userData.pontos
     });
 
-    alert(`🎉 Parabéns! Subiu para nível ${newLevel} e ganhou ${ganhos} pontos!`);
+    alert(`🎉 Você subiu para nível ${newLevel}! (+${ganho} pts)`);
   }
-}
-
-function updateTreeImage(treeType = "fisico") {
-  const img = document.getElementById("tree-image");
-
-  // Garante que fica entre 1 e 5
-  const index = Math.max(1, Math.min(userData.nivel, 5));
-
-  img.src = `./assets/icons/${treeType}_${index}.png`;
 }

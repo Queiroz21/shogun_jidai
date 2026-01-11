@@ -173,6 +173,13 @@ h1 {
   overflow: hidden;
 }
 
+.skill img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+
 /* Barra de XP preenchida */
 #xp-bar {
   height: 100%;
@@ -181,4 +188,26 @@ h1 {
   transition: width 0.4s ease-in-out;
   border-radius: 10px;
 }
+
+/* Glow quando a skill está MAX */
+.skill.mastered img {
+  filter: drop-shadow(0 0 8px gold);
+}
+
+/* Semi-transparente quando travada */
+.skill.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Deixa claro visualmente quando sobe nível */
+.skill.level-up {
+  animation: pulse 0.4s ease-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
 
