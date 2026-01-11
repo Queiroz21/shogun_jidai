@@ -19,14 +19,14 @@ const skills = [
   { id: "jinchuriki", type:"chakra", name:"Força Jinchūriki",img:"jinchuriki",max:5 },
 
   // 🌊 Elementos
-  { id: "katon", type: "chakra", parent: "chakra", name: "Katon", img:"katon", max: 5 },
+  { id: "katon", type: "fisico", parent: "chakra", name: "Katon", img:"katon", max: 5 },
   { id: "suiton", type: "chakra", parent: "chakra", name: "Suiton", img:"suiton", max: 5 },
   
-  { id: "suitonDeAgua", type: "chakra", parent: "suiton", name: "Suiton", img:"suiton", max: 5 },
-  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton", img:"katon", max: 5 },
+  { id: "suitonDeAgua", type: "fisico", parent: "suiton", name: "Suiton de agua", img:"suiton", max: 5 },
+  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton de fogo", img:"katon", max: 5 },
   
   
-  { id: "suitonEspecialVermelho", type: "chakra", parent: "suitonDefogo", name: "mental", img:"suiton", max: 5 }
+  { id: "suitonEspecialVermelho", type: "mental", parent: "suitonDefogo", name: "Suiton vermelho especial", img:"mental", max: 5 }
 ];
 
 // 🔥 Detect login
