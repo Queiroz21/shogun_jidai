@@ -20,10 +20,10 @@ const skills = [
 
   // 🌊 Elementos
   { id: "katon", type: "chakra", parent: "chakra", name: "Katon", img:"katon", max: 5 },
-  { id: "suiton", type: "chakra", parent: "chakra", name: "Suiton", img:"suiton", max: 5 }
+  { id: "suiton", type: "chakra", parent: "chakra", name: "Suiton", img:"suiton", max: 5 },
   
-  { id: "suitonDeAgua", type: "chakra", parent: "suiton", name: "Suiton", img:"suiton", max: 5 }
-  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton", img:"katon", max: 5 }
+  { id: "suitonDeAgua", type: "chakra", parent: "suiton", name: "Suiton", img:"suiton", max: 5 },
+  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton", img:"katon", max: 5 },
   
   
   { id: "suitonEspecialVermelho", type: "chakra", parent: "suitonDefogo", name: "mental", img:"suiton", max: 5 }
