@@ -90,8 +90,6 @@ function makeCard(skill) {
   const iconBase =
     skill.icon ??
     (skill.icon ? `assets/icons/${skill.icon}_1.png` : "assets/icons/default_1.png");
-console.log (iconBase)
-console.log (skill.icon)
   const iconIndex = Math.min(skill.level, skill.max);
 
   const imgName = unlocked
@@ -125,7 +123,8 @@ function buildBranch(parent) {
   branch.appendChild(makeCard(parent));
   const kids = skills.filter(s => s.parent === parent.id);
 
-  if (kids.length && parent.level >= 1) {
+  if (kids.length) {
+//if (kids.length && parent.level >= 1) {
     const bar = document.createElement("div");
     bar.className = "branch-line";
     branch.appendChild(bar);
