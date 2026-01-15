@@ -162,9 +162,9 @@ h1 { margin-top: 15px; }
   width: 220px;
   text-align: left;
   z-index: 999;
-  opacity: 0.8;
+  opacity: 0;
   pointer-events: none;
-  transition: opacity .5s;
+  transition: opacity .7s;
   white-space: pre-line;
   box-shadow: 0 0 10px #4af;
 }
@@ -185,4 +185,8 @@ h1 { margin-top: 15px; }
   border-style: solid;
   border-color: #4af transparent transparent transparent;
 }
-
+.groupnode {
+  opacity: 0.6;
+  filter: grayscale(80%);
+  cursor: default;
+}

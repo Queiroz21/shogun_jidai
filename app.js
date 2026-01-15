@@ -189,8 +189,10 @@ function render() {
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   //if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
-  if (!sk) return;
 
+  if (!sk) return;
+  if (sk.max === 0) el.classList.add("groupnode");
+ 
   // nós que nunca recebem level
    if (sk.max === 0 || sk.type === "group") {
 	  alert("❌ Você não pode investir pontos aqui!");
@@ -200,19 +202,19 @@ async function levelUp(id) {
   if (userData.pontos <= 0 || sk.level >= sk.max) return;
 
   if (sk.parent && parentLevel(sk.parent) < 1) return;
-
+ 
   // bloqueia por nível da conta
   if (sk.minAccountLevel && userData.nivel < sk.minAccountLevel) {
     alert(`❌ Precisa ser nível ${sk.minAccountLevel}`);
     return;
   }
-
+  
   // requisitos de skill
   for (const req of (sk.requires ?? [])) {
     const reqSkill = skills.find(s => s.id === req.id);
     if (!reqSkill || reqSkill.level < req.level) return;
   }
-
+  
   sk.level++;
   userData.pontos--;
   skillsState[id] = sk.level;
