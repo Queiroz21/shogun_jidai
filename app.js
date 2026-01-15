@@ -71,8 +71,10 @@ function makeCard(skill) {
   let unlocked = true;
   let missing = [];
 
-  // Skills necessárias
-  (skill.requires ?? []).forEach(req => {
+  // Garante que requires sempre é array
+  const reqs = Array.isArray(skill.requires) ? skill.requires : [];
+
+  reqs.forEach(req => {
     const reqSkill = skills.find(s => s.id === req.id);
     if (!reqSkill || reqSkill.level < req.level) {
       unlocked = false;
@@ -86,27 +88,37 @@ function makeCard(skill) {
     missing.push(`Conta nível ${skill.minAccountLevel}`);
   }
 
-  // Normaliza ícone
-  const iconBase =
-    skill.icon ??
-    (skill.icon ? `assets/icons/${skill.icon}_1.png` : "assets/icons/default_1.png");
-  const iconIndex = Math.min(skill.level, skill.max);
+  // Normaliza ícone — salva SÓ o nome base "chakra", "mental", etc
+  const iconName = skill.icon || "default";
+  const currentIcon = unlocked
+    ? `assets/icons/${iconName}_${Math.min(skill.level, skill.max)}.png`
+    : `assets/icons/${iconName}_locked.png`;
 
-  const imgName = unlocked
-    ? iconBase.replace("_1", "_" + iconIndex)
-    : iconBase.replace("_1", "_locked");
-
-  // Cores
+  // Cores de estado
   if (!unlocked) el.classList.add("blocked");
   else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
 
-  // Tooltip
-  let tooltip = `${skill.name}\n\n${skill.desc ?? ""}`;
-  if (!unlocked) tooltip += `\n\n❌ Requisitos faltando:\n- ${missing.join("\n- ")}`;
+  // Tooltip HTML
+  let tooltipHTML = `
+    <strong>${skill.name}</strong><br><br>
+    ${skill.desc ?? ""}
+  `;
 
-  el.title = tooltip;
-  el.innerHTML = `<img src="${imgName}">`;
+  if (!unlocked && missing.length) {
+    tooltipHTML += `
+      <br><br>
+      <span style="color:#ff5555;"><strong>❌ Requisitos faltando:</strong></span><br>
+      ${missing.map(m => `• ${m}`).join("<br>")}
+    `;
+  }
 
+  // Render do card + tooltip
+  el.innerHTML = `
+    <img src="${currentIcon}">
+    <div class="tooltip">${tooltipHTML}</div>
+  `;
+
+  // Clique para upar
   el.onclick = () => {
     if (!unlocked) return;
     levelUp(skill.id);
@@ -114,6 +126,7 @@ function makeCard(skill) {
 
   return el;
 }
+
 
 // 🌳 CRIA ÁRVORE RECURSIVA
 function buildBranch(parent) {
