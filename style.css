@@ -1,4 +1,4 @@
-/* Fundo e tipografia */
+/* ===== 🌌 BASE GLOBAL ===== */
 body {
   background: url('stars.jpg') repeat #000;
   background-size: cover;
@@ -7,122 +7,14 @@ body {
   text-align: center;
 }
 
-h1 {
-  margin-top: 15px;
-}
+h1 { margin-top: 15px; }
 
-/* Pontos */
 #points {
   font-size: 24px;
   margin-bottom: 15px;
 }
 
-/* Wrapper geral da árvore */
-.tree {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  margin: auto;
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-/* GRID fixo para habilidades */
-.skill-container {
-  display: grid;
-  grid-template-columns: repeat(5,1fr);
-  gap: 40px 10px;
-  padding: 20px;
-}
-
-/* Estilo base das habilidades */
-.skill {
-  background: #16161d;
-  padding: 12px;
-  border-radius: 14px;
-  width: 130px;
-  cursor: pointer;
-  text-align: center;
-  border: 2px solid transparent;
-  box-shadow: 0 0 6px #000;
-  transition: transform .2s, filter .2s, border-color .2s;
-}
-
-/* Hover das habilidades ativas */
-.skill:hover:not(.locked):not(.mastered) {
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 6px cyan);
-}
-
-/* Skills bloqueadas */
-.skill.locked {
-  filter: grayscale(1);
-  opacity: .45;
-  cursor: not-allowed;
-}
-
-/* Skills dominadas */
-.skill.mastered {
-  border-color: gold;
-  animation: glow 2s infinite ease-in-out;
-}
-
-@keyframes glow {
-  0% { box-shadow: 0 0 4px gold; }
-  50% { box-shadow: 0 0 12px gold; }
-  100% { box-shadow: 0 0 4px gold; }
-}
-
-/* Estrutura hierárquica */
-
-/* Nó pai */
-.node {
-  position: relative;
-  text-align: center;
-}
-
-/* wrapper de filhos */
-.children {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-/* Card filho */
-.child {
-  margin-top: 40px;
-}
-
-/* Linhas verticais e horizontais */
-.node::after,
-.child-connector::before {
-  content: "";
-  position: absolute;
-  width: 2px;
-  background: #888;
-}
-
-/* Linha vertical do pai até os filhos */
-.node.has-children::after {
-  height: 18px;
-  top: 62px;
-  left: 50%;
-}
-
-/* Linha horizontal conectando os filhos */
-.child-connector {
-  position: absolute;
-  top: 80px;
-  left: 5%;
-  width: 90%;
-  border-top: 2px solid #888;
-}
-
-/* Organograma principal */
+/* ===== 🌳 ARVORE ===== */
 #org-chart {
   display: flex;
   flex-direction: column;
@@ -131,7 +23,6 @@ h1 {
   margin-top: 20px;
 }
 
-/* Linha com raízes principais */
 .directors {
   display: flex;
   justify-content: center;
@@ -139,14 +30,12 @@ h1 {
   gap: 30px;
 }
 
-/* Cada ramo */
 .branch {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* Linha vertical entre níveis */
 .branch-line {
   width: 2px;
   height: 25px;
@@ -154,7 +43,6 @@ h1 {
   margin: 8px 0;
 }
 
-/* Linha horizontal grupo filhos */
 .child-row {
   display: flex;
   gap: 20px;
@@ -162,7 +50,7 @@ h1 {
   padding-top: 12px;
 }
 
-/* Caixa da barra */
+/* ===== 🟩 XP BAR ===== */
 #xp-bar-container {
   width: 100%;
   height: 20px;
@@ -173,14 +61,6 @@ h1 {
   overflow: hidden;
 }
 
-.skill img {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-
-/* Barra de XP preenchida */
 #xp-bar {
   height: 100%;
   width: 0%;
@@ -189,25 +69,119 @@ h1 {
   border-radius: 10px;
 }
 
-/* Glow quando a skill está MAX */
-.skill.mastered img {
-  filter: drop-shadow(0 0 8px gold);
+/* ===== 🧩 CARD STYLE BASE ===== */
+.skill {
+  background: #16161d;
+  padding: 12px;
+  border-radius: 14px;
+  width: 130px;
+  cursor: pointer;
+  text-align: center;
+  border: 2px solid transparent;
+  box-shadow: 0 0 6px #000;
+  transition: transform .2s, filter .2s, border-color .2s;
+  position: relative
 }
 
-/* Semi-transparente quando travada */
-.skill.locked {
-  opacity: 0.4;
+/* Icon base (sem duplicação) */
+.skill img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  transition: border-color .25s, filter .25s;
+}
+
+/* Hover-friendly (sem atrapalhar bloqueios/máximo) */
+.skill:hover:not(.blocked):not(.mastered):not(.category) {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 6px cyan);
+}
+
+/* ===== 🔐 ESTADOS ===== */
+
+/* Bloqueada por requisitos */
+.skill.blocked {
+  opacity: 0.45;
   cursor: not-allowed;
 }
+.skill.blocked img {
+  border-color: red;
+  filter: grayscale(70%);
+}
 
-/* Deixa claro visualmente quando sobe nível */
+/* Pode evoluir */
+.skill.active img {
+  border-color: lime;
+}
+
+/* Max level alcançado */
+.skill.mastered img {
+  border-color: gold;
+  filter: drop-shadow(0 0 8px gold);
+}
+.skill.mastered {
+  animation: glow 2s infinite ease-in-out;
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 4px gold; }
+  50% { box-shadow: 0 0 12px gold; }
+  100% { box-shadow: 0 0 4px gold; }
+}
+
+/* Ramo guia (categorias iniciais) */
+.skill.category img {
+  border-color: dodgerblue;
+  filter: none;
+}
+
+/* ===== 🎉 FEEDBACK SUBIU NÍVEL ===== */
 .skill.level-up {
   animation: pulse 0.4s ease-out;
 }
-
 @keyframes pulse {
   0% { transform: scale(1.15); }
-  100% { transform: scale(1); }
+ 100% { transform: scale(1); }
 }
 
+/* ===== 🎤 TOOLTIP CUSTOM ===== */
+
+.skill-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 25, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #4af;
+  font-size: 13px;
+  width: 220px;
+  text-align: left;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+  white-space: pre-line;
+  box-shadow: 0 0 10px #4af;
+}
+
+.skill:hover .skill-tooltip {
+  opacity: 1;
+}
+
+/* Setas */
+.skill-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #4af transparent transparent transparent;
+}
 
