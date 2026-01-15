@@ -210,44 +210,4 @@ h1 {
   100% { transform: scale(1); }
 }
 
-/* 🌈 Glow por categoria */
-.skill.chakra img {
-  filter: drop-shadow(0 0 8px rgb(0, 200, 255));
-}
-
-.skill.fisico img {
-  filter: drop-shadow(0 0 8px rgb(255, 180, 0));
-}
-
-.skill.mental img {
-  filter: drop-shadow(0 0 8px rgb(180, 0, 255));
-}
-
-.skill.civil img {
-  filter: drop-shadow(0 0 8px rgb(0, 255, 120));
-}
-
-/* 🟡 Glow mais forte quando MAX */
-.skill.mastered img {
-  filter: drop-shadow(0 0 16px gold) brightness(1.2);
-}
-
-/* 🔒 Opaco quando bloqueado */
-.skill.locked {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-/* ⚡ Mini animação quando upa */
-.skill.level-up {
-  animation: pulse 0.4s ease-out;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); filter: drop-shadow(0 0 10px gold); }
-  100% { transform: scale(1); }
-}
-
-
 
