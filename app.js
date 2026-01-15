@@ -71,14 +71,18 @@ function makeCard(skill) {
   let unlocked = true;
   let missing = [];
 
-  // Garante que requires sempre é array
+  // Sempre garante array
   const reqs = Array.isArray(skill.requires) ? skill.requires : [];
 
   reqs.forEach(req => {
-    const reqSkill = skills.find(s => s.id === req.id);
-    if (!reqSkill || reqSkill.level < req.level) {
+    const needId = req.id;
+    const needLvl = req.level ?? req.lvl ?? 1;
+
+    const reqSkill = skills.find(s => s.id === needId);
+
+    if (!reqSkill || reqSkill.level < needLvl) {
       unlocked = false;
-      missing.push(`${req.id} (${req.level})`);
+      missing.push(`${needId} (Lv ${needLvl})`);
     }
   });
 
@@ -88,23 +92,24 @@ function makeCard(skill) {
     missing.push(`Conta nível ${skill.minAccountLevel}`);
   }
 
-  // Normaliza ícone — salva SÓ o nome base "chakra", "mental", etc
+  // Normaliza ícone
   const iconName = skill.icon || "default";
+  const iconIndex = Math.min(skill.level, skill.max);
   const currentIcon = unlocked
-    ? `assets/icons/${iconName}_${Math.min(skill.level, skill.max)}.png`
+    ? `assets/icons/${iconName}_${iconIndex}.png`
     : `assets/icons/${iconName}_locked.png`;
 
-  // Cores de estado
+  // Cores
   if (!unlocked) el.classList.add("blocked");
   else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
 
-  // Tooltip HTML
+  // Tooltip
   let tooltipHTML = `
     <strong>${skill.name}</strong><br><br>
     ${skill.desc ?? ""}
   `;
 
-  if (!unlocked && missing.length) {
+  if (!unlocked && missing.length > 0) {
     tooltipHTML += `
       <br><br>
       <span style="color:#ff5555;"><strong>❌ Requisitos faltando:</strong></span><br>
@@ -112,13 +117,13 @@ function makeCard(skill) {
     `;
   }
 
-  // Render do card + tooltip
+  // Render
   el.innerHTML = `
     <img src="${currentIcon}">
     <div class="tooltip">${tooltipHTML}</div>
   `;
 
-  // Clique para upar
+  // Click para upar
   el.onclick = () => {
     if (!unlocked) return;
     levelUp(skill.id);
@@ -126,6 +131,7 @@ function makeCard(skill) {
 
   return el;
 }
+
 
 
 // 🌳 CRIA ÁRVORE RECURSIVA
