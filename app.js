@@ -89,8 +89,9 @@ function makeCard(skill) {
   // Normaliza ícone
   const iconBase =
     skill.icon ??
-    (skill.img ? `assets/icons/${skill.img}_1.png` : "assets/icons/default_1.png");
-
+    (skill.icon ? `assets/icons/${skill.icon}_1.png` : "assets/icons/default_1.png");
+console.log (iconBase)
+console.log (skill.icon)
   const iconIndex = Math.min(skill.level, skill.max);
 
   const imgName = unlocked
