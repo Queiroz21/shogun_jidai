@@ -2,7 +2,7 @@
 
 import { auth, db } from "./oauth.js";
 import {
-  doc, getDoc, updateDoc
+  doc, getDoc, updateDoc,  collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -12,6 +12,21 @@ let userData = {};
 
 // 📌 Enquanto não puxamos do Firestore
 let skills = []
+
+async function loadSkills() {
+  const col = collection(db, "skill_tree");
+  const snap = await getDocs(col);
+  const loaded = snap.docs.map(d => d.data());
+
+  loaded.forEach(s => {
+    s.level    = skillsState[s.id] ?? 0;
+    s.requires = s.requires ?? [];
+    s.img      = s.img ?? "default";
+    s.max      = s.max ?? 5;
+  });
+
+  return loaded;
+}
 
 // 🔥 Detect login
 onAuthStateChanged(auth, async user => {
