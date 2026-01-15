@@ -188,7 +188,17 @@ function render() {
 // 🌟 Gasta ponto e upa skill
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
-  if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
+  //if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
+  if (!sk) return;
+
+  // nós que nunca recebem level
+   if (sk.max === 0 || sk.type === "group") {
+	  alert("❌ Você não pode investir pontos aqui!");
+	  return;
+	}
+
+  if (userData.pontos <= 0 || sk.level >= sk.max) return;
+
   if (sk.parent && parentLevel(sk.parent) < 1) return;
 
   // bloqueia por nível da conta
