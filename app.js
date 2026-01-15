@@ -191,11 +191,11 @@ async function levelUp(id) {
   //if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
 
   if (!sk) return;
-  if (sk.max === 0) el.classList.add("groupnode");
  
   // nós que nunca recebem level
    if (sk.max === 0 || sk.type === "group") {
 	  alert("❌ Você não pode investir pontos aqui!");
+	  el.classList.add("groupnode");
 	  return;
 	}
 
