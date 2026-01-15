@@ -73,8 +73,8 @@ function makeCard(skill) {
   let unlocked = true;
   let missing = [];
 
-  // Requisitos não atendidos (skills)
-  skill.requires.forEach(req => {
+  // Skills necessárias
+  (skill.requires ?? []).forEach(req => {
     const reqSkill = skills.find(s => s.id === req.id);
     if (!reqSkill || reqSkill.level < req.level) {
       unlocked = false;
@@ -172,7 +172,18 @@ async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
   if (sk.parent && parentLevel(sk.parent) < 1) return;
-
+  
+  // bloqueia por nível da conta
+  if (sk.minAccountLevel && userData.nivel < sk.minAccountLevel) {
+    alert(`❌ Precisa ser nível ${sk.minAccountLevel}`);
+    return;
+  }
+  // requisitos de skill
+  for (const req of sk.requires) {
+    const reqSkill = skills.find(s => s.id === req.id);
+    if (!reqSkill || reqSkill.level < req.level) return;
+  }
+  
   sk.level++;
   userData.pontos--;
   skillsState[id] = sk.level;
