@@ -201,8 +201,10 @@ async function levelUp(id) {
 
   if (userData.pontos <= 0 || sk.level >= sk.max) return;
 
-  if (sk.parent && parentLevel(sk.parent) < 1) return;
- 
+  //if (sk.parent && parentLevel(sk.parent) < 1) return;
+  // pais guias NÃO bloqueiam
+  // só bloqueia se tiver requires
+
   // bloqueia por nível da conta
   if (sk.minAccountLevel && userData.nivel < sk.minAccountLevel) {
     alert(`❌ Precisa ser nível ${sk.minAccountLevel}`);
