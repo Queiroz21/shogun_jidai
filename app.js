@@ -69,31 +69,53 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  // Atribui classe da categoria
-  el.classList.add(skill.type);
+  // Estado inicial
+  let unlocked = true;
+  let missing = [];
 
-  if (skill.level >= skill.max) el.classList.add("mastered");
-  else if (skill.parent && parentLevel(skill.parent) < 1)
-    el.classList.add("locked");
+  // Requisitos não atendidos (skills)
+  skill.requires.forEach(req => {
+    const reqSkill = skills.find(s => s.id === req.id);
+    if (!reqSkill || reqSkill.level < req.level) {
+      unlocked = false;
+      missing.push(`${req.id} (${req.level})`);
+    }
+  });
 
-  // Nível da imagem
-  const index = Math.min(skill.level, skill.max);
-  const imgSrc = `./assets/icons/${skill.img}_${index}.png`;
+  // Requisito por nível da conta
+  if (skill.minAccountLevel && userData.nivel < skill.minAccountLevel) {
+    unlocked = false;
+    missing.push(`Conta nível ${skill.minAccountLevel}`);
+  }
+
+  const iconIndex = Math.min(skill.level, skill.max);
+  const imgName = unlocked
+    ? `${skill.icon.replace("_1", "_" + iconIndex)}`
+    : `${skill.icon.replace("_1", "_locked")}`; // se quiser trocar por locked
+
+  // cores de borda
+  if (!unlocked) el.classList.add("blocked");
+  else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
+
+  // tooltip text
+  let tooltip = `${skill.name}\n\n${skill.desc ?? ""}`;
+  if (!unlocked) {
+    tooltip += `\n\n❌ Requisitos faltando:\n- ${missing.join("\n- ")}`;
+  }
+
+  el.title = tooltip;
 
   el.innerHTML = `
-    <img src="${imgSrc}">
-    <div>${skill.name}</div>
-    <small>(${skill.level}/${skill.max})</small>
+    <img src="${imgName}">
   `;
 
   el.onclick = () => {
+    if (!unlocked) return;
     levelUp(skill.id);
-    el.classList.add("level-up");
-    setTimeout(() => el.classList.remove("level-up"), 400);
   };
-
   return el;
 }
+
 
 // 🌳 CRIA ÁRVORE RECURSIVA
 function buildBranch(parent) {
