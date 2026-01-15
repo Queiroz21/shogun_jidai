@@ -167,6 +167,7 @@ h1 { margin-top: 15px; }
   transition: opacity .7s;
   white-space: pre-line;
   box-shadow: 0 0 10px #4af;
+  display: none; 
 }
 
 .skill:hover .tooltip {
