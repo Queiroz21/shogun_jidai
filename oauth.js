@@ -16,6 +16,24 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+import { collection, getDocs } 
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+async function loadSkills() {
+  const col = collection(db, "skill_tree");
+  const snap = await getDocs(col);
+  const loaded = snap.docs.map(d => d.data());
+
+  loaded.forEach(s => {
+    s.level    = skillsState[s.id] ?? 0;
+    s.requires = s.requires ?? [];
+    s.img      = s.img ?? "default";
+    s.max      = s.max ?? 5;
+  });
+
+  return loaded;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyC_jD2hYyzfoKNB1IO1_A3H-pUD2Ldph3s",
   authDomain: "shogunjidai-11c32.firebaseapp.com",

@@ -10,24 +10,8 @@ let currentUID = null;
 let skillsState = {};
 let userData = {};
 
-// 📌 Agora cada skill tem um TYPE para o glow
-const skills = [
-  { id: "chakra",  type:"chakra",  name: "Controle de Chakra", img: "chakra", max: 5 },
-  { id: "fisico",  type:"fisico",  name: "Treino Físico",     img: "fisico", max: 5 },
-  { id: "mental",  type:"mental",  name: "Disciplina Mental", img: "mental", max: 5 },
-  { id: "construcao", type:"civil", name: "Construir Aldeia",img:"construcao", max:5 },
-  { id: "jinchuriki", type:"chakra", name:"Força Jinchūriki",img:"jinchuriki",max:5 },
-
-  // 🌊 Elementos
-  { id: "katon", type: "fisico", parent: "chakra", name: "Katon", img:"chakra", max: 5 },
-  { id: "suiton", type: "chakra", parent: "chakra", name: "Suiton", img:"chakra", max: 5 },
-  
-  { id: "suitonDeAgua", type: "fisico", parent: "suiton", name: "Suiton de agua", img:"chakra", max: 5 },
-  { id: "suitonDefogo", type: "chakra", parent: "suiton", name: "Suiton de fogo", img:"chakra", max: 5 },
-  
-  
-  { id: "suitonEspecialVermelho", type: "mental", parent: "suitonDefogo", name: "Suiton vermelho especial", img:"mental", max: 5 }
-];
+// 📌 Enquanto não puxamos do Firestore
+let skills = []
 
 // 🔥 Detect login
 onAuthStateChanged(auth, async user => {
@@ -49,14 +33,13 @@ onAuthStateChanged(auth, async user => {
 
   skillsState = { ...userData.skills };
 
-  // Coloca level interno em cada skill
-  skills.forEach(s => {
-    s.level = skillsState[s.id] ?? 0;
-  });
+  // ⬇️ AQUI: CARREGA SKILLS DO FIREBASE
+  skills = await loadSkills();
 
   await checkLevelUp();
   render();
 });
+
 
 // 🔎 Pega nível do pai
 function parentLevel(id) {
@@ -64,7 +47,7 @@ function parentLevel(id) {
   return p ? p.level : 0;
 }
 
-// 🔳 Cartão com glow + animação
+// 🔳 Cartão com glow + tooltip + bloqueios
 function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
@@ -88,34 +71,35 @@ function makeCard(skill) {
     missing.push(`Conta nível ${skill.minAccountLevel}`);
   }
 
-  const iconIndex = Math.min(skill.level, skill.max);
-  const imgName = unlocked
-    ? `${skill.icon.replace("_1", "_" + iconIndex)}`
-    : `${skill.icon.replace("_1", "_locked")}`; // se quiser trocar por locked
+  // Normaliza ícone
+  const iconBase =
+    skill.icon ??
+    (skill.img ? `assets/icons/${skill.img}_1.png` : "assets/icons/default_1.png");
 
-  // cores de borda
+  const iconIndex = Math.min(skill.level, skill.max);
+
+  const imgName = unlocked
+    ? iconBase.replace("_1", "_" + iconIndex)
+    : iconBase.replace("_1", "_locked");
+
+  // Cores
   if (!unlocked) el.classList.add("blocked");
   else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
 
-  // tooltip text
+  // Tooltip
   let tooltip = `${skill.name}\n\n${skill.desc ?? ""}`;
-  if (!unlocked) {
-    tooltip += `\n\n❌ Requisitos faltando:\n- ${missing.join("\n- ")}`;
-  }
+  if (!unlocked) tooltip += `\n\n❌ Requisitos faltando:\n- ${missing.join("\n- ")}`;
 
   el.title = tooltip;
-
-  el.innerHTML = `
-    <img src="${imgName}">
-  `;
+  el.innerHTML = `<img src="${imgName}">`;
 
   el.onclick = () => {
     if (!unlocked) return;
     levelUp(skill.id);
   };
+
   return el;
 }
-
 
 // 🌳 CRIA ÁRVORE RECURSIVA
 function buildBranch(parent) {
@@ -139,7 +123,7 @@ function buildBranch(parent) {
   return branch;
 }
 
-// 🎨 Renderiza HUD + árvore
+// 🎨 Render HUD + árvore
 function render() {
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
@@ -172,18 +156,19 @@ async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   if (!sk || userData.pontos <= 0 || sk.level >= sk.max) return;
   if (sk.parent && parentLevel(sk.parent) < 1) return;
-  
+
   // bloqueia por nível da conta
   if (sk.minAccountLevel && userData.nivel < sk.minAccountLevel) {
     alert(`❌ Precisa ser nível ${sk.minAccountLevel}`);
     return;
   }
+
   // requisitos de skill
-  for (const req of sk.requires) {
+  for (const req of (sk.requires ?? [])) {
     const reqSkill = skills.find(s => s.id === req.id);
     if (!reqSkill || reqSkill.level < req.level) return;
   }
-  
+
   sk.level++;
   userData.pontos--;
   skillsState[id] = sk.level;
