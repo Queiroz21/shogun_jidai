@@ -81,27 +81,38 @@ h1 { margin-top: 15px; }
 
 /* ===== 🧩 CARD STYLE BASE ===== */
 .skill {
-  background: #16161d;
+	display: inline-flex;      /* tamanho exatamente do conteúdo */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;                /* remove excesso interno */
+  margin: 0 3px ;             /* opcional, separa os cards */
+  border: solid transparent;   /* remove qualquer borda “fantasma” */
+  background: transparent;   /* remove bloco cinza */
+  box-sizing: content-box;   /* garante que o tamanho seja só da imagem */
   padding: 12px;
   border-radius: 14px;
   width: 130px;
   cursor: pointer;
   text-align: center;
-  border: 2px solid transparent;
-  box-shadow: 0 0 6px #000;
   transition: transform .2s, filter .2s, border-color .2s;
   position: relative
 }
 
+
+
+
 /* Icon base (sem duplicação) */
 .skill img {
-  width: 48px;
-  height: 48px;
+  display: block;        /* remove espaço fantasma de imagens inline */
+  width: auto;           /* usa o tamanho real do arquivo */
+  height: auto;
   object-fit: contain;
   border-radius: 6px;
   border: 2px solid transparent;
   transition: border-color .25s, filter .25s;
 }
+
 
 /* Hover-friendly (sem atrapalhar bloqueios/máximo) */
 .skill:hover:not(.blocked):not(.mastered):not(.category) {
