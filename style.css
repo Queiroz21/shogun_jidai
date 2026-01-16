@@ -2,7 +2,7 @@
  🌌 BASE GLOBAL
 ========================================================= */
 body {
-  background: url('assets/stars.jpg') repeat #000;
+  background: url('assets/stars.png') repeat #000;
   background-size: cover;
   color: #fff;
   font-family: Arial, sans-serif;
