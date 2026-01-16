@@ -219,3 +219,21 @@ h1 { margin-top: 15px; }
   filter: grayscale(80%);
   cursor: default;
 }
+
+/* 🔥 Evita corte lateral ao colar na esquerda ou direita */
+.skill:hover .tooltip {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.skill:hover .tooltip.force-left {
+  left: 0;
+  transform: translateX(0);
+}
+
+.skill:hover .tooltip.force-right {
+  right: 0;
+  left: auto;
+  transform: translateX(0);
+}
+

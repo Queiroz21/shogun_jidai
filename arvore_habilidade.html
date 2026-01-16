@@ -25,6 +25,24 @@
 		
 		
 	<script type="module" src="app.js"></script>
+	<script>
+		document.querySelectorAll('.skill').forEach(s => {
+		  s.addEventListener('mouseenter', () => {
+			const tip = s.querySelector('.tooltip');
+			if (!tip) return;
+
+			tip.classList.remove('force-left', 'force-right');
+
+			const rect = tip.getBoundingClientRect();
+
+			if (rect.left < 0) {
+			  tip.classList.add('force-left');
+			} else if (rect.right > window.innerWidth) {
+			  tip.classList.add('force-right');
+			}
+		  });
+		});
+		</script>
 
 </body>
 </html>
