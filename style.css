@@ -1,10 +1,13 @@
-/* ===== 🌌 BASE GLOBAL ===== */
+/* =========================================================
+ 🌌 BASE GLOBAL
+========================================================= */
 body {
-  background: url('stars.jpg') repeat #000;
+  background: url('assets/stars.jpg') repeat #000;
   background-size: cover;
   color: #fff;
   font-family: Arial, sans-serif;
   text-align: center;
+  overflow-x: hidden; /* evita scroll duplo na janela */
 }
 
 h1 { margin-top: 15px; }
@@ -14,18 +17,20 @@ h1 { margin-top: 15px; }
   margin-bottom: 15px;
 }
 
-/* ===== 🌳 ARVORE ===== */
+/* =========================================================
+ 🌳 ÁRVORE — agora expande horizontalmente sem cortar!
+========================================================= */
 #org-chart {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;     /* pais grudam no topo */
   gap: 40px;
   margin-top: 20px;
-  width: auto;
-  overflow-x: auto;
+  width: max-content;          /* cresce conforme as skills */
+  overflow-x: auto;            /* scroll lateral */
   overflow-y: hidden;
   white-space: nowrap;
-  padding-bottom: 20px;
+  padding: 10px 30px 20px;
 }
 
 .directors {
@@ -33,18 +38,16 @@ h1 { margin-top: 15px; }
   justify-content: flex-start;
   gap: 40px;
   align-items: flex-start;
-  width: max-content; /* importa muito! */
+  width: max-content;
 }
-
 
 .branch {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-right: 40px;
-  white-space: normal; /* filhos podem quebrar linha se quiser */
+  white-space: normal;
 }
-
 
 .branch-line {
   width: 2px;
@@ -60,7 +63,9 @@ h1 { margin-top: 15px; }
   padding-top: 12px;
 }
 
-/* ===== 🟩 XP BAR ===== */
+/* =========================================================
+ 🟩 XP BAR
+========================================================= */
 #xp-bar-container {
   width: 100%;
   height: 20px;
@@ -79,48 +84,46 @@ h1 { margin-top: 15px; }
   border-radius: 10px;
 }
 
-/* ===== 🧩 CARD STYLE BASE ===== */
+/* =========================================================
+ 🧩 SKILL CARD — sem cinza, sem caixa sobrando!
+========================================================= */
 .skill {
-	display: inline-flex;      /* tamanho exatamente do conteúdo */
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0;                /* remove excesso interno */
-  margin: 0 3px ;             /* opcional, separa os cards */
-  border: solid transparent;   /* remove qualquer borda “fantasma” */
-  background: transparent;   /* remove bloco cinza */
-  box-sizing: content-box;   /* garante que o tamanho seja só da imagem */
-  padding: 12px;
+
+  background: transparent !important; /* mata o fundo cinza */
+  
+  padding: 0;
+  margin: 4px;
   border-radius: 14px;
-  width: 40px;
+  box-sizing: content-box;
   cursor: pointer;
-  text-align: center;
   transition: transform .2s, filter .2s, border-color .2s;
-  position: relative
+  position: relative;
 }
 
-
-/* Icon base (sem duplicação) */
+/* Ícone ocupa a div inteira dinamicamente */
 .skill img {
-  display: block;        /* remove espaço fantasma de imagens inline */
-  width: auto;           /* usa o tamanho real do arquivo */
-  height: auto;
+  display: block;
+  width: clamp(48px, 5vw, 90px);   /* responsivo para árvore gigante */
+  height: clamp(48px, 5vw, 90px);
   object-fit: contain;
   border-radius: 6px;
   border: 2px solid transparent;
   transition: border-color .25s, filter .25s;
 }
 
-
-/* Hover-friendly (sem atrapalhar bloqueios/máximo) */
+/* Hover */
 .skill:hover:not(.blocked):not(.mastered):not(.category) {
   transform: scale(1.08);
   filter: drop-shadow(0 0 6px cyan);
 }
 
-/* ===== 🔐 ESTADOS ===== */
-
-/* Bloqueada por requisitos */
+/* =========================================================
+ 🔐 ESTADOS
+========================================================= */
 .skill.blocked {
   opacity: 0.45;
   cursor: not-allowed;
@@ -130,12 +133,10 @@ h1 { margin-top: 15px; }
   filter: grayscale(70%);
 }
 
-/* Pode evoluir */
 .skill.active img {
   border-color: lime;
 }
 
-/* Max level alcançado */
 .skill.mastered img {
   border-color: gold;
   filter: drop-shadow(0 0 8px gold);
@@ -150,23 +151,14 @@ h1 { margin-top: 15px; }
   100% { box-shadow: 0 0 4px gold; }
 }
 
-/* Ramo guia (categorias iniciais) */
+/* raiz/categoria */
 .skill.category img {
   border-color: dodgerblue;
-  filter: none;
 }
 
-/* ===== 🎉 FEEDBACK SUBIU NÍVEL ===== */
-.skill.level-up {
-  animation: pulse 0.4s ease-out;
-}
-@keyframes pulse {
-  0% { transform: scale(1.15); }
- 100% { transform: scale(1); }
-}
-
-/* ===== 🎤 TOOLTIP CUSTOM ===== */
-
+/* =========================================================
+ 🎤 TOOLTIP
+========================================================= */
 .tooltip {
   position: absolute;
   bottom: 110%;
@@ -186,15 +178,16 @@ h1 { margin-top: 15px; }
   transition: opacity .7s;
   white-space: pre-line;
   box-shadow: 0 0 10px #4af;
-  display: none; 
+  display: none;
 }
 
+/* Aparece só no hover, não fica grudado */
 .skill:hover .tooltip {
   opacity: 1;
   display: block;
 }
 
-/* Setas */
+/* Seta */
 .skill-tooltip::after {
   content: '';
   position: absolute;
@@ -205,6 +198,7 @@ h1 { margin-top: 15px; }
   border-style: solid;
   border-color: #4af transparent transparent transparent;
 }
+
 .groupnode {
   opacity: 0.6;
   filter: grayscale(80%);
