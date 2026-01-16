@@ -163,14 +163,19 @@ h1 { margin-top: 15px; }
   position: absolute;
   bottom: 110%;
   left: 50%;
-  transform: translateX(-50%);
+
+  /* Impede escape lateral com CSS mágico 🪄 */
+  transform: translateX(
+    max(-50%, calc(-1 * (50vw - 20px - 50%)))
+  );
+
   background: rgba(10, 10, 25, 0.95);
   color: #fff;
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid #4af;
   font-size: 13px;
-  width: 220px;
+  width: clamp(180px, 20vw, 260px); /* responsivo e controlado */
   text-align: left;
   z-index: 999;
   opacity: 0;
@@ -180,6 +185,7 @@ h1 { margin-top: 15px; }
   box-shadow: 0 0 10px #4af;
   display: none;
 }
+
 
 /* Aparece só no hover, não fica grudado */
 .skill:hover .tooltip {
