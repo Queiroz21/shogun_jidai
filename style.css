@@ -27,8 +27,8 @@ h1 { margin-top: 15px; }
   gap: 40px;
   margin-top: 20px;
   width: max-content;          /* cresce conforme as skills */
-  overflow-x: auto;            /* scroll lateral */
-  overflow-y: hidden;
+  overflow: visible;
+  overflow-x: auto;
   white-space: nowrap;
   padding: 10px 30px 20px;
 }
@@ -161,29 +161,30 @@ h1 { margin-top: 15px; }
 ========================================================= */
 .tooltip {
   position: absolute;
-  bottom: 110%;
+  top: -8px;
   left: 50%;
-
-  /* Impede escape lateral com CSS mágico 🪄 */
-  transform: translateX(
-    max(-50%, calc(-1 * (50vw - 20px - 50%)))
-  );
-
+  transform: translate(-50%, -100%);
   background: rgba(10, 10, 25, 0.95);
   color: #fff;
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid #4af;
   font-size: 13px;
-  width: clamp(180px, 20vw, 260px); /* responsivo e controlado */
+  width: 230px;
   text-align: left;
-  z-index: 999;
+  z-index: 99999;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .7s;
+  transition: opacity .3s ease-in-out;
   white-space: pre-line;
   box-shadow: 0 0 10px #4af;
   display: none;
+}
+@media (max-width: 600px) {
+  .tooltip {
+    width: 180px;
+    font-size: 12px;
+  }
 }
 
 
