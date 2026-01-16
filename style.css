@@ -7,7 +7,7 @@ body {
   color: #fff;
   font-family: Arial, sans-serif;
   text-align: center;
-  overflow-x: hidden; /* evita scroll duplo na janela */
+  /*overflow-x: hidden; /* evita scroll duplo na janela */
 }
 
 h1 { margin-top: 15px; }
@@ -172,7 +172,7 @@ h1 { margin-top: 15px; }
   font-size: 13px;
   width: 230px;
   text-align: left;
-  z-index: 99999;
+  z-index: 999999999 !important;
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s ease-in-out;
