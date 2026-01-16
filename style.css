@@ -92,7 +92,7 @@ h1 { margin-top: 15px; }
   box-sizing: content-box;   /* garante que o tamanho seja só da imagem */
   padding: 12px;
   border-radius: 14px;
-  width: 60px;
+  width: 40px;
   cursor: pointer;
   text-align: center;
   transition: transform .2s, filter .2s, border-color .2s;
