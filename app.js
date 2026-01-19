@@ -79,17 +79,25 @@ function makeCard(skill) {
     const needLvl = req.level ?? req.lvl ?? 1;
 
     const reqSkill = skills.find(s => s.id === needId);
+    const currentLvl = reqSkill?.level ?? 0;
 
-    if (!reqSkill || reqSkill.level < needLvl) {
+    if (!reqSkill || currentLvl < needLvl) {
       unlocked = false;
-      missing.push(`${needId} (Lv ${needLvl})`);
+      missing.push({ id: needId, current: currentLvl, need: needLvl });
     }
   });
 
   // Requisito por nível da conta
-  if (skill.minAccountLevel && userData.nivel < skill.minAccountLevel) {
-    unlocked = false;
-    missing.push(`Conta nível ${skill.minAccountLevel}`);
+  if (skill.minAccountLevel) {
+    const accLvl = userData.nivel ?? 0;
+    if (accLvl < skill.minAccountLevel) {
+      unlocked = false;
+      missing.push({
+        id: "Conta",
+        current: accLvl,
+        need: skill.minAccountLevel
+      });
+    }
   }
 
   // Normaliza ícone
@@ -101,20 +109,37 @@ function makeCard(skill) {
 
   // Cores
   if (!unlocked) el.classList.add("blocked");
-  else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
+  else if (skill.level > 0) el.classList.add("active");
 
-  // Tooltip
+  /* =========================
+     TOOLTIP (AJUSTADO)
+  ========================= */
+
   let tooltipHTML = `
-    <strong>${skill.name}</strong><br><br>
-    ${skill.desc ?? ""}
+    <strong>${skill.name}</strong><br>
+    <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
   `;
 
-  if (!unlocked && missing.length > 0) {
-    tooltipHTML += `
-      <br><br>
-      <span style="color:#ff5555;"><strong>❌ Requisitos faltando:</strong></span><br>
-      ${missing.map(m => `• ${m}`).join("<br>")}
-    `;
+  if (skill.desc) {
+    tooltipHTML += `<br><br>${skill.desc}`;
+  }
+
+  if (reqs.length || skill.minAccountLevel) {
+    tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
+
+    reqs.forEach(req => {
+      const reqSkill = skills.find(s => s.id === req.id);
+      const atual = reqSkill?.level ?? 0;
+      const necessario = req.level ?? req.lvl ?? 1;
+      const ok = atual >= necessario ? "✔" : "❌";
+
+      tooltipHTML += `• ${reqSkill?.name ?? req.id}: ${atual} / ${necessario} ${ok}<br>`;
+    });
+
+    if (skill.minAccountLevel) {
+      const ok = userData.nivel >= skill.minAccountLevel ? "✔" : "❌";
+      tooltipHTML += `• Conta: ${userData.nivel} / ${skill.minAccountLevel} ${ok}<br>`;
+    }
   }
 
   // Render
