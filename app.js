@@ -247,3 +247,17 @@ async function checkLevelUp() {
     alert(`🎉 Você subiu para nível ${newLevel}! (+${ganho} pts)`);
   }
 }
+
+function updateHeader() {
+  document.getElementById("player-name").textContent = userData.nome;
+  document.getElementById("player-clan").textContent = `Clã: ${userData.clan}`;
+  document.getElementById("player-level").textContent = `Lv: ${userData.level}`;
+  document.getElementById("player-xp").textContent = `${userData.xp} / ${userData.proximo}`;
+
+  document.getElementById("header-xp-bar").style.width =
+    `${(userData.xp / userData.proximo) * 100}%`;
+
+  document.getElementById("points-header").textContent =
+    `Pontos Disponíveis: ${userData.pontos}`;
+}
+

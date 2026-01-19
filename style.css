@@ -73,7 +73,7 @@ h1 { margin-top: 15px; }
   border: 1px solid #fff;
   border-radius: 10px;
   margin: 10px 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #xp-bar {
@@ -236,4 +236,57 @@ h1 { margin-top: 15px; }
   left: auto;
   transform: translateX(0);
 }
+/* =========================================================
+ 🎛 HEADER DO PLAYER (nome, clan, lv, xp, pontos)
+========================================================= */
+#player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.5);
+  border-bottom: 1px solid #4af;
+  backdrop-filter: blur(4px);
+  position: sticky;
+  top: 0;
+  z-index: 999999;
+}
+
+#player-left span,
+#player-right span {
+  margin-right: 12px;
+  font-size: 15px;
+}
+
+/* XP bar do header */
+#header-xp-bar-container {
+  width: 150px;
+  height: 12px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  overflow: hidden;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+#header-xp-bar {
+  height: 100%;
+  width: 0%;
+  background: limegreen;
+  transition: width .4s;
+}
+
+/* Pontos disponíveis */
+#points-header {
+  width: 100%;
+  text-align: center;
+  padding: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.6);
+  border-bottom: 1px solid #4af;
+}
+
 
