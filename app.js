@@ -115,40 +115,7 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  let unlocked = true;
-  let reqHTML = "";
-
-  for (const req of skill.requires ?? []) {
-
-    // 🔹 Skill requirement
-    if (req.type === "skill") {
-      const sk = skills.find(s => s.id === req.id);
-      const ok = sk && sk.level >= (req.level ?? 1);
-
-      if (!ok) unlocked = false;
-
-      reqHTML += `
-        <div class="req ${ok ? "ok" : "fail"}">
-          ${ok ? "✔" : "✖"} ${sk?.name ?? req.id}
-          (Nv ${req.level ?? 1})
-        </div>
-      `;
-    }
-
-    // 🔹 Doujutsu requirement
-    if (req.type === "doujutsu") {
-      const list = normalizeDoujutsus();
-      const ok = list.includes(req.value);
-
-      if (!ok) unlocked = false;
-
-      reqHTML += `
-        <div class="req ${ok ? "ok" : "fail"}">
-          ${ok ? "✔" : "✖"} Doujutsu: ${req.value}
-        </div>
-      `;
-    }
-  }
+  const unlocked = checkRequirements(skill);
 
   const iconIndex = Math.min(skill.level, skill.max);
   const icon = unlocked
@@ -158,12 +125,80 @@ function makeCard(skill) {
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
+  /* ========================= TOOLTIP ========================= */
+
+  let tooltip = `
+    <div class="tt-title">${skill.name}</div>
+    <div class="tt-level">Nível: ${skill.level} / ${skill.max}</div>
+  `;
+
+  // 📘 EFEITOS POR NÍVEL
+  if (skill.effects) {
+    tooltip += `<div class="tt-section">`;
+
+    Object.entries(skill.effects).forEach(([lvl, text]) => {
+      const active = skill.level >= Number(lvl);
+      tooltip += `
+        <div class="tt-effect ${active ? "ok" : "lock"}">
+          ${lvl}. ${text}
+        </div>
+      `;
+    });
+
+    tooltip += `</div>`;
+  }
+
+  // 🔋 CUSTO
+  if (skill.cost) {
+    tooltip += `
+      <div class="tt-section">
+        <div>Requisitos:</div>
+        ${skill.cost.chakra ? `• Chakra: ${skill.cost.chakra}<br>` : ""}
+        ${skill.cost.sustain ? `• Sustentação: ${skill.cost.sustain}` : ""}
+      </div>
+    `;
+  }
+
+  // ❌ REQUISITOS
+  if (skill.requires?.length) {
+    tooltip += `<div class="tt-section">`;
+
+    skill.requires.forEach(req => {
+      let ok = true;
+      let label = "";
+
+      if (req.type === "skill") {
+        const sk = skills.find(s => s.id === req.id);
+        ok = sk && sk.level >= req.level;
+        label = `${sk?.name ?? req.id} (${req.level})`;
+      }
+
+      if (req.type === "playerLevel") {
+        ok = userData.nivel >= req.level;
+        label = `Conta nível ${req.level}`;
+      }
+
+      if (req.type === "doujutsu") {
+        ok = normalizeDoujutsus().includes(req.value);
+        label = `Doujutsu: ${req.value}`;
+      }
+
+      tooltip += `
+        <div class="tt-req ${ok ? "ok" : "fail"}">
+          ${ok ? "✔" : "❌"} ${label}
+        </div>
+      `;
+    });
+
+    tooltip += `</div>`;
+  }
+
+  /* ========================= RENDER ========================= */
+
   el.innerHTML = `
     <img src="${icon}">
-    <div class="tooltip">
-      <strong>${skill.name}</strong><br>
-      Nível: ${skill.level} / ${skill.max}
-      ${reqHTML ? `<hr>${reqHTML}` : ""}
+    <div class="tooltip rich">
+      ${tooltip}
     </div>
   `;
 
@@ -174,6 +209,7 @@ function makeCard(skill) {
 
   return el;
 }
+
 
 /* =========================================================
    BUILD TREE — SEM VAZAMENTO DE DOUJUTSU
