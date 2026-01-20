@@ -122,20 +122,20 @@ function makeCard(skill) {
   // Sempre garante array
   const reqs = Array.isArray(skill.requires) ? skill.requires : [];
 
-  reqs.forEach(req => {
-    const needId = req.id;
-    const needLvl = req.level ?? req.lvl ?? 1;
+	reqs.forEach(req => {
+		const needId = req.id;
+		const needLvl = req.level ?? req.lvl ?? 1;
 
-    const reqSkill = skills.find(s => s.id === needId);
-    const currentLvl = reqSkill?.level ?? 0;
+		const reqSkill = skills.find(s => s.id === needId);
+		const currentLvl = reqSkill?.level ?? 0;
 
-    if (!reqSkill || reqSkill.level < needLvl) {
-    if (!reqSkill || currentLvl < needLvl) {
-      unlocked = false;
-      missing.push(`${needId} (Lv ${needLvl})`);
-      missing.push({ id: needId, current: currentLvl, need: needLvl });
-    }
-  });
+		if (!reqSkill || reqSkill.level < needLvl) {
+		if (!reqSkill || currentLvl < needLvl) {
+		  unlocked = false;
+		  missing.push("${needId} (Lv ${needLvl})");
+		  missing.push({ id: needId, current: currentLvl, need: needLvl });
+		}
+	}});
 
   // Requisito por nível da conta
   if (skill.minAccountLevel && userData.nivel < skill.minAccountLevel) {
