@@ -115,7 +115,40 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  const { unlocked, missing } = checkRequirements(skill);
+  let unlocked = true;
+  let reqHTML = "";
+
+  for (const req of skill.requires ?? []) {
+
+    // 🔹 Skill requirement
+    if (req.type === "skill") {
+      const sk = skills.find(s => s.id === req.id);
+      const ok = sk && sk.level >= (req.level ?? 1);
+
+      if (!ok) unlocked = false;
+
+      reqHTML += `
+        <div class="req ${ok ? "ok" : "fail"}">
+          ${ok ? "✔" : "✖"} ${sk?.name ?? req.id}
+          (Nv ${req.level ?? 1})
+        </div>
+      `;
+    }
+
+    // 🔹 Doujutsu requirement
+    if (req.type === "doujutsu") {
+      const list = normalizeDoujutsus();
+      const ok = list.includes(req.value);
+
+      if (!ok) unlocked = false;
+
+      reqHTML += `
+        <div class="req ${ok ? "ok" : "fail"}">
+          ${ok ? "✔" : "✖"} Doujutsu: ${req.value}
+        </div>
+      `;
+    }
+  }
 
   const iconIndex = Math.min(skill.level, skill.max);
   const icon = unlocked
@@ -125,25 +158,13 @@ function makeCard(skill) {
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
-  let tooltip = `
-    <strong>${skill.name}</strong><br>
-    <small>Nível: ${skill.level} / ${skill.max}</small>
-  `;
-
-  if (skill.desc) tooltip += `<br><br>${skill.desc}`;
-
-  if (skill.requires?.length) {
-    tooltip += `<br><br><strong>Requisitos:</strong><br>`;
-    skill.requires.forEach(req => {
-      const res = missing.find(m => m.label === (req.label ?? req.value ?? req.id));
-      const ok = !res;
-      tooltip += `• ${req.label ?? req.id}: ${ok ? "✔" : "❌"}<br>`;
-    });
-  }
-
   el.innerHTML = `
     <img src="${icon}">
-    <div class="tooltip">${tooltip}</div>
+    <div class="tooltip">
+      <strong>${skill.name}</strong><br>
+      Nível: ${skill.level} / ${skill.max}
+      ${reqHTML ? `<hr>${reqHTML}` : ""}
+    </div>
   `;
 
   el.onclick = () => {
