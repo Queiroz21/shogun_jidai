@@ -321,9 +321,19 @@ function render() {
   chart.innerHTML = "";
 
   // 🔑 lista de doujutsus do jogador
-  const userDoujutsus = Array.isArray(userData.doujutsus)
-    ? userData.doujutsus
-    : [];
+  /* =========================
+   DOUJUTSUS DO JOGADOR
+   (aceita string ou array)
+	========================= */
+	let userDoujutsus = [];
+
+	if (Array.isArray(userData.doujutsu)) {
+	  userDoujutsus = userData.doujutsu;
+	} else if (typeof userData.doujutsu === "string") {
+	  userDoujutsus = [userData.doujutsu];
+	} else if (Array.isArray(userData.doujutsus)) {
+	  userDoujutsus = userData.doujutsus;
+	}
 
   const parents = skills.filter(s => {
 
