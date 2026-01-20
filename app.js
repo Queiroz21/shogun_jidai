@@ -67,7 +67,6 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  // Estado inicial
   let unlocked = true;
   let missing = [];
 
@@ -75,46 +74,129 @@ function makeCard(skill) {
   const reqs = Array.isArray(skill.requires) ? skill.requires : [];
 
   reqs.forEach(req => {
-    const needId = req.id;
-    const needLvl = req.level ?? req.lvl ?? 1;
+    const type = req.type ?? "skill";
 
-    const reqSkill = skills.find(s => s.id === needId);
-    const currentLvl = reqSkill?.level ?? 0;
+    /* =========================
+       SKILL
+    ========================= */
+    if (type === "skill") {
+      const needId = req.id;
+      const needLvl = req.level ?? req.lvl ?? 1;
 
-    if (!reqSkill || currentLvl < needLvl) {
-      unlocked = false;
-      missing.push({ id: needId, current: currentLvl, need: needLvl });
+      const reqSkill = skills.find(s => s.id === needId);
+      const currentLvl = reqSkill?.level ?? 0;
+
+      if (!reqSkill || currentLvl < needLvl) {
+        unlocked = false;
+        missing.push({
+          label: reqSkill?.name ?? needId,
+          current: currentLvl,
+          need: needLvl
+        });
+      }
+    }
+
+    /* =========================
+       PLAYER LEVEL
+    ========================= */
+    if (type === "playerLevel") {
+      const needLvl = req.level ?? 1;
+      const currentLvl = userData.nivel ?? 0;
+
+      if (currentLvl < needLvl) {
+        unlocked = false;
+        missing.push({
+          label: "Conta",
+          current: currentLvl,
+          need: needLvl
+        });
+      }
+    }
+	/* =========================
+	   JINCHŪRIKI
+	========================= */
+	if (type === "jin") {
+	  const hasJin = !!userData.jin;
+
+	  if (!hasJin) {
+		unlocked = false;
+		missing.push({
+		  label: "Jinchuriki",
+		  current: "Nenhum",
+		  need: "Possuir"
+		});
+	  }
+	}
+
+	/* =========================
+	   DOUJUTSU
+	========================= */
+	if (type === "doujutsu") {
+	  const hasDoujutsu = !!userData.doujutsu;
+
+	  if (!hasDoujutsu) {
+		unlocked = false;
+		missing.push({
+		  label: "Doujutsu",
+		  current: "Nenhum",
+		  need: "Possuir"
+		});
+	  }
+	}
+
+    /* =========================
+       REGIÃO
+    ========================= */
+    if (type === "region") {
+      const needRegion = req.value;
+      const currentRegion = userData.regiao;
+
+      if (currentRegion !== needRegion) {
+        unlocked = false;
+        missing.push({
+          label: "Região",
+          current: currentRegion ?? "Nenhuma",
+          need: needRegion
+        });
+      }
+    }
+
+    /* =========================
+       CLÃ
+    ========================= */
+    if (type === "clan") {
+      const needClan = req.value;
+      const currentClan = userData.cla;
+
+      if (currentClan !== needClan) {
+        unlocked = false;
+        missing.push({
+          label: "Clã",
+          current: currentClan ?? "Nenhum",
+          need: needClan
+        });
+      }
     }
   });
 
-  // Requisito por nível da conta
-  if (skill.minAccountLevel) {
-    const accLvl = userData.nivel ?? 0;
-    if (accLvl < skill.minAccountLevel) {
-      unlocked = false;
-      missing.push({
-        id: "Conta",
-        current: accLvl,
-        need: skill.minAccountLevel
-      });
-    }
-  }
-
-  // Normaliza ícone
+  /* =========================
+     ÍCONE
+  ========================= */
   const iconName = skill.icon || "default";
-  const iconIndex = Math.min(skill.level, skill.max);
+  const iconIndex = Math.min(skill.level ?? 0, skill.max);
   const currentIcon = unlocked
     ? `assets/icons/${iconName}_${iconIndex}.png`
     : `assets/icons/${iconName}_locked.png`;
 
-  // Cores
+  /* =========================
+     CORES
+  ========================= */
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
   /* =========================
-     TOOLTIP (AJUSTADO)
+     TOOLTIP
   ========================= */
-
   let tooltipHTML = `
     <strong>${skill.name}</strong><br>
     <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
@@ -124,31 +206,60 @@ function makeCard(skill) {
     tooltipHTML += `<br><br>${skill.desc}`;
   }
 
-  if (reqs.length || skill.minAccountLevel) {
+  if (reqs.length) {
     tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
 
     reqs.forEach(req => {
-      const reqSkill = skills.find(s => s.id === req.id);
-      const atual = reqSkill?.level ?? 0;
-      const necessario = req.level ?? req.lvl ?? 1;
-      const ok = atual >= necessario ? "✔" : "❌";
+      const type = req.type ?? "skill";
+      let label = "";
+      let current = "-";
+      let need = "-";
+      let ok = "❌";
 
-      tooltipHTML += `• ${reqSkill?.name ?? req.id}: ${atual} / ${necessario} ${ok}<br>`;
+      if (type === "skill") {
+        const sk = skills.find(s => s.id === req.id);
+        current = sk?.level ?? 0;
+        need = req.level ?? 1;
+        label = sk?.name ?? req.id;
+        ok = current >= need ? "✔" : "❌";
+      }
+
+      if (type === "playerLevel") {
+        current = userData.nivel ?? 0;
+        need = req.level ?? 1;
+        label = "Conta";
+        ok = current >= need ? "✔" : "❌";
+      }
+
+      if (type === "region") {
+        current = userData.regiao ?? "Nenhuma";
+        need = req.value;
+        label = "Região";
+        ok = current === need ? "✔" : "❌";
+      }
+
+      if (type === "clan") {
+        current = userData.cla ?? "Nenhum";
+        need = req.value;
+        label = "Clã";
+        ok = current === need ? "✔" : "❌";
+      }
+
+      tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
     });
-
-    if (skill.minAccountLevel) {
-      const ok = userData.nivel >= skill.minAccountLevel ? "✔" : "❌";
-      tooltipHTML += `• Conta: ${userData.nivel} / ${skill.minAccountLevel} ${ok}<br>`;
-    }
   }
 
-  // Render
+  /* =========================
+     RENDER
+  ========================= */
   el.innerHTML = `
     <img src="${currentIcon}">
     <div class="tooltip">${tooltipHTML}</div>
   `;
 
-  // Click para upar
+  /* =========================
+     CLICK
+  ========================= */
   el.onclick = () => {
     if (!unlocked) return;
     levelUp(skill.id);
@@ -202,10 +313,18 @@ function render() {
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
-  const parents = skills.filter(s => !s.parent);
+  const parents = skills.filter(s => {
+	  // Jin
+	  if (s.id === "jin" && !userData.jin) return false;
+
+	  // Doujutsu
+	  if (s.id === "doujutsu" && !userData.doujutsu) return false;
+
+	  return !s.parent;
+	});
   const container = document.createElement("div");
   container.className = "directors";
-
+  
   parents.forEach(p => container.appendChild(buildBranch(p)));
   chart.appendChild(container);
 }
