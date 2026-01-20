@@ -132,14 +132,15 @@ function makeCard(skill) {
 	   DOUJUTSU
 	========================= */
 	if (type === "doujutsu") {
-	  const hasDoujutsu = !!userData.doujutsu;
+	  const need = req.value;
+	  const owns = (userData.doujutsus ?? []).includes(need);
 
-	  if (!hasDoujutsu) {
+	  if (!owns) {
 		unlocked = false;
 		missing.push({
 		  label: "Doujutsu",
-		  current: "Nenhum",
-		  need: "Possuir"
+		  current: (userData.doujutsus ?? []).join(", ") || "Nenhum",
+		  need
 		});
 	  }
 	}
