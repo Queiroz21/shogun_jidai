@@ -115,93 +115,103 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  const unlocked = checkRequirements(skill);
+  // Estado inicial
+  let unlocked = true;
+  let missing = [];
 
+  // Sempre garante array
+  const reqs = Array.isArray(skill.requires) ? skill.requires : [];
+
+  reqs.forEach(req => {
+    const needId = req.id;
+    const needLvl = req.level ?? req.lvl ?? 1;
+
+    const reqSkill = skills.find(s => s.id === needId);
+    const currentLvl = reqSkill?.level ?? 0;
+
+    if (!reqSkill || reqSkill.level < needLvl) {
+    if (!reqSkill || currentLvl < needLvl) {
+      unlocked = false;
+      missing.push(`${needId} (Lv ${needLvl})`);
+      missing.push({ id: needId, current: currentLvl, need: needLvl });
+    }
+  });
+
+  // Requisito por nível da conta
+  if (skill.minAccountLevel && userData.nivel < skill.minAccountLevel) {
+    unlocked = false;
+    missing.push(`Conta nível ${skill.minAccountLevel}`);
+  if (skill.minAccountLevel) {
+    const accLvl = userData.nivel ?? 0;
+    if (accLvl < skill.minAccountLevel) {
+      unlocked = false;
+      missing.push({
+        id: "Conta",
+        current: accLvl,
+        need: skill.minAccountLevel
+      });
+    }
+  }
+
+  // Normaliza ícone
+  const iconName = skill.icon || "default";
   const iconIndex = Math.min(skill.level, skill.max);
-  const icon = unlocked
-    ? `assets/icons/${skill.icon}_${iconIndex}.png`
-    : `assets/icons/${skill.icon}_locked.png`;
+  const currentIcon = unlocked
+    ? `assets/icons/${iconName}_${iconIndex}.png`
+    : `assets/icons/${iconName}_locked.png`;
 
+  // Cores
   if (!unlocked) el.classList.add("blocked");
+  else if (missing.length === 0 && skill.level > 0) el.classList.add("active");
   else if (skill.level > 0) el.classList.add("active");
 
-  /* ========================= TOOLTIP ========================= */
+  /* =========================
+     TOOLTIP (AJUSTADO)
+  ========================= */
 
-  let tooltip = `
-    <div class="tt-title">${skill.name}</div>
-    <div class="tt-level">Nível: ${skill.level} / ${skill.max}</div>
+  // Tooltip
+  let tooltipHTML = `
+    <strong>${skill.name}</strong><br><br>
+    ${skill.desc ?? ""}
+    <strong>${skill.name}</strong><br>
+    <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
   `;
 
-  // 📘 EFEITOS POR NÍVEL
-  if (skill.effects) {
-    tooltip += `<div class="tt-section">`;
-
-    Object.entries(skill.effects).forEach(([lvl, text]) => {
-      const active = skill.level >= Number(lvl);
-      tooltip += `
-        <div class="tt-effect ${active ? "ok" : "lock"}">
-          ${lvl}. ${text}
-        </div>
-      `;
-    });
-
-    tooltip += `</div>`;
-  }
-
-  // 🔋 CUSTO
-  if (skill.cost) {
-    tooltip += `
-      <div class="tt-section">
-        <div>Requisitos:</div>
-        ${skill.cost.chakra ? `• Chakra: ${skill.cost.chakra}<br>` : ""}
-        ${skill.cost.sustain ? `• Sustentação: ${skill.cost.sustain}` : ""}
-      </div>
+  if (!unlocked && missing.length > 0) {
+    tooltipHTML += `
+      <br><br>
+      <span style="color:#ff5555;"><strong>❌ Requisitos faltando:</strong></span><br>
+      ${missing.map(m => `• ${m}`).join("<br>")}
     `;
+  if (skill.desc) {
+    tooltipHTML += `<br><br>${skill.desc}`;
   }
 
-  // ❌ REQUISITOS
-  if (skill.requires?.length) {
-    tooltip += `<div class="tt-section">`;
+  if (reqs.length || skill.minAccountLevel) {
+    tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
 
-    skill.requires.forEach(req => {
-      let ok = true;
-      let label = "";
+    reqs.forEach(req => {
+      const reqSkill = skills.find(s => s.id === req.id);
+      const atual = reqSkill?.level ?? 0;
+      const necessario = req.level ?? req.lvl ?? 1;
+      const ok = atual >= necessario ? "✔" : "❌";
 
-      if (req.type === "skill") {
-        const sk = skills.find(s => s.id === req.id);
-        ok = sk && sk.level >= req.level;
-        label = `${sk?.name ?? req.id} (${req.level})`;
-      }
-
-      if (req.type === "playerLevel") {
-        ok = userData.nivel >= req.level;
-        label = `Conta nível ${req.level}`;
-      }
-
-      if (req.type === "doujutsu") {
-        ok = normalizeDoujutsus().includes(req.value);
-        label = `Doujutsu: ${req.value}`;
-      }
-
-      tooltip += `
-        <div class="tt-req ${ok ? "ok" : "fail"}">
-          ${ok ? "✔" : "❌"} ${label}
-        </div>
-      `;
+      tooltipHTML += `• ${reqSkill?.name ?? req.id}: ${atual} / ${necessario} ${ok}<br>`;
     });
 
-    tooltip += `</div>`;
+    if (skill.minAccountLevel) {
+      const ok = userData.nivel >= skill.minAccountLevel ? "✔" : "❌";
+      tooltipHTML += `• Conta: ${userData.nivel} / ${skill.minAccountLevel} ${ok}<br>`;
+    }
   }
 
-  /* ========================= RENDER ========================= */
-
+  // Render
   el.innerHTML = `
-    <img src="${icon}">
-    <div class="tooltip rich">
-      ${tooltip}
-    </div>
+    <img src="${currentIcon}">
+    <div class="tooltip">${tooltipHTML}</div>
   `;
 
+  // Click para upar
   el.onclick = () => {
     if (!unlocked) return;
     levelUp(skill.id);
@@ -209,6 +219,10 @@ function makeCard(skill) {
 
   return el;
 }
+
+
+
+
 
 
 /* =========================================================
