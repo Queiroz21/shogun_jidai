@@ -160,12 +160,6 @@ function makeCard(skill) {
 function buildBranch(parent) {
   const userDoujutsus = normalizeDoujutsus();
 
-  if (
-    parent.type === "doujutsu" &&
-    parent.doujutsuKey &&
-    !userDoujutsus.includes(parent.doujutsuKey)
-  ) return document.createDocumentFragment();
-
   const branch = document.createElement("div");
   branch.className = "branch";
   branch.appendChild(makeCard(parent));
@@ -208,11 +202,23 @@ function render() {
   const userDoujutsus = normalizeDoujutsus();
 
   const parents = skills.filter(s => {
-    if (s.id === "jin") return !!userData.jin;
-    if (s.type === "doujutsu" && !s.parent)
-      return userDoujutsus.includes(s.doujutsuKey);
-    return !s.parent && s.type !== "doujutsu";
-  });
+
+	  // 🔹 JIN
+	  if (s.id === "jin") return !!userData.jin;
+
+	  // 🔹 GUIA DOUJUTSU (aparece se tiver QUALQUER doujutsu)
+	  if (s.id === "doujutsu") {
+		return normalizeDoujutsus().length > 0;
+	  }
+
+	  // 🔹 RAMOS DE DOUJUTSU (Sharingan, Rinnegan…)
+	  if (s.type === "doujutsu" && !s.parent) {
+		return normalizeDoujutsus().includes(s.doujutsuKey);
+	  }
+
+	  // 🔹 OUTROS PAIS NORMAIS
+	  return !s.parent && s.type !== "doujutsu";
+	});
 
   const container = document.createElement("div");
   container.className = "directors";
