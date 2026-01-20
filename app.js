@@ -1,10 +1,11 @@
-// app.js — versão FINAL corrigida
+// app.js — versão FINAL realmente corrigida
 
 import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { onAuthStateChanged } from
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
 let skillsState = {};
@@ -12,11 +13,20 @@ let userData = {};
 let skills = [];
 
 /* =========================================================
+   UTIL — NORMALIZA DOUJUTSUS
+========================================================= */
+function normalizeDoujutsus() {
+  if (Array.isArray(userData.doujutsus)) return userData.doujutsus;
+  if (Array.isArray(userData.doujutsu)) return userData.doujutsu;
+  if (typeof userData.doujutsu === "string") return [userData.doujutsu];
+  return [];
+}
+
+/* =========================================================
    LOAD SKILLS
 ========================================================= */
 async function loadSkills() {
-  const col = collection(db, "skill_tree");
-  const snap = await getDocs(col);
+  const snap = await getDocs(collection(db, "skill_tree"));
   const loaded = snap.docs.map(d => d.data());
 
   loaded.forEach(s => {
@@ -38,8 +48,7 @@ onAuthStateChanged(auth, async user => {
   }
 
   currentUID = user.uid;
-  const fichaRef = doc(db, "fichas", currentUID);
-  const snap = await getDoc(fichaRef);
+  const snap = await getDoc(doc(db, "fichas", currentUID));
   userData = snap.data() ?? {};
 
   userData.xp     ??= 0;
@@ -55,25 +64,51 @@ onAuthStateChanged(auth, async user => {
 });
 
 /* =========================================================
-   MAKE CARD (INALTERADO — só leitura correta)
+   VALIDA REQUISITOS (FONTE ÚNICA DA VERDADE)
+========================================================= */
+function checkRequirements(skill) {
+  const userDoujutsus = normalizeDoujutsus();
+
+  for (const req of skill.requires ?? []) {
+    const type = req.type ?? "skill";
+
+    if (type === "skill") {
+      const sk = skills.find(s => s.id === req.id);
+      if (!sk || sk.level < (req.level ?? 1)) return false;
+    }
+
+    if (type === "playerLevel") {
+      if ((userData.nivel ?? 0) < (req.level ?? 1)) return false;
+    }
+
+    if (type === "doujutsu") {
+      if (!userDoujutsus.includes(req.value)) return false;
+    }
+
+    if (type === "jin") {
+      if (!userData.jin) return false;
+    }
+
+    if (type === "region") {
+      if (userData.regiao !== req.value) return false;
+    }
+
+    if (type === "clan") {
+      if (userData.cla !== req.value) return false;
+    }
+  }
+
+  return true;
+}
+
+/* =========================================================
+   MAKE CARD
 ========================================================= */
 function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  let unlocked = true;
-
-  for (const req of skill.requires ?? []) {
-    if (req.type === "skill") {
-      const sk = skills.find(s => s.id === req.id);
-      if (!sk || sk.level < (req.level ?? 1)) unlocked = false;
-    }
-
-    if (req.type === "doujutsu") {
-      const list = normalizeDoujutsus();
-      if (!list.includes(req.value)) unlocked = false;
-    }
-  }
+  const unlocked = checkRequirements(skill);
 
   const iconIndex = Math.min(skill.level, skill.max);
   const icon = unlocked
@@ -100,33 +135,44 @@ function makeCard(skill) {
 }
 
 /* =========================================================
-   NORMALIZA DOUJUTSUS DA FICHA
-========================================================= */
-function normalizeDoujutsus() {
-  if (Array.isArray(userData.doujutsu)) return userData.doujutsu;
-  if (typeof userData.doujutsu === "string") return [userData.doujutsu];
-  if (Array.isArray(userData.doujutsus)) return userData.doujutsus;
-  return [];
-}
-
-/* =========================================================
-   BUILD TREE
+   BUILD TREE — FILTRA DOUJUTSU CORRETAMENTE
 ========================================================= */
 function buildBranch(parent) {
+  const userDoujutsus = normalizeDoujutsus();
+
+  if (
+    parent.type === "doujutsu" &&
+    parent.doujutsuKey &&
+    !userDoujutsus.includes(parent.doujutsuKey)
+  ) {
+    return document.createDocumentFragment();
+  }
+
   const branch = document.createElement("div");
   branch.className = "branch";
-
   branch.appendChild(makeCard(parent));
 
-  const kids = skills.filter(s => s.parent === parent.id);
+  const kids = skills.filter(s => {
+    if (s.parent !== parent.id) return false;
+
+    if (
+      s.type === "doujutsu" &&
+      s.doujutsuKey &&
+      !userDoujutsus.includes(s.doujutsuKey)
+    ) return false;
+
+    return true;
+  });
+
   if (kids.length) {
-    const line = document.createElement("div");
-    line.className = "branch-line";
-    branch.appendChild(line);
+    branch.appendChild(
+      Object.assign(document.createElement("div"), {
+        className: "branch-line"
+      })
+    );
 
     const row = document.createElement("div");
     row.className = "child-row";
-
     kids.forEach(k => row.appendChild(buildBranch(k)));
     branch.appendChild(row);
   }
@@ -135,7 +181,7 @@ function buildBranch(parent) {
 }
 
 /* =========================================================
-   RENDER — PARTE CRÍTICA CORRIGIDA
+   RENDER
 ========================================================= */
 function render() {
   const chart = document.getElementById("org-chart");
@@ -145,36 +191,33 @@ function render() {
 
   const parents = skills.filter(s => {
 
-    // Jin
     if (s.id === "jin") return !!userData.jin;
 
-    // GUIA DOUJUTSU → aparece se tiver QUALQUER doujutsu
     if (s.id === "doujutsu") {
       return userDoujutsus.length > 0;
     }
 
-    // RAMOS DE DOUJUTSU → só se possuir
-    if (s.type === "doujutsu" && s.doujutsuKey) {
-      return userDoujutsus.includes(s.doujutsuKey) && !s.parent;
+    if (s.type === "doujutsu" && !s.parent) {
+      return userDoujutsus.includes(s.doujutsuKey);
     }
 
-    // Outros pais normais
-    return !s.parent;
+    return !s.parent && s.type !== "doujutsu";
   });
 
   const container = document.createElement("div");
   container.className = "directors";
-
   parents.forEach(p => container.appendChild(buildBranch(p)));
   chart.appendChild(container);
 }
 
 /* =========================================================
-   LEVEL UP (INALTERADO)
+   LEVEL UP — AGORA BLOQUEIA DE VERDADE
 ========================================================= */
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   if (!sk || sk.level >= sk.max || userData.pontos <= 0) return;
+
+  if (!checkRequirements(sk)) return;
 
   sk.level++;
   userData.pontos--;
