@@ -141,16 +141,17 @@ function makeCard(skill) {
   if (skill.minAccountLevel && userData.nivel < skill.minAccountLevel) {
     unlocked = false;
     missing.push(`Conta nível ${skill.minAccountLevel}`);
-  if (skill.minAccountLevel) {
-    const accLvl = userData.nivel ?? 0;
-    if (accLvl < skill.minAccountLevel) {
-      unlocked = false;
-      missing.push({
-        id: "Conta",
-        current: accLvl,
-        need: skill.minAccountLevel
-      });
-    }
+	if (skill.minAccountLevel) {
+		const accLvl = userData.nivel ?? 0;
+		if (accLvl < skill.minAccountLevel) {
+		  unlocked = false;
+		  missing.push({
+			id: "Conta",
+			current: accLvl,
+			need: skill.minAccountLevel
+		  });
+		}
+	  }
   }
 
   // Normaliza ícone
@@ -218,7 +219,7 @@ function makeCard(skill) {
   };
 
   return el;
-}
+  }};
 
 
 
@@ -334,4 +335,4 @@ async function checkLevelUp() {
     });
   }
 }
-}
+
