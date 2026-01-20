@@ -296,6 +296,9 @@ function buildBranch(parent) {
 
 // 🎨 Render HUD + árvore
 function render() {
+  /* =========================
+     HUD / TOPO
+  ========================= */
   document.getElementById("infoTopo").textContent =
     `${userData.nick ?? "Sem Nome"} | Clã: ${userData.cla ?? "Nenhum"}`;
 
@@ -311,24 +314,48 @@ function render() {
     `XP: ${userData.xp} / ${xpNeeded}`;
   document.getElementById("xp-bar").style.width = pct + "%";
 
+  /* =========================
+     ÁRVORE
+  ========================= */
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
+  // 🔑 lista de doujutsus do jogador
+  const userDoujutsus = Array.isArray(userData.doujutsus)
+    ? userData.doujutsus
+    : [];
+
   const parents = skills.filter(s => {
-	  // Jin
-	  if (s.id === "jin" && !userData.jin) return false;
 
-	  // Doujutsu
-	  if (s.id === "doujutsu" && !userData.doujutsu) return false;
+    /* =========================
+       JIN — só aparece se tiver
+    ========================= */
+    if (s.id === "jin" && !userData.jin) return false;
 
-	  return !s.parent;
-	});
+    /* =========================
+       DOUJUTSU — só aparece se
+       estiver na ficha
+    ========================= */
+    if (s.type === "doujutsu") {
+      return (
+        !s.parent &&
+        userDoujutsus.includes(s.doujutsuKey)
+      );
+    }
+
+    /* =========================
+       OUTROS PAIS NORMAIS
+    ========================= */
+    return !s.parent;
+  });
+
   const container = document.createElement("div");
   container.className = "directors";
-  
+
   parents.forEach(p => container.appendChild(buildBranch(p)));
   chart.appendChild(container);
 }
+
 
 // 🌟 Gasta ponto e upa skill
 async function levelUp(id) {
