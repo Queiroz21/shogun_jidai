@@ -219,7 +219,7 @@ function makeCard(skill) {
       if (type === "skill") {
         const sk = skills.find(s => s.id === req.id);
         current = sk?.level ?? 0;
-        need = req.level ?? 1;
+        need = req.level ?? req.lvl ?? 1;
         label = sk?.name ?? req.id;
         ok = current >= need ? "✔" : "❌";
       }
