@@ -334,3 +334,4 @@ async function checkLevelUp() {
     });
   }
 }
+}
