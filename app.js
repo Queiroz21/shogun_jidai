@@ -118,13 +118,58 @@ function makeCard(skill) {
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
-  el.innerHTML = `
-    <img src="${icon}">
-    <div class="tooltip">
-      <strong>${skill.name}</strong><br>
-      Nível: ${skill.level} / ${skill.max}
-    </div>
-  `;
+ /* ========================= TOOLTIP ========================= */
+	let tooltipHTML = `
+	<strong>${skill.name}</strong><br>
+	<small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
+	`;
+
+	if (skill.desc) {
+	  tooltipHTML += `<br><br>${skill.desc}`;
+	}
+
+	if (reqs.length) {
+	  tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
+	  reqs.forEach(req => {
+		const type = req.type ?? "skill";
+		let label = "";
+		let current = "-";
+		let need = "-";
+		let ok = "❌";
+
+		if (type === "skill") {
+		  const sk = skills.find(s => s.id === req.id);
+		  current = sk?.level ?? 0;
+		  need = req.level ?? req.lvl ?? 1;
+		  label = sk?.name ?? req.id;
+		  ok = current >= need ? "✔" : "❌";
+		}
+
+		if (type === "playerLevel") {
+		  current = userData.nivel ?? 0;
+		  need = req.level ?? 1;
+		  label = "Conta";
+		  ok = current >= need ? "✔" : "❌";
+		}
+
+		if (type === "region") {
+		  current = userData.regiao ?? "Nenhuma";
+		  need = req.value;
+		  label = "Região";
+		  ok = current === need ? "✔" : "❌";
+		}
+
+		if (type === "clan") {
+		  current = userData.cla ?? "Nenhum";
+		  need = req.value;
+		  label = "Clã";
+		  ok = current === need ? "✔" : "❌";
+		}
+
+		tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
+	  });
+	}
+
 
   el.onclick = () => {
     if (!unlocked) return;
