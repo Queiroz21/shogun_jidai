@@ -78,7 +78,7 @@ function checkRequirements(skill) {
     if (type === "skill") {
       const sk = skills.find(s => s.id === req.id);
       const cur = sk?.level ?? 0;
-      const need = req.level ?? 1;
+      const need = req.level ?? req.lvl ?? 1;
       if (cur < need) missing.push({ label: sk?.name ?? req.id, cur, need });
     }
 
