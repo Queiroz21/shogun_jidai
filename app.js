@@ -322,3 +322,6 @@ async function checkLevelUp() {
   }
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  loadClans();
+});

@@ -145,6 +145,6 @@ if (document.getElementById("btnCriar")) {
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadClas();
+  loadClans();
 });
 
