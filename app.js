@@ -1,16 +1,31 @@
-// app.js — versão FINAL RESTAURADA + DOUJUTSU FUNCIONAL
+// app.js — FINAL CORRIGIDO (XP + LEVEL UP + POPUP)
 
 import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged,browserSessionPersistence } from
+import { onAuthStateChanged } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
 let skillsState = {};
 let userData = {};
 let skills = [];
+
+/* =========================================================
+   XP — PROGRESSÃO REAL (100, 300, 600…)
+========================================================= */
+function xpToReachLevel(level) {
+  return 100 * (level - 1) * level / 2;
+}
+
+function calculateLevelFromXP(xp) {
+  let level = 1;
+  while (xp >= xpToReachLevel(level + 1)) {
+    level++;
+  }
+  return level;
+}
 
 /* =========================================================
    UTIL — NORMALIZA DOUJUTSUS
@@ -30,9 +45,9 @@ async function loadSkills() {
   const loaded = snap.docs.map(d => d.data());
 
   loaded.forEach(s => {
-    s.level    = skillsState[s.id] ?? 0;
+    s.level = skillsState[s.id] ?? 0;
     s.requires = s.requires ?? [];
-    s.max      = s.max ?? 5;
+    s.max = s.max ?? 5;
   });
 
   return loaded;
@@ -41,16 +56,6 @@ async function loadSkills() {
 /* =========================================================
    AUTH
 ========================================================= */
-import { signOut } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-//Segurança de login
-/*window.addEventListener("beforeunload", () => {
-  if (auth.currentUser) {
-    signOut(auth);
-  }
-});*/
-
 onAuthStateChanged(auth, async user => {
   if (!user) {
     window.location.href = "index.html";
@@ -61,12 +66,12 @@ onAuthStateChanged(auth, async user => {
   const snap = await getDoc(doc(db, "fichas", currentUID));
   userData = snap.data() ?? {};
 
-  userData.nick    ??= "Sem Nome";
-  userData.cla     ??= "Nenhum";
-  userData.xp      ??= 0;
-  userData.nivel   ??= 1;
-  userData.pontos  ??= 0;
-  userData.skills  ??= {};
+  userData.nick ??= "Sem Nome";
+  userData.cla ??= "Nenhum";
+  userData.xp ??= 0;
+  userData.nivel ??= 1;
+  userData.pontos ??= 0;
+  userData.skills ??= {};
 
   skillsState = { ...userData.skills };
   skills = await loadSkills();
@@ -74,6 +79,47 @@ onAuthStateChanged(auth, async user => {
   await checkLevelUp();
   render();
 });
+
+/* =========================================================
+   LEVEL UP — XP REAL + POPUP
+========================================================= */
+async function checkLevelUp() {
+  const oldLevel = userData.nivel;
+  const newLevel = calculateLevelFromXP(userData.xp);
+
+  if (newLevel > oldLevel) {
+    const gainedLevels = newLevel - oldLevel;
+    const gainedPoints = gainedLevels * 2;
+
+    userData.nivel = newLevel;
+    userData.pontos += gainedPoints;
+
+    await updateDoc(doc(db, "fichas", currentUID), {
+      nivel: userData.nivel,
+      pontos: userData.pontos
+    });
+
+    showLevelUpPopup(oldLevel, newLevel, gainedPoints);
+  }
+}
+
+/* =========================================================
+   POPUP LEVEL UP
+========================================================= */
+function showLevelUpPopup(oldLevel, newLevel, points) {
+  const popup = document.createElement("div");
+  popup.className = "levelup-popup";
+  popup.innerHTML = `
+    <strong>LEVEL UP!</strong><br>
+    ${oldLevel} → ${newLevel}<br>
+    +${points} pontos
+  `;
+  document.body.appendChild(popup);
+
+  setTimeout(() => popup.classList.add("show"), 50);
+  setTimeout(() => popup.classList.remove("show"), 3000);
+  setTimeout(() => popup.remove(), 3500);
+}
 
 /* =========================================================
    REGRAS — FONTE ÚNICA DA VERDADE
@@ -92,114 +138,47 @@ function checkRequirements(skill) {
       if (cur < need) missing.push({ label: sk?.name ?? req.id, cur, need });
     }
 
-    if (type === "playerLevel") {
-      if (userData.nivel < req.level)
-        missing.push({ label: "Conta", cur: userData.nivel, need: req.level });
+    if (type === "playerLevel" && userData.nivel < req.level) {
+      missing.push({ label: "Conta", cur: userData.nivel, need: req.level });
     }
 
-    if (type === "doujutsu") {
-      if (!userDoujutsus.includes(req.value))
-        missing.push({ label: "Doujutsu", cur: "Nenhum", need: req.value });
+    if (type === "doujutsu" && !userDoujutsus.includes(req.value)) {
+      missing.push({ label: "Doujutsu", cur: "Nenhum", need: req.value });
     }
 
-    if (type === "jin" && !userData.jin)
-      missing.push({ label: "Jinchuriki", cur: "Não", need: "Sim" });
-
-    if (type === "region" && userData.regiao !== req.value)
-      missing.push({ label: "Região", cur: userData.regiao ?? "Nenhuma", need: req.value });
-
-    if (type === "clan" && userData.cla !== req.value)
+    if (type === "clan" && userData.cla !== req.value) {
       missing.push({ label: "Clã", cur: userData.cla, need: req.value });
+    }
   }
 
-  return {
-    unlocked: missing.length === 0,
-    missing
-  };
+  return { unlocked: missing.length === 0, missing };
 }
 
 /* =========================================================
-   MAKE CARD — TOOLTIP COMPLETO
+   MAKE CARD
 ========================================================= */
 function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  const { unlocked, missing } = checkRequirements(skill);
+  const { unlocked } = checkRequirements(skill);
 
   const iconName = skill.icon || "default";
   const iconIndex = Math.min(skill.level ?? 0, skill.max);
-  const currentIcon = unlocked
-    ? `assets/icons/${iconName}_${iconIndex}.png`
-    : `assets/icons/${iconName}_locked.png`;
+  const icon = unlocked
+    ? assets/icons/${iconName}_${iconIndex}.png
+    : assets/icons/${iconName}_locked.png;
 
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
-  /* ========================= TOOLTIP (IGUAL AO ANTIGO) ========================= */
-
-  let tooltipHTML = `
-    <strong>${skill.name}</strong><br>
-    <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
-  `;
-
-  if (skill.desc) {
-    tooltipHTML += `<br><br>${skill.desc}`;
-  }
-
-  if (skill.requires?.length) {
-    tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
-
-    skill.requires.forEach(req => {
-      const type = req.type ?? "skill";
-      let label = "";
-      let current = "-";
-      let need = "-";
-      let ok = "❌";
-
-      if (type === "skill") {
-        const sk = skills.find(s => s.id === req.id);
-        current = sk?.level ?? 0;
-        need = req.level ?? req.lvl ?? 1;
-        label = sk?.name ?? req.id;
-        ok = current >= need ? "✔" : "❌";
-      }
-
-      if (type === "playerLevel") {
-        current = userData.nivel ?? 0;
-        need = req.level;
-        label = "Conta";
-        ok = current >= need ? "✔" : "❌";
-      }
-
-      if (type === "doujutsu") {
-        current = normalizeDoujutsus().join(", ") || "Nenhum";
-        need = req.value;
-        label = "Doujutsu";
-        ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
-      }
-
-      if (type === "region") {
-        current = userData.regiao ?? "Nenhuma";
-        need = req.value;
-        label = "Região";
-        ok = current === need ? "✔" : "❌";
-      }
-
-      if (type === "clan") {
-        current = userData.cla ?? "Nenhum";
-        need = req.value;
-        label = "Clã";
-        ok = current === need ? "✔" : "❌";
-      }
-
-      tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
-    });
-  }
-
   el.innerHTML = `
-    <img src="${currentIcon}">
-    <div class="tooltip">${tooltipHTML}</div>
+    <img src="${icon}">
+    <div class="tooltip">
+      <strong>${skill.name}</strong><br>
+      <small>Nível: ${skill.level ?? 0} / ${skill.max}</small><br><br>
+      ${skill.desc ?? ""}
+    </div>
   `;
 
   el.onclick = () => {
@@ -210,74 +189,51 @@ function makeCard(skill) {
   return el;
 }
 
-
-
 /* =========================================================
-   BUILD TREE — SEM VAZAMENTO DE DOUJUTSU
+   BUILD TREE
 ========================================================= */
 function buildBranch(parent) {
-  const userDoujutsus = normalizeDoujutsus();
-
   const branch = document.createElement("div");
   branch.className = "branch";
   branch.appendChild(makeCard(parent));
 
   const kids = skills.filter(s => s.parent === parent.id);
   if (kids.length) {
-    branch.appendChild(Object.assign(document.createElement("div"), {
-      className: "branch-line"
-    }));
-
     const row = document.createElement("div");
     row.className = "child-row";
     kids.forEach(k => row.appendChild(buildBranch(k)));
     branch.appendChild(row);
   }
-
   return branch;
 }
 
 /* =========================================================
-   RENDER — HUD + ÁRVORE
+   RENDER
 ========================================================= */
 function render() {
   document.getElementById("infoTopo").textContent =
-    `${userData.nick} | Clã: ${userData.cla}`;
+    ${userData.nick} | Clã: ${userData.cla};
 
   document.getElementById("points").textContent =
-    `Pontos Disponíveis: ${userData.pontos}`;
+    Pontos Disponíveis: ${userData.pontos};
 
-  const xpNeeded = userData.nivel * 20;
-  document.getElementById("player-level").textContent = `Level: ${userData.nivel}`;
+  const xpCurrent = xpToReachLevel(userData.nivel);
+  const xpNext = xpToReachLevel(userData.nivel + 1);
+  const progress = ((userData.xp - xpCurrent) / (xpNext - xpCurrent)) * 100;
+
+  document.getElementById("player-level").textContent =
+    Level: ${userData.nivel};
+
   document.getElementById("player-xp").textContent =
-    `XP: ${userData.xp} / ${xpNeeded}`;
+    XP: ${userData.xp} / ${xpNext};
+
   document.getElementById("xp-bar").style.width =
-    `${Math.min((userData.xp / xpNeeded) * 100, 100)}%`;
+    ${Math.min(Math.max(progress, 0), 100)}%;
 
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
-  const userDoujutsus = normalizeDoujutsus();
-
-  const parents = skills.filter(s => {
-
-	  // 🔹 JIN
-	  if (s.id === "jin") return !!userData.jin;
-
-	  // 🔹 GUIA DOUJUTSU (aparece se tiver QUALQUER doujutsu)
-	  if (s.id === "doujutsu") {
-		return normalizeDoujutsus().length > 0;
-	  }
-
-	  // 🔹 RAMOS DE DOUJUTSU (Sharingan, Rinnegan…)
-	  if (s.type === "doujutsu" && !s.parent) {
-		return normalizeDoujutsus().includes(s.doujutsuKey);
-	  }
-
-	  // 🔹 OUTROS PAIS NORMAIS
-	  return !s.parent && s.type !== "doujutsu";
-	});
-
+  const parents = skills.filter(s => !s.parent);
   const container = document.createElement("div");
   container.className = "directors";
   parents.forEach(p => container.appendChild(buildBranch(p)));
@@ -285,12 +241,11 @@ function render() {
 }
 
 /* =========================================================
-   LEVEL UP — BLOQUEIO REAL
+   LEVEL UP SKILL
 ========================================================= */
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
   if (!sk || sk.level >= sk.max || userData.pontos <= 0) return;
-
   if (!checkRequirements(sk).unlocked) return;
 
   sk.level++;
@@ -304,24 +259,3 @@ async function levelUp(id) {
 
   render();
 }
-
-/* =========================================================
-   XP
-========================================================= */
-async function checkLevelUp() {
-  const newLevel = 1 + Math.floor(userData.xp / 20);
-  if (newLevel > userData.nivel) {
-    const gain = (newLevel - userData.nivel) * 2;
-    userData.nivel = newLevel;
-    userData.pontos += gain;
-
-    await updateDoc(doc(db, "fichas", currentUID), {
-      nivel: userData.nivel,
-      pontos: userData.pontos
-    });
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadClans();
-});

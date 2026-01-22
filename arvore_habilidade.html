@@ -23,7 +23,17 @@
     <div id="points"></div>
     <div id="org-chart"></div>
 		
-		
+	<div id="confirmModal" class="modal hidden">
+	  <div class="modal-box">
+		<h3 id="modalTitle"></h3>
+		<p id="modalText"></p>
+
+		<div class="modal-actions">
+		  <button id="btnConfirm">Confirmar</button>
+		  <button id="btnCancel">Cancelar</button>
+		</div>
+	  </div>
+	</div>
 	<script type="module" src="app.js"></script>
 	<script>
 		document.querySelectorAll('.skill').forEach(s => {
