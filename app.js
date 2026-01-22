@@ -41,6 +41,15 @@ async function loadSkills() {
 /* =========================================================
    AUTH
 ========================================================= */
+import { signOut } from
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+window.addEventListener("beforeunload", () => {
+  if (auth.currentUser) {
+    signOut(auth);
+  }
+});
+
 onAuthStateChanged(auth, async user => {
   if (!user) {
     window.location.href = "index.html";

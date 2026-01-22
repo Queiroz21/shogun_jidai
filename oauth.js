@@ -4,7 +4,9 @@ import {
   getAuth, 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  onAuthStateChanged 
+  onAuthStateChanged,
+  setPersistence,
+  browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
   getFirestore,
@@ -29,6 +31,29 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+//segurança
+export const auth = getAuth();
+
+// 🔐 MELHOR PRÁTICA
+await setPersistence(auth, browserSessionPersistence);
+
+let timeout;
+
+function resetTimer() {
+  clearTimeout(timeout);
+  timeout = setTimeout(() => {
+    signOut(auth);
+    alert("Sessão expirada por inatividade.");
+    window.location.href = "index.html";
+  }, 30 * 60 * 1000); // 30 min
+}
+
+["click","mousemove","keydown"].forEach(evt =>
+  window.addEventListener(evt, resetTimer)
+);
+
+resetTimer();
 
 // ------- LOGIN HANDLER -------
 if (document.getElementById("btnLogin")) {
