@@ -263,7 +263,7 @@ function makeCard(skill) {
   };
 
   return el;
-}
+}}
 
 /* =========================================================
    BUILD TREE
