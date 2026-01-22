@@ -86,7 +86,7 @@ onAuthStateChanged(auth, async user => {
 function xpTotalForLevel(level) {
   // progressão: 100, +200, +300, +400...
   // fórmula: 50 * level * (level - 1)
-  return 50 * level * (level - 1);
+  return 100 * level * (level - 1);
 }
 
 async function checkLevelUp() {
@@ -201,7 +201,7 @@ function makeCard(skill) {
 
   el.onclick = () => {
     if (!unlocked) return;
-    levelUp(skill.id);
+    openConfirm(skill);
   };
 
   return el;
@@ -277,3 +277,33 @@ async function levelUp(id) {
 
   render();
 }
+
+let pendingSkillId = null;
+
+function openConfirm(skill) {
+  pendingSkillId = skill.id;
+
+  document.getElementById("modalTitle").textContent = skill.name;
+  document.getElementById("modalText").innerHTML = `
+    Nível atual: ${skill.level ?? 0}<br>
+    Próximo nível: ${(skill.level ?? 0) + 1}<br>
+    Custo: 1 ponto
+  `;
+
+  document.getElementById("confirmModal").classList.remove("hidden");
+}
+
+function closeConfirm() {
+  pendingSkillId = null;
+  document.getElementById("confirmModal").classList.add("hidden");
+}
+
+document.getElementById("btnConfirm").onclick = async () => {
+  if (!pendingSkillId) return;
+
+  await levelUp(pendingSkillId);
+  closeConfirm();
+};
+
+document.getElementById("btnCancel").onclick = closeConfirm;
+
