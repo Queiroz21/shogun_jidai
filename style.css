@@ -315,21 +315,3 @@ h1 { margin-top: 15px; }
   display: flex;
   justify-content: space-between;
 }
-.level-up-popup {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: #111;
-  color: #fff;
-  padding: 14px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all .3s ease;
-  z-index: 9999;
-}
-.level-up-popup.show {
-  opacity: 1;
-  transform: translateY(0);
-}
