@@ -114,7 +114,7 @@ async function checkLevelUp() {
 /* =========================================================
    POPUP LEVEL UP
 ========================================================= */
-function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
+/*function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
   const popup = document.getElementById("levelUpPopup");
   if (!popup) return;
 
@@ -129,6 +129,14 @@ function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
   setTimeout(() => {
     popup.classList.remove("show");
   }, 3500);
+}*/
+
+function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
+  alert(
+    "LEVEL UP!\n\n" +
+    "Nível: ${oldLevel} → ${newLevel}\n" +
+    "Pontos ganhos: +${gainedPoints}"
+  );
 }
 
 /* =========================================================
