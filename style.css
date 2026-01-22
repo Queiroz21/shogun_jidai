@@ -315,3 +315,12 @@ h1 { margin-top: 15px; }
   display: flex;
   justify-content: space-between;
 }
+.skill-name {
+  margin-top: 4px;
+  font-size: 12px;
+  text-align: center;
+  color: #eaeaea;
+  max-width: 80px;
+  line-height: 1.1;
+  pointer-events: none; /* não atrapalha o hover */
+}	

@@ -254,6 +254,7 @@ function makeCard(skill) {
 
   el.innerHTML = `
     <img src="${currentIcon}">
+	<div class="skill-name">${skill.name}</div>
     <div class="tooltip">${tooltipHTML}</div>
   `;
 
