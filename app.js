@@ -4,7 +4,7 @@ import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged, setPersistence,browserSessionPersistence } from
+import { onAuthStateChanged,browserSessionPersistence } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
@@ -44,11 +44,12 @@ async function loadSkills() {
 import { signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-window.addEventListener("beforeunload", () => {
+//Segurança de login
+/*window.addEventListener("beforeunload", () => {
   if (auth.currentUser) {
     signOut(auth);
   }
-});
+});*/
 
 onAuthStateChanged(auth, async user => {
   if (!user) {

@@ -144,3 +144,30 @@ if (document.getElementById("btnCriar")) {
 document.addEventListener("DOMContentLoaded", () => {
   loadClans();
 });
+
+// ===============================
+// LOAD CLÃS (GLOBAL)
+// ===============================
+export async function loadClas() {
+  const select = document.getElementById("claSelect");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Selecione um clã</option>`;
+
+  const snap = await getDocs(collection(db, "clas"));
+
+  snap.forEach(docSnap => {
+    const cla = docSnap.data();
+
+    const opt = document.createElement("option");
+    opt.value = cla.id ?? docSnap.id;
+    opt.textContent = cla.nome ?? cla.id;
+
+    select.appendChild(opt);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadClas();
+});
+
