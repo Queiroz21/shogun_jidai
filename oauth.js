@@ -32,8 +32,6 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-//segurança
-export const auth = getAuth();
 
 // 🔐 MELHOR PRÁTICA
 await setPersistence(auth, browserSessionPersistence);

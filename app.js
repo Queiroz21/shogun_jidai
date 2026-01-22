@@ -4,7 +4,7 @@ import { auth, db } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from
+import { onAuthStateChanged, setPersistence,browserSessionPersistence } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let currentUID = null;
