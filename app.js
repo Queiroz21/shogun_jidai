@@ -259,7 +259,7 @@ function makeCard(skill) {
 
   el.onclick = () => {
     if (!unlocked) return;
-    levelUp(skill.id);
+    openConfirm(skill);
   };
 
   return el;
@@ -343,10 +343,14 @@ function openConfirm(skill) {
 
   document.getElementById("modalTitle").textContent = skill.name;
   document.getElementById("modalText").innerHTML = `
-    Nível atual: ${skill.level ?? 0}<br>
-    Próximo nível: ${(skill.level ?? 0) + 1}<br>
-    Custo: 1 ponto
-  `;
+  <strong>Você tem certeza?</strong><br><br>
+  Ao confirmar, essa escolha será <b>PERMANENTE</b> e não poderá ser desfeita.<br><br>
+  <hr>
+  <b>${skill.name}</b><br>
+  Nível atual: ${skill.level ?? 0}<br>
+  Próximo nível: ${(skill.level ?? 0) + 1}<br>
+  Custo: 1 ponto
+`;
 
   document.getElementById("confirmModal").classList.remove("hidden");
 }
