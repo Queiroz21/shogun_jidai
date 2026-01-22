@@ -86,7 +86,7 @@ onAuthStateChanged(auth, async user => {
 function xpTotalForLevel(level) {
   // progressão: 100, +200, +300, +400...
   // fórmula: 50 * level * (level - 1)
-  return 100 * level * (level - 1);
+  return  100 * (level - 1) * level / 2;
 }
 
 async function checkLevelUp() {
@@ -107,7 +107,7 @@ async function checkLevelUp() {
       pontos: userData.pontos
     });
 
-    showLevelUpPopup(oldLevel, userData.nivel, gainedPoints);
+    //showLevelUpPopup(oldLevel, userData.nivel, gainedPoints);
 	alert(`🎉 Parabéns! Subiu para nível ${userData.nivel} e ganhou ${gainedPoints} pontos!`);
   }
 }
