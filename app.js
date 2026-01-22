@@ -166,8 +166,8 @@ function makeCard(skill) {
   const iconName = skill.icon || "default";
   const iconIndex = Math.min(skill.level ?? 0, skill.max);
   const icon = unlocked
-    ? 'assets/icons/${iconName}_${iconIndex}.png'
-    : 'assets/icons/${iconName}_locked.png';
+    ? `assets/icons/${iconName}_${iconIndex}.png`
+    : `assets/icons/${iconName}_locked.png`;
 
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
@@ -212,23 +212,23 @@ function buildBranch(parent) {
 ========================================================= */
 function render() {
   document.getElementById("infoTopo").textContent =
-    ${userData.nick} | Clã: ${userData.cla};
+    `${userData.nick} | Clã: ${userData.cla}`;
 
   document.getElementById("points").textContent =
-    Pontos Disponíveis: ${userData.pontos};
+    `Pontos Disponíveis: ${userData.pontos}`;
 
   const xpCurrent = xpToReachLevel(userData.nivel);
   const xpNext = xpToReachLevel(userData.nivel + 1);
   const progress = ((userData.xp - xpCurrent) / (xpNext - xpCurrent)) * 100;
 
   document.getElementById("player-level").textContent =
-    Level: ${userData.nivel};
+    `Level: ${userData.nivel}`;
 
   document.getElementById("player-xp").textContent =
-    XP: ${userData.xp} / ${xpNext};
+    `XP: ${userData.xp} / ${xpNext}`;
 
   document.getElementById("xp-bar").style.width =
-    ${Math.min(Math.max(progress, 0), 100)}%;
+    `${Math.min(Math.max(progress, 0), 100)}%`;
 
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
