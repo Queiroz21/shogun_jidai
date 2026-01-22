@@ -108,6 +108,7 @@ async function checkLevelUp() {
     });
 
     showLevelUpPopup(oldLevel, userData.nivel, gainedPoints);
+	alert(`🎉 Parabéns! Subiu para nível ${userData.nivel} e ganhou ${gainedPoints} pontos!`);
   }
 }
 
@@ -179,33 +180,90 @@ function makeCard(skill) {
   const el = document.createElement("div");
   el.className = "skill";
 
-  const { unlocked } = checkRequirements(skill);
+  const { unlocked, missing } = checkRequirements(skill);
 
   const iconName = skill.icon || "default";
   const iconIndex = Math.min(skill.level ?? 0, skill.max);
-  const icon = unlocked
+  const currentIcon = unlocked
     ? `assets/icons/${iconName}_${iconIndex}.png`
     : `assets/icons/${iconName}_locked.png`;
 
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
+  /* ========================= TOOLTIP (IGUAL AO ANTIGO) ========================= */
+
+  let tooltipHTML = `
+    <strong>${skill.name}</strong><br>
+    <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
+  `;
+
+  if (skill.desc) {
+    tooltipHTML += `<br><br>${skill.desc}`;
+  }
+
+  if (skill.requires?.length) {
+    tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
+
+    skill.requires.forEach(req => {
+      const type = req.type ?? "skill";
+      let label = "";
+      let current = "-";
+      let need = "-";
+      let ok = "❌";
+
+      if (type === "skill") {
+        const sk = skills.find(s => s.id === req.id);
+        current = sk?.level ?? 0;
+        need = req.level ?? req.lvl ?? 1;
+        label = sk?.name ?? req.id;
+        ok = current >= need ? "✔" : "❌";
+      }
+
+      if (type === "playerLevel") {
+        current = userData.nivel ?? 0;
+        need = req.level;
+        label = "Conta";
+        ok = current >= need ? "✔" : "❌";
+      }
+
+      if (type === "doujutsu") {
+        current = normalizeDoujutsus().join(", ") || "Nenhum";
+        need = req.value;
+        label = "Doujutsu";
+        ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
+      }
+
+      if (type === "region") {
+        current = userData.regiao ?? "Nenhuma";
+        need = req.value;
+        label = "Região";
+        ok = current === need ? "✔" : "❌";
+      }
+
+      if (type === "clan") {
+        current = userData.cla ?? "Nenhum";
+        need = req.value;
+        label = "Clã";
+        ok = current === need ? "✔" : "❌";
+      }
+
+      tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
+    });
+  }
+
   el.innerHTML = `
-    <img src="${icon}">
-    <div class="tooltip">
-      <strong>${skill.name}</strong><br>
-      <small>Nível: ${skill.level ?? 0} / ${skill.max}</small><br><br>
-      ${skill.desc ?? ""}
-    </div>
+    <img src="${currentIcon}">
+    <div class="tooltip">${tooltipHTML}</div>
   `;
 
   el.onclick = () => {
     if (!unlocked) return;
-    openConfirm(skill);
+    levelUp(skill.id);
   };
 
   return el;
-}
+}}
 
 /* =========================================================
    BUILD TREE
