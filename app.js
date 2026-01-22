@@ -166,8 +166,8 @@ function makeCard(skill) {
   const iconName = skill.icon || "default";
   const iconIndex = Math.min(skill.level ?? 0, skill.max);
   const icon = unlocked
-    ? assets/icons/${iconName}_${iconIndex}.png
-    : assets/icons/${iconName}_locked.png;
+    ? 'assets/icons/${iconName}_${iconIndex}.png'
+    : 'assets/icons/${iconName}_locked.png';
 
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
