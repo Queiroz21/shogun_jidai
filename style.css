@@ -315,7 +315,7 @@ h1 { margin-top: 15px; }
   display: flex;
   justify-content: space-between;
 }
-.levelup-popup {
+.level-up-popup {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -329,9 +329,7 @@ h1 { margin-top: 15px; }
   transition: all .3s ease;
   z-index: 9999;
 }
-.levelup-popup.show {
+.level-up-popup.show {
   opacity: 1;
   transform: translateY(0);
 }
-
-

@@ -83,15 +83,23 @@ onAuthStateChanged(auth, async user => {
 /* =========================================================
    LEVEL UP — XP REAL + POPUP
 ========================================================= */
+function xpTotalForLevel(level) {
+  // progressão: 100, +200, +300, +400...
+  // fórmula: 50 * level * (level - 1)
+  return 50 * level * (level - 1);
+}
+
 async function checkLevelUp() {
-  const oldLevel = userData.nivel;
-  const newLevel = calculateLevelFromXP(userData.xp);
+  let oldLevel = userData.nivel;
 
-  if (newLevel > oldLevel) {
-    const gainedLevels = newLevel - oldLevel;
-    const gainedPoints = gainedLevels * 2;
+  while (userData.xp >= xpTotalForLevel(userData.nivel + 1)) {
+    userData.nivel++;
+  }
 
-    userData.nivel = newLevel;
+  if (userData.nivel > oldLevel) {
+    const gainedLevels = userData.nivel - oldLevel;
+    const gainedPoints = gainedLevels * 3; // ✅ 3 pontos por nível
+
     userData.pontos += gainedPoints;
 
     await updateDoc(doc(db, "fichas", currentUID), {
@@ -99,26 +107,28 @@ async function checkLevelUp() {
       pontos: userData.pontos
     });
 
-    showLevelUpPopup(oldLevel, newLevel, gainedPoints);
+    showLevelUpPopup(oldLevel, userData.nivel, gainedPoints);
   }
 }
 
 /* =========================================================
    POPUP LEVEL UP
 ========================================================= */
-function showLevelUpPopup(oldLevel, newLevel, points) {
-  const popup = document.createElement("div");
-  popup.className = "levelup-popup";
+function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
+  const popup = document.getElementById("levelUpPopup");
+  if (!popup) return;
+
   popup.innerHTML = `
     <strong>LEVEL UP!</strong><br>
     ${oldLevel} → ${newLevel}<br>
-    +${points} pontos
+    Pontos ganhos: +${gainedPoints}
   `;
-  document.body.appendChild(popup);
 
-  setTimeout(() => popup.classList.add("show"), 50);
-  setTimeout(() => popup.classList.remove("show"), 3000);
-  setTimeout(() => popup.remove(), 3500);
+  popup.classList.add("show");
+
+  setTimeout(() => {
+    popup.classList.remove("show");
+  }, 3500);
 }
 
 /* =========================================================
