@@ -370,3 +370,68 @@ document.getElementById("btnConfirm").onclick = async () => {
 
 document.getElementById("btnCancel").onclick = closeConfirm;
 
+/* =========================================================
+ CENTRALIZAÇÃO AUTOMÁTICA DA ÁRVORE
+========================================================= */
+function centerTree() {
+  const vp = document.getElementById("tree-viewport");
+  const tree = document.getElementById("org-chart");
+
+  if (!vp || !tree) return;
+
+  const centerX = (tree.scrollWidth - vp.clientWidth) / 2;
+  const centerY = (tree.scrollHeight - vp.clientHeight) / 2;
+
+  vp.scrollLeft = Math.max(0, centerX);
+  vp.scrollTop = Math.max(0, centerY);
+}
+
+window.addEventListener("load", () => {
+  setTimeout(centerTree, 100); // aguarda renderização
+});
+
+window.addEventListener("resize", centerTree);
+
+
+/* =========================================================
+  NAVEGAR NO SITE
+========================================================= */
+let isDragging = false;
+let startX, startY, scrollLeft, scrollTop;
+
+const viewport = document.getElementById("tree-viewport");
+
+if (viewport) {
+
+  viewport.addEventListener("mousedown", e => {
+    isDragging = true;
+    viewport.classList.add("grabbing");
+
+    startX = e.pageX;
+    startY = e.pageY;
+    scrollLeft = viewport.scrollLeft;
+    scrollTop = viewport.scrollTop;
+
+    e.preventDefault();
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+    viewport.classList.remove("grabbing");
+  });
+
+  viewport.addEventListener("mousemove", e => {
+    if (!isDragging) return;
+
+    e.preventDefault();
+
+    const dx = e.pageX - startX;
+    const dy = e.pageY - startY;
+
+    viewport.scrollLeft = scrollLeft - dx;
+    viewport.scrollTop = scrollTop - dy;
+  });
+
+  viewport.addEventListener("dragstart", e => e.preventDefault());
+
+}
