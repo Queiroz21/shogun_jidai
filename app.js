@@ -348,7 +348,7 @@ function render() {
     `Level: ${userData.nivel}`;
 
   document.getElementById("player-xp").textContent =
-    `XP: ${userData.xp} / ${xpNext}`;
+    `XP: ${userData.xp} / ${xpNext} | Pontos de FICHA: ${250+ (userData.nivel-1)*40}`;
 
   document.getElementById("xp-bar").style.width =
     `${Math.min(Math.max(progress, 0), 100)}%`;
