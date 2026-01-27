@@ -40,18 +40,46 @@ function normalizeDoujutsus() {
 /* =========================================================
    LOAD SKILLS
 ========================================================= */
-async function loadSkills() {
-  // 🔽 UM único documento com todas as skills
-  const snap = await getDoc(doc(db, "game_data", "skills"));
+//OLD VERSION -> PRIMEIRO JSON
+// async function loadSkills() {
+//   const snap = await getDocs(collection(db, "skill_tree"));
+//   const loaded = snap.docs.map(d => d.data());
 
-  const data = snap.data();
-  const loaded = data?.Skills ?? [];
+//   loaded.forEach(s => {
+//     s.level = skillsState[s.id] ?? 0;
+//     s.requires = s.requires ?? [];
+//     s.max = s.max ?? 5;
+//   });
 
-  loaded.forEach(s => {
-    s.level = skillsState[s.id] ?? 0;
-    s.requires = s.requires ?? [];
-    s.max = s.max ?? 5;
-  });
+//   return loaded;
+// }
+async function loadSkills(skillsState = {}) {
+  const ref = doc(db, "game_data", "skills_v1");
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    throw new Error("Documento skills_v1 não encontrado");
+  }
+
+  const { VERSION, Skills } = snap.data();
+
+  if (!Array.isArray(Skills)) {
+    throw new Error("Formato inválido: Skills não é um array");
+  }
+
+  const loaded = Skills.map(skill => ({
+    ...skill,
+
+    // nível vem do estado do jogador
+    level: skillsState[skill.id] ?? 0,
+
+    // garante consistência sem alterar significado
+    requires: skill.requires ?? [],
+    parent: skill.parent ?? null,
+
+    // NÃO altera max
+    max: skill.max
+  }));
 
   return loaded;
 }
