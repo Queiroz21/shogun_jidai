@@ -41,8 +41,11 @@ function normalizeDoujutsus() {
    LOAD SKILLS
 ========================================================= */
 async function loadSkills() {
-  const snap = await getDocs(collection(db, "skill_tree"));
-  const loaded = snap.docs.map(d => d.data());
+  // 🔽 UM único documento com todas as skills
+  const snap = await getDoc(doc(db, "game_data", "skills"));
+
+  const data = snap.data();
+  const loaded = data?.Skills ?? [];
 
   loaded.forEach(s => {
     s.level = skillsState[s.id] ?? 0;
@@ -52,6 +55,7 @@ async function loadSkills() {
 
   return loaded;
 }
+
 
 /* =========================================================
    AUTH
