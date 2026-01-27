@@ -11,6 +11,9 @@ let currentUID = null;
 let skillsState = {};
 let userData = {};
 let skills = [];
+let currentCategory = "fisico";
+let lastScroll = { left: 0, top: 0 }; 
+let openNodes = new Set();
 
 /* =========================================================
    XP — PROGRESSÃO REAL (100, 300, 600…)
@@ -309,7 +312,7 @@ function makeCard(skill) {
 
 /* =========================================================
    BUILD TREE
-========================================================= */
+
 function buildBranch(parent) {
   const branch = document.createElement("div");
   branch.className = "branch";
@@ -324,6 +327,8 @@ function buildBranch(parent) {
   }
   return branch;
 }
+
+========================================================= */
 
 /* =========================================================
    RENDER
@@ -351,11 +356,119 @@ function render() {
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
-  const parents = skills.filter(s => !s.parent);
+  renderTreeByCategory(); 
+
+}
+
+/* =========================================================
+   RENDER GRID POR CATEGORIA
+========================================================= */
+function renderTreeByCategory() {
+  const viewport = document.getElementById("tree-viewport");
+
+  lastScroll.left = viewport.scrollLeft;
+  lastScroll.top = viewport.scrollTop;
+
+  const chart = document.getElementById("org-chart");
+  chart.innerHTML = "";
+
+  const catSkills = skills.filter(s => s.parent === currentCategory);
+
+  if (!catSkills.length) {
+    chart.innerHTML = "<p class='empty'>Nenhuma skill nesta categoria</p>";
+    return;
+  }
+
+  const map = {};
+  skills.forEach(s => {
+    s.children = []; 
+    map[s.id] = s;
+  });
+
+  
+  skills.forEach(s => {
+    if (s.parent && map[s.parent]) {
+      map[s.parent].children.push(s);
+    }
+  });
+
   const container = document.createElement("div");
-  container.className = "directors";
-  parents.forEach(p => container.appendChild(buildBranch(p)));
+  container.className = "tree-container";
+
+  const rootRow = document.createElement("div");
+  rootRow.className = "tree-row"; // Nível raiz
+
+  catSkills.forEach(root => {
+    rootRow.appendChild(renderNode(map[root.id]));
+  });
+
+  container.appendChild(rootRow);
   chart.appendChild(container);
+
+  // Restaura scroll
+  requestAnimationFrame(() => {
+    viewport.scrollLeft = lastScroll.left;
+    viewport.scrollTop = lastScroll.top;
+  });
+}
+
+/* =========================================================
+   RENDER NODE RECURSIVO
+========================================================= */
+function renderNode(skill) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "tree-node";
+
+  const header = document.createElement("div");
+  header.className = "node-header";
+
+  const card = makeCard(skill); // Usa makeCard() do oficial
+  header.appendChild(card);
+
+  let childrenBox = null;
+
+  if (skill.children.length) {
+    const toggle = document.createElement("button");
+    toggle.className = "node-toggle";
+    toggle.textContent = "+";
+
+    header.appendChild(toggle);
+
+    childrenBox = document.createElement("div");
+    childrenBox.className = "tree-children";
+
+    const isOpen = openNodes.has(skill.id);
+    if (!isOpen) childrenBox.classList.add("hidden");
+
+    const row = document.createElement("div");
+    row.className = "tree-row"; // Nível de filhos
+
+    skill.children.forEach(child => {
+      row.appendChild(renderNode(child));
+    });
+
+    childrenBox.appendChild(row);
+
+    toggle.onclick = () => {
+      const isClosing = !childrenBox.classList.contains("hidden");
+      if (isClosing) {
+        childrenBox.classList.add("hidden");
+        openNodes.delete(skill.id);
+        toggle.textContent = "+";
+      } else {
+        childrenBox.classList.remove("hidden");
+        openNodes.add(skill.id);
+        toggle.textContent = "−";
+      }
+    };
+
+    toggle.textContent = openNodes.has(skill.id) ? "−" : "+";
+  }
+
+  wrapper.appendChild(header);
+  if (childrenBox) wrapper.appendChild(childrenBox);
+
+  return wrapper;
 }
 
 /* =========================================================
@@ -402,7 +515,9 @@ function closeConfirm() {
   document.getElementById("confirmModal").classList.add("hidden");
 }
 
-document.getElementById("btnConfirm").onclick = async () => {
+document.getElementById("btnConfirm").onclick = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   if (!pendingSkillId) return;
 
   await levelUp(pendingSkillId);
@@ -476,3 +591,29 @@ if (viewport) {
   viewport.addEventListener("dragstart", e => e.preventDefault());
 
 }
+
+/* =========================================================
+   CATEGORIAS
+========================================================= */
+/* function canAccessCategory(cat) {
+  // Lógica do experimental: ex: para "doujutsu", checa se tem doujutsus
+  if (cat === "doujutsu") return normalizeDoujutsus().length > 0;
+  return true;
+} */
+
+  function canAccessCategory(cat) {
+  return true;  // ← remove qualquer bloqueio por enquanto
+}
+
+document.querySelectorAll(".cat").forEach(btn => {
+  btn.onclick = () => {
+    const cat = btn.dataset.cat;
+    if (!canAccessCategory(cat)) return;
+
+    document.querySelectorAll(".cat").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    currentCategory = cat;
+    renderTreeByCategory();
+  };
+});
