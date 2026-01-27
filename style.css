@@ -4,6 +4,7 @@
 body {
   background: url('assets/stars.png') repeat #000;
   background-size: cover;
+  padding-top: 70px;
   color: #fff;
   font-family: Arial, sans-serif;
   text-align: center;
@@ -166,6 +167,7 @@ h1 { margin-top: 15px; }
   background: transparent !important; /* mata o fundo cinza */
   padding: 0;
   margin: 4px;
+  margin-top: 150px;
   border-radius: 14px;
   box-sizing: content-box;
   cursor: pointer;
@@ -301,7 +303,7 @@ h1 { margin-top: 15px; }
 #tree-viewport {
   position: relative;
   width: 100vw;
-  height: calc(100vh - 200px);
+  height: 100vh;
   overflow: auto;
   cursor: grab;
 }
@@ -353,18 +355,87 @@ h1 { margin-top: 15px; }
 /* =========================================================
  🎛 HEADER DO PLAYER (nome, clan, lv, xp, pontos)
 ========================================================= */
-#player-header {
+/* =========================================================
+ 🧾 FICHA DO JOGADOR (compacta, flutuante)
+========================================================= */
+#player-card {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 260px;
+  background: rgba(5, 10, 25, 0.92);
+  border: 1px solid #4af;
+  border-radius: 12px;
+  padding: 12px;
+  z-index: 1000;
+  box-shadow: 0 0 12px rgba(80,180,255,.4);
+  backdrop-filter: blur(6px);
+  text-align: left;
+  font-size: 14px;
+}
+
+.player-name {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.player-clan {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.player-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.xp-box {
+  margin-top: 6px;
+}
+
+.xp-text {
+  font-size: 12px;
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+
+.xp-bar-bg {
   width: 100%;
-  padding: 8px 16px;
-  background: rgba(0,0,0,0.5);
-  border-bottom: 1px solid #4af;
-  backdrop-filter: blur(4px);
-  position: sticky;
-  top: 0;
-  z-index: 999999;
+  height: 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.xp-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2aff2a, #9cff9c);
+  transition: width .4s;
+}
+
+.player-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.player-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid #4af;
+  background: rgba(20,40,90,.4);
+  color: white;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.player-btn:hover {
+  background: rgba(80,180,255,.6);
 }
 
 #player-left span,
@@ -392,16 +463,6 @@ h1 { margin-top: 15px; }
   transition: width .4s;
 }
 
-/* Pontos disponíveis */
-#points-header {
-  width: 100%;
-  text-align: center;
-  padding: 4px;
-  font-size: 18px;
-  font-weight: bold;
-  background: rgba(0,0,0,0.6);
-  border-bottom: 1px solid #4af;
-}
 .modal {
   position: fixed;
   inset: 0;
@@ -465,6 +526,77 @@ h1 { margin-top: 15px; }
 .cat.active {
   background: rgba(80,180,255,.6);
   box-shadow: 0 0 8px #4af;
+}
+
+:root {
+--player-card-width: 260px;
+--tree-offset: calc(var(--player-card-width) + 80px);
+}
+
+
+#tree-viewport {
+padding-left: var(--tree-offset);
+box-sizing: border-box;
+}
+
+/* =========================================================
+ 🔝 HEADER SUPERIOR (ESTILO FACEBOOK)
+========================================================= */
+#top-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 56px;
+  background: rgba(5, 10, 25, 0.95);
+  border-bottom: 1px solid #4af;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  justify-content: initial;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 2000;
+  backdrop-filter: blur(6px);
+}
+
+#header-left {
+justify-self: start;
+}
+
+
+#header-center {
+justify-self: center;
+text-align: center;
+font-weight: bold;
+min-width: 0;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+
+
+#header-right {
+justify-self: end;
+display: flex;
+flex-wrap: nowrap;
+white-space: nowrap;
+gap: 8px;
+margin-right: 100px; /* 👈 puxa os botões para a esquerda */
+}
+
+/* BOTÕES */
+.header-btn {
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1px solid #4af;
+  background: rgba(20,40,90,.45);
+  color: white;
+  cursor: pointer;
+  transition: .2s;
+  font-size: 13px;
+}
+
+.header-btn:hover {
+  background: rgba(80,180,255,.65);
 }
 
 /* .cat.locked {

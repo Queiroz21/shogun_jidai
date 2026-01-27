@@ -8,21 +8,31 @@
 </head>
 
 <body>
+	<header id="top-header">
+
+		<!-- ESQUERDA: XP -->
+		<div id="header-left">
+			<p><span id="playerOnlyXp">XP: -- / --</span></p>
+		</div>
+
+		<!-- CENTRO: NOME -->
+		<div id="header-center">
+			<span id="infoTopo">---</span>
+		</div>
+		<!-- DIREITA: AÇÕES -->
+		<div id="header-right">
+			<button class="header-btn" id="btnPerfil">Perfil</button>
+			<button class="header-btn">Invocações</button>
+		</div>
+
+	</header>
+	
     <h1>Árvore de Habilidades</h1>
-	<div id="player-info">
-	  <p><span id="player-level">Level: --</span></p>
-	  <div id="xp-bar-container">
-		<div id="xp-bar"></div>
-	  </div>
-	  <p><span id="player-xp">XP: -- / --</span></p>
-	</div>
 	
 	<div id="levelUpPopup" class="level-up-popup"></div>
 	
-	<div id="infoTopo"></div>
 	<div id="xpBar" style="margin-top:12px; color:white;"></div>
 	<div id="levelInfo" style="margin-top:12px; color:white;"></div>
-    <div id="points"></div>
 	<div id="categoryBar" class="category-bar">
 	  <button class="cat active" data-cat="fisico">Físico</button>
       <button class="cat" data-cat="chakra">Chakra</button>

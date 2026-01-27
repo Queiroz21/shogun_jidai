@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Perfil - Árvore de Habilidades Naruto</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilos da página + modal */
+
+    .profile-container {
+      max-width: 1100px;
+      margin: 90px auto 40px;
+      padding: 0 20px;
+      color: #eee;
+    }
+
+    .ficha-header {
+      background: rgba(5, 10, 25, 0.92);
+      border: 1px solid #4af;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 0 16px rgba(80,180,255,0.3);
+      backdrop-filter: blur(6px);
+    }
+
+    .ficha-header h1 {
+      margin: 0 0 16px;
+      font-size: 2.1rem;
+      color: #4af;
+    }
+
+    .ficha-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px 24px;
+      font-size: 1.05rem;
+    }
+
+    .ficha-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(74, 170, 255, 0.18);
+    }
+
+    .ficha-row:last-child { border-bottom: none; }
+
+    .ficha-label { color: #88ccff; font-weight: 500; }
+
+    .skills-section { margin-top: 40px; }
+
+    .filters-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 16px 0 24px;
+      justify-content: center;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #4af;
+      background: rgba(20,40,90,0.4);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+
+    .filter-btn.active {
+      background: rgba(80,180,255,0.7);
+      box-shadow: 0 0 10px #4af;
+    }
+
+    .filter-btn:hover:not(.active) {
+      background: rgba(60,120,255,0.5);
+    }
+
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 28px 16px;
+    }
+
+    .skill-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: rgba(10, 20, 50, 0.4);
+      border: 1px solid #444;
+      border-radius: 10px;
+      padding: 12px 8px;
+      transition: all 0.22s;
+      cursor: pointer;
+    }
+
+    .skill-preview:hover {
+      transform: translateY(-4px);
+      background: rgba(20, 60, 120, 0.55);
+      border-color: #6af;
+      box-shadow: 0 6px 16px rgba(80,180,255,0.25);
+    }
+
+    .skill-preview.locked {
+      opacity: 0.55;
+      filter: grayscale(0.7);
+    }
+
+    .skill-preview img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 2px solid #555;
+      margin-bottom: 8px;
+    }
+
+    .skill-preview .name {
+      font-size: 0.9rem;
+      line-height: 1.15;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .skill-preview .level {
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+
+    .skill-preview .level.unlocked { color: #0f8; }
+    .skill-preview .level.locked   { color: #f66; }
+
+    .no-skills {
+      text-align: center;
+      color: #888;
+      font-style: italic;
+      padding: 60px 20px;
+      font-size: 1.15rem;
+      background: rgba(10,20,50,0.3);
+      border-radius: 12px;
+      border: 1px dashed #555;
+    }
+
+    /* ────────────────────────────────────────────────
+       MODAL
+    ──────────────────────────────────────────────── */
+    #skillModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    #skillModal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(10, 15, 35, 0.98);
+      border: 1px solid #4af;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 420px;
+      padding: 24px;
+      box-shadow: 0 0 30px rgba(74,170,255,0.4);
+      backdrop-filter: blur(6px);
+      color: #eee;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 28px;
+      color: #aaa;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-icon {
+      display: block;
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin: 0 auto 16px;
+      border: 2px solid #555;
+      border-radius: 10px;
+    }
+
+    .modal-title {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      color: #4af;
+    }
+
+    .modal-level {
+      text-align: center;
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+
+    .modal-desc {
+      margin: 16px 0;
+      line-height: 1.5;
+      font-size: 0.98rem;
+    }
+
+    .modal-reqs {
+      margin-top: 20px;
+    }
+
+    .modal-reqs h4 {
+      margin-bottom: 8px;
+      color: #88ccff;
+    }
+
+    .req-item {
+      margin: 6px 0;
+      font-size: 0.95rem;
+    }
+
+    .req-ok   { color: #0f8; }
+    .req-fail { color: #f66; }
+
+    @media (max-width: 500px) {
+      .modal-content { padding: 20px; }
+      .modal-icon { width: 64px; height: 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="top-header">
+  <div id="header-left">
+    <p><span id="playerOnlyXp">XP: -- / --</span></p>
+  </div>
+  <div id="header-center">
+    <span id="infoTopo">---</span>
+  </div>
+  <div id="header-right">
+    <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
+  </div>
+</header>
+
+<div class="profile-container">
+  <div class="ficha-header">
+    <h1>Ficha do Personagem</h1>
+    <div class="ficha-info-grid">
+      <div class="ficha-row"><span class="ficha-label">Nome/Nick:</span><strong id="perfil-nick">Carregando...</strong></div>
+      <div class="ficha-row"><span class="ficha-label">Clã:</span><strong id="perfil-cla">—</strong></div>
+      <div class="ficha-row"><span class="ficha-label">Nível:</span><strong id="perfil-nivel">—</strong></div>
+      <div class="ficha-row"><span class="ficha-label">XP Atual:</span><strong id="perfil-xp">—</strong></div>
+      <div class="ficha-row"><span class="ficha-label">Pontos disponíveis:</span><strong id="perfil-pontos">—</strong></div>
+    </div>
+  </div>
+
+  <div class="skills-section">
+    <h2>Habilidades</h2>
+    
+    <div id="categoryBar" class="category-bar">
+      <button class="cat active" data-cat="fisico">Físico</button>
+      <button class="cat" data-cat="chakra">Chakra</button>
+      <button class="cat" data-cat="mental">Mental</button>
+      <button class="cat" data-cat="KKG">Kekkei Genkai</button>
+      <button class="cat" data-cat="doujutsu">Doujutsu</button>
+      <button class="cat" data-cat="jinchuuriki">Jinchuuriki</button>
+    </div>
+
+    <div class="filters-bar">
+      <button class="filter-btn active" data-filter="all">Todas</button>
+      <button class="filter-btn" data-filter="unlocked">Já desbloqueadas</button>
+      <button class="filter-btn" data-filter="locked">Não desbloqueadas</button>
+    </div>
+
+    <div id="skills-grid" class="skills-grid"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="skillModal">
+  <div class="modal-content">
+    <span class="modal-close" id="closeModal">&times;</span>
+    <img id="modalIcon" class="modal-icon" src="" alt="">
+    <h2 id="modalTitle" class="modal-title"></h2>
+    <div id="modalLevel" class="modal-level"></div>
+    <div id="modalDesc" class="modal-desc"></div>
+    <div id="modalReqs" class="modal-reqs"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from "./oauth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  let currentUID = null;
+  let userData = {};
+  let allSkills = [];
+  let currentCategory = "fisico";
+  let currentFilter = "all";
+
+  const modal = document.getElementById("skillModal");
+  const closeModal = document.getElementById("closeModal");
+
+  closeModal.onclick = () => modal.classList.remove("show");
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("show"); };
+
+  async function loadSkills() {
+    const snap = await getDoc(doc(db, "game_data", "skills_v1"));
+    if (!snap.exists()) throw new Error("skills_v1 não encontrado");
+
+    const data = snap.data();
+    let raw = data.Skills ?? data.skills ?? {};
+
+    if (typeof raw === "object" && !Array.isArray(raw)) {
+      raw = Object.entries(raw).map(([id, obj]) => ({ id, ...obj }));
+    }
+
+    if (!Array.isArray(raw)) throw new Error("Formato inválido de Skills");
+
+    return raw.map(s => ({
+      ...s,
+      level: 0,
+      requires: s.requires ?? [],
+      max: s.max ?? 0
+    }));
+  }
+
+  function getAllDescendants(categoryId) {
+    const descendants = new Set([categoryId]);
+    function recurse(id) {
+      allSkills
+        .filter(s => s.parent === id)
+        .forEach(s => {
+          if (!descendants.has(s.id)) {
+            descendants.add(s.id);
+            recurse(s.id);
+          }
+        });
+    }
+    recurse(categoryId);
+    return descendants;
+  }
+
+  onAuthStateChanged(auth, async user => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    currentUID = user.uid;
+    const userSnap = await getDoc(doc(db, "fichas", currentUID));
+    userData = userSnap.data() ?? {};
+
+    userData.nick   ??= "Sem Nome";
+    userData.cla    ??= "Nenhum";
+    userData.xp     ??= 0;
+    userData.nivel  ??= 1;
+    userData.pontos ??= 0;
+    userData.skills ??= {};
+
+    allSkills = await loadSkills();
+
+    allSkills.forEach(skill => {
+      skill.level = userData.skills[skill.id] ?? 0;
+    });
+
+    renderPerfil();
+    renderSkills();
+  });
+
+  function renderPerfil() {
+    document.getElementById("infoTopo").textContent = 
+      `${userData.nick} | Clã: ${userData.cla}`;
+
+    const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
+    document.getElementById("playerOnlyXp").textContent = 
+      `XP: ${userData.xp} / ${nextLevelXP}`;
+
+    document.getElementById("perfil-nick").textContent   = userData.nick;
+    document.getElementById("perfil-cla").textContent    = userData.cla;
+    document.getElementById("perfil-nivel").textContent  = userData.nivel;
+    document.getElementById("perfil-xp").textContent     = userData.xp;
+    document.getElementById("perfil-pontos").textContent = userData.pontos;
+  }
+
+  function renderSkills() {
+    const container = document.getElementById("skills-grid");
+    container.innerHTML = "";
+
+    const descendants = getAllDescendants(currentCategory);
+
+    const filteredSkills = allSkills
+      .filter(s => descendants.has(s.id))
+      .filter(s => {
+        if (currentFilter === "all")      return true;
+        if (currentFilter === "unlocked") return (s.level ?? 0) >= 1;
+        if (currentFilter === "locked")   return (s.level ?? 0) === 0;
+        return true;
+      });
+
+    if (filteredSkills.length === 0) {
+      container.innerHTML = '<div class="no-skills">Nenhuma habilidade corresponde ao filtro selecionado.</div>';
+      return;
+    }
+
+    filteredSkills.forEach(skill => {
+      const level = skill.level ?? 0;
+      const isUnlocked = level >= 1;
+      const iconIndex = Math.min(level, skill.max || 5);
+      const iconFile = isUnlocked 
+        ? `${skill.icon || "default"}_${iconIndex}.png`
+        : `${skill.icon || "default"}_locked.png`;
+
+      const div = document.createElement("div");
+      div.className = `skill-preview ${isUnlocked ? "" : "locked"}`;
+      div.dataset.skillId = skill.id;
+
+      div.innerHTML = `
+        <img src="assets/icons/${iconFile}" alt="${skill.name || skill.id}">
+        <div class="name">${skill.name || skill.id}</div>
+        <div class="level ${isUnlocked ? "unlocked" : "locked"}">
+          ${isUnlocked ? `Nv ${level}` : "Bloqueada"}
+        </div>
+      `;
+
+      div.addEventListener("click", () => showSkillModal(skill));
+
+      container.appendChild(div);
+    });
+  }
+
+  function showSkillModal(skill) {
+    const level = skill.level ?? 0;
+    const isUnlocked = level >= 1;
+    const iconIndex = Math.min(level, skill.max || 5);
+    const iconFile = isUnlocked 
+      ? `${skill.icon || "default"}_${iconIndex}.png`
+      : `${skill.icon || "default"}_locked.png`;
+
+    document.getElementById("modalIcon").src = `assets/icons/${iconFile}`;
+    document.getElementById("modalTitle").textContent = skill.name || skill.id;
+    document.getElementById("modalLevel").textContent = `Nível: ${level} / ${skill.max || "?"}`;
+
+    const descEl = document.getElementById("modalDesc");
+    descEl.textContent = skill.desc || "Sem descrição disponível.";
+
+    const reqsEl = document.getElementById("modalReqs");
+    reqsEl.innerHTML = "";
+
+    if (skill.requires?.length > 0) {
+      const h4 = document.createElement("h4");
+      h4.textContent = "Requisitos:";
+      reqsEl.appendChild(h4);
+
+      skill.requires.forEach(req => {
+        const type = req.type || "skill";
+        let label = "";
+        let currentVal = "";
+        let needed = "";
+        let ok = false;
+
+        if (type === "skill") {
+          const reqSkill = allSkills.find(s => s.id === req.id);
+          label = reqSkill?.name || req.id;
+          currentVal = reqSkill?.level ?? 0;
+          needed = req.level ?? req.lvl ?? 1;
+          ok = currentVal >= needed;
+        } else if (type === "playerLevel") {
+          label = "Nível da conta";
+          currentVal = userData.nivel ?? 0;
+          needed = req.level;
+          ok = currentVal >= needed;
+        } else if (type === "doujutsu") {
+          label = "Doujutsu";
+          currentVal = userData.doujutsus?.join(", ") || "Nenhum";
+          needed = req.value;
+          ok = (userData.doujutsus || []).includes(req.value);
+        } else if (type === "clan") {
+          label = "Clã";
+          currentVal = userData.cla || "Nenhum";
+          needed = req.value;
+          ok = currentVal === req.value;
+        } else {
+          label = req.type || "Desconhecido";
+          currentVal = "?";
+          needed = req.value || req.level || "?";
+        }
+
+        const p = document.createElement("p");
+        p.className = "req-item";
+        p.innerHTML = `• ${label}: ${currentVal} / ${needed} `;
+        p.innerHTML += ok 
+          ? '<span class="req-ok">✓</span>'
+          : '<span class="req-fail">✗</span>';
+        reqsEl.appendChild(p);
+      });
+    } else {
+      reqsEl.innerHTML = "<p style='opacity:0.7;'>Nenhum requisito específico.</p>";
+    }
+
+    modal.classList.add("show");
+  }
+
+  // Navegação categorias
+  document.querySelectorAll(".cat").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".cat").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentCategory = btn.dataset.cat;
+      renderSkills();
+    });
+  });
+
+  // Filtros
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      renderSkills();
+    });
+  });
+
+  // Botão voltar
+  document.getElementById("btnHabilidades")?.addEventListener("click", () => {
+    window.location.href = "arvore_habilidade.html";
+  });
+</script>
+
+</body>
+</html>

@@ -334,29 +334,56 @@ function buildBranch(parent) {
    RENDER
 ========================================================= */
 function render() {
-  document.getElementById("infoTopo").textContent =
-    `${userData.nick} | Clã: ${userData.cla}`;
 
-  document.getElementById("points").textContent =
-    `Pontos Disponíveis: ${userData.pontos}`;
+  // ===== TOPO =====
+  const infoTopo = document.getElementById("infoTopo");
+  if (infoTopo) {
+    infoTopo.textContent =
+      `${userData.nick} | Clã: ${userData.cla}`;
+  }
 
+  const points = document.getElementById("points");
+  if (points) {
+    points.textContent =
+      `Pontos Disponíveis: ${userData.pontos}`;
+  }
+
+  const playerLevel = document.getElementById("player-level");
+  if (playerLevel) {
+    playerLevel.textContent =
+      `Level: ${userData.nivel}`;
+  }
+
+  // ===== XP / LEVEL =====
   const xpCurrent = xpToReachLevel(userData.nivel);
   const xpNext = xpToReachLevel(userData.nivel + 1);
-  const progress = ((userData.xp - xpCurrent) / (xpNext - xpCurrent)) * 100;
 
-  document.getElementById("player-level").textContent =
-    `Level: ${userData.nivel}`;
+  const progress =
+    ((userData.xp - xpCurrent) / (xpNext - xpCurrent)) * 100;
 
-  document.getElementById("player-xp").textContent =
-    `XP: ${userData.xp} / ${xpNext} | Pontos de FICHA: ${250+ (userData.nivel-1)*40}`;
+  const xpBar = document.getElementById("xp-bar");
+  if (xpBar) {
+    xpBar.style.width =
+      `${Math.min(Math.max(progress, 0), 100)}%`;
+  }
 
-  document.getElementById("xp-bar").style.width =
-    `${Math.min(Math.max(progress, 0), 100)}%`;
+  const playerOnlyXp = document.getElementById("playerOnlyXp");
+  if (playerOnlyXp) {
+    playerOnlyXp.textContent =
+      `XP: ${userData.xp} / ${xpNext}`;
+  }
+  const playerXp = document.getElementById("player-xp");
+  if (playerXp) {
+    playerXp.textContent =
+      `XP: ${userData.xp} / ${xpNext} | Pontos de FICHA: ${250 + (userData.nivel - 1) * 40}`;
+  }
 
+  // ===== ÁRVORE / CATEGORIAS =====
   const chart = document.getElementById("org-chart");
-  chart.innerHTML = "";
-
-  renderTreeByCategory(); 
+  if (chart) {
+    chart.innerHTML = "";
+    renderTreeByCategory();
+  }
 
 }
 
@@ -616,4 +643,8 @@ document.querySelectorAll(".cat").forEach(btn => {
     currentCategory = cat;
     renderTreeByCategory();
   };
+});
+
+document.getElementById("btnPerfil")?.addEventListener("click", () => {
+  window.open("perfil.html", "_self");
 });
