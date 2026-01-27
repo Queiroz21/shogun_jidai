@@ -53,36 +53,45 @@ function normalizeDoujutsus() {
 
 //   return loaded;
 // }
-async function loadSkills(skillsState = {}) {
-  const ref = doc(db, "game_data", "skills_v1");
-  const snap = await getDoc(ref);
+async function loadSkills() {
+  const snap = await getDoc(doc(db, "game_data", "skills_v1"));
 
   if (!snap.exists()) {
-    throw new Error("Documento skills_v1 não encontrado");
+    throw new Error("Documento game_data/skills_v1 não encontrado");
   }
 
-  const { VERSION, Skills } = snap.data();
+  const data = snap.data();
 
-  if (!Array.isArray(Skills)) {
-    throw new Error("Formato inválido: Skills não é um array");
+  // 1) pega Skills com tolerância a maiúsculo/minúsculo
+  let rawSkills = data.Skills ?? data.skills;
+
+  // 2) se vier como objeto/mapa, converte para array
+  // Ex: { fisico: {...}, mental: {...} } -> [{id:"fisico",...}, {id:"mental",...}]
+  if (rawSkills && !Array.isArray(rawSkills) && typeof rawSkills === "object") {
+    rawSkills = Object.entries(rawSkills).map(([id, skill]) => ({
+      id,
+      ...(skill ?? {})
+    }));
   }
 
-  const loaded = Skills.map(skill => ({
-    ...skill,
+  // 3) se ainda não for array, loga o formato real pra você ver
+  if (!Array.isArray(rawSkills)) {
+    console.error("📌 Documento recebido:", data);
+    throw new Error("Formato inválido: Skills não é array nem objeto");
+  }
 
-    // nível vem do estado do jogador
-    level: skillsState[skill.id] ?? 0,
+  const loaded = rawSkills;
 
-    // garante consistência sem alterar significado
-    requires: skill.requires ?? [],
-    parent: skill.parent ?? null,
-
-    // NÃO altera max
-    max: skill.max
-  }));
+  loaded.forEach(s => {
+    s.level = skillsState[s.id] ?? 0;
+    s.requires = s.requires ?? [];
+    // ✅ NÃO forçar max = 5 (mantém max 0 nas skills-guia)
+    s.max = s.max ?? 0;
+  });
 
   return loaded;
 }
+
 
 
 /* =========================================================
