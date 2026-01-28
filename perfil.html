@@ -444,42 +444,42 @@
       <tbody>
         <tr>
           <td><label for="attr-hp">HP</label></td>
-          <td><input type="number" id="attr-hp" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-hp" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="hp" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-sta">STA</label></td>
-          <td><input type="number" id="attr-sta" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-sta" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="sta" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-ag">AG</label></td>
-          <td><input type="number" id="attr-ag" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-ag" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="ag" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-ch">CH</label></td>
-          <td><input type="number" id="attr-ch" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-ch" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="ch" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-vl">VL</label></td>
-          <td><input type="number" id="attr-vl" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-vl" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="vl" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-pm">PM</label></td>
-          <td><input type="number" id="attr-pm" class="attr-input" min="0" value="0" readonly></td>
+          <td><input type="number" id="attr-pm" class="attr-input" min="0" value="0"></td>
           <td>
             <button class="attr-btn" data-attr="pm" data-action="plus">+</button>
           </td>
@@ -853,6 +853,14 @@
   }
 
   function validateAttributeInput(input, totalAtributos) {
+    let inputValue = parseInt(input.value) || 0;
+
+    // Garantir que não seja negativo
+    if (inputValue < 0) {
+      input.value = 0;
+      return;
+    }
+
     // Calcular pontos atuais (excluindo este input)
     const attrValues = {
       hp: parseInt(document.getElementById("attr-hp").value) || 0,
@@ -866,13 +874,15 @@
     const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
     const available = totalAtributos - totalUsed;
 
-    // Se não há pontos disponíveis, manter no valor anterior
-    let inputName = input.id.replace("attr-", "");
-    let currentValue = attrValues[inputName] || 0;
-    let inputValue = parseInt(input.value) || 0;
-
+    // Se o total ultrapassar o limite, corrigir para o máximo permitido
     if (totalUsed > totalAtributos) {
-      input.value = currentValue;
+      // Descobrir qual input foi alterado
+      let inputName = input.id.replace("attr-", "");
+      let currentInputValue = attrValues[inputName] || 0;
+      
+      // Reduzir esse atributo para o máximo permitido
+      let maxAllowedForThis = currentInputValue - (totalUsed - totalAtributos);
+      input.value = Math.max(0, maxAllowedForThis);
     }
   }
 

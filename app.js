@@ -142,17 +142,25 @@ async function checkLevelUp() {
 
   if (userData.nivel > oldLevel) {
     const gainedLevels = userData.nivel - oldLevel;
-    const gainedPoints = gainedLevels * 3; // ✅ 3 pontos por nível
+    const gainedTreePoints = gainedLevels * 3; // ✅ 3 pontos por nível na árvore
+    const gainedAttrPoints = gainedLevels * 40; // ✅ 40 pontos por nível de atributo
 
-    userData.pontos += gainedPoints;
+    userData.pontos += gainedTreePoints;
 
     await updateDoc(doc(db, "fichas", currentUID), {
       nivel: userData.nivel,
       pontos: userData.pontos
     });
 
-    //showLevelUpPopup(oldLevel, userData.nivel, gainedPoints);
-	alert(`🎉 Parabéns! Subiu para nível ${userData.nivel} e ganhou ${gainedPoints} pontos!`);
+    // Mensagem melhorada
+    const message = 
+      `🎉 PARABÉNS! LEVEL UP!\n\n` +
+      `📈 Nível: ${oldLevel} → ${userData.nivel}\n` +
+      `⬆️ Subiu: ${gainedLevels} ${gainedLevels === 1 ? 'nível' : 'níveis'}\n\n` +
+      `🌳 Pontos da Árvore: +${gainedTreePoints}\n` +
+      `💪 Pontos de Atributo: +${gainedAttrPoints}`;
+
+    alert(message);
   }
 }
 
