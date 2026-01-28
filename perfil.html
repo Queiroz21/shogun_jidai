@@ -375,6 +375,25 @@
       box-shadow: 0 0 12px rgba(250, 170, 100, 0.5);
     }
 
+    /* ────────────────────────────────────────────────
+       GRÁFICO RADAR
+    ──────────────────────────────────────────────── */
+    .attributes-chart-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 24px;
+      padding: 20px;
+      background: rgba(20, 40, 90, 0.3);
+      border-radius: 10px;
+    }
+
+    #radarChart {
+      max-width: 350px;
+      width: 100%;
+      height: auto;
+    }
+
     @media (max-width: 500px) {
       .modal-content { padding: 20px; }
       .modal-icon { width: 64px; height: 64px; }
@@ -425,49 +444,43 @@
       <tbody>
         <tr>
           <td><label for="attr-hp">HP</label></td>
-          <td><input type="number" id="attr-hp" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-hp" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="hp" data-action="minus">−</button>
             <button class="attr-btn" data-attr="hp" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-sta">STA</label></td>
-          <td><input type="number" id="attr-sta" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-sta" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="sta" data-action="minus">−</button>
             <button class="attr-btn" data-attr="sta" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-ag">AG</label></td>
-          <td><input type="number" id="attr-ag" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-ag" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="ag" data-action="minus">−</button>
             <button class="attr-btn" data-attr="ag" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-ch">CH</label></td>
-          <td><input type="number" id="attr-ch" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-ch" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="ch" data-action="minus">−</button>
             <button class="attr-btn" data-attr="ch" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-vl">VL</label></td>
-          <td><input type="number" id="attr-vl" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-vl" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="vl" data-action="minus">−</button>
             <button class="attr-btn" data-attr="vl" data-action="plus">+</button>
           </td>
         </tr>
         <tr>
           <td><label for="attr-pm">PM</label></td>
-          <td><input type="number" id="attr-pm" class="attr-input" min="0" value="0"></td>
+          <td><input type="number" id="attr-pm" class="attr-input" min="0" value="0" readonly></td>
           <td>
-            <button class="attr-btn" data-attr="pm" data-action="minus">−</button>
             <button class="attr-btn" data-attr="pm" data-action="plus">+</button>
           </td>
         </tr>
@@ -475,7 +488,9 @@
     </table>
     <div class="attributes-actions">
       <button id="btnSaveAttributes" class="btn-save-attr">Salvar Atributos</button>
-      <button id="btnResetAttributes" class="btn-reset-attr">Resetar</button>
+    </div>
+    <div class="attributes-chart-container">
+      <svg id="radarChart" viewBox="-50 -50 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
   </div>
 
@@ -515,7 +530,7 @@
 
 <script type="module">
   import { auth, db } from "./oauth.js";
-  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   let currentUID = null;
@@ -643,13 +658,166 @@
 
     // Event listeners para inputs diretos
     document.querySelectorAll(".attr-input").forEach(input => {
-      input.addEventListener("change", () => updateAttributeDisplay(totalAtributos));
-      input.addEventListener("input", () => updateAttributeDisplay(totalAtributos));
+      input.addEventListener("change", () => {
+        validateAttributeInput(input, totalAtributos);
+        updateAttributeDisplay(totalAtributos);
+      });
+      input.addEventListener("input", () => {
+        validateAttributeInput(input, totalAtributos);
+        updateAttributeDisplay(totalAtributos);
+      });
     });
 
-    // Botões de salvar e resetar
+    // Botões de salvar
     document.getElementById("btnSaveAttributes").addEventListener("click", saveAttributes);
-    document.getElementById("btnResetAttributes").addEventListener("click", resetAttributes);
+
+    // Inicializar gráfico radar
+    initializeRadarChart();
+  }
+
+  function initializeRadarChart() {
+    updateRadarChart();
+  }
+
+  function updateRadarChart() {
+    const attrValues = {
+      hp: parseInt(document.getElementById("attr-hp").value) || 0,
+      sta: parseInt(document.getElementById("attr-sta").value) || 0,
+      ag: parseInt(document.getElementById("attr-ag").value) || 0,
+      ch: parseInt(document.getElementById("attr-ch").value) || 0,
+      vl: parseInt(document.getElementById("attr-vl").value) || 0,
+      pm: parseInt(document.getElementById("attr-pm").value) || 0
+    };
+
+    drawRadarChart(attrValues);
+  }
+
+  function drawRadarChart(attrValues) {
+    const svg = document.getElementById("radarChart");
+    svg.innerHTML = "";
+
+    const size = 300;
+    const center = size / 2;
+    const maxValue = 2000;
+    const levels = 5;
+    const attributes = [
+      { name: "HP", value: attrValues.hp, angle: 0 },
+      { name: "STA", value: attrValues.sta, angle: 60 },
+      { name: "AG", value: attrValues.ag, angle: 120 },
+      { name: "CH", value: attrValues.ch, angle: 180 },
+      { name: "VL", value: attrValues.vl, angle: 240 },
+      { name: "PM", value: attrValues.pm, angle: 300 }
+    ];
+
+    // Desenhar grid circular
+    for (let i = 1; i <= levels; i++) {
+      const radius = (size / 2 - 40) * (i / levels);
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", center);
+      circle.setAttribute("cy", center);
+      circle.setAttribute("r", radius);
+      circle.setAttribute("fill", "none");
+      circle.setAttribute("stroke", "rgba(74, 170, 255, 0.2)");
+      circle.setAttribute("stroke-width", "1");
+      svg.appendChild(circle);
+    }
+
+    // Desenhar linhas dos eixos
+    attributes.forEach(attr => {
+      const angle = (attr.angle * Math.PI) / 180;
+      const x = center + (size / 2 - 40) * Math.cos(angle);
+      const y = center + (size / 2 - 40) * Math.sin(angle);
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", center);
+      line.setAttribute("y1", center);
+      line.setAttribute("x2", x);
+      line.setAttribute("y2", y);
+      line.setAttribute("stroke", "rgba(74, 170, 255, 0.3)");
+      line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+    });
+
+    // Desenhar polígono dos valores
+    const points = attributes.map(attr => {
+      const angle = (attr.angle * Math.PI) / 180;
+      const radius = ((size / 2 - 40) * attr.value) / maxValue;
+      const x = center + radius * Math.cos(angle);
+      const y = center + radius * Math.sin(angle);
+      return [x, y];
+    });
+
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    const pointsStr = points.map(p => p.join(",")).join(" ");
+    polygon.setAttribute("points", pointsStr);
+    polygon.setAttribute("fill", "rgba(74, 170, 255, 0.25)");
+    polygon.setAttribute("stroke", "#4af");
+    polygon.setAttribute("stroke-width", "2");
+    svg.appendChild(polygon);
+
+    // Desenhar pontos nos vértices
+    points.forEach((point, i) => {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", point[0]);
+      circle.setAttribute("cy", point[1]);
+      circle.setAttribute("r", "4");
+      circle.setAttribute("fill", "#4af");
+      circle.setAttribute("stroke", "#fff");
+      circle.setAttribute("stroke-width", "1.5");
+      svg.appendChild(circle);
+    });
+
+    // Desenhar rótulos dos atributos
+    attributes.forEach(attr => {
+      const angle = (attr.angle * Math.PI) / 180;
+      const labelRadius = (size / 2 - 40) + 45;
+      let x = center + labelRadius * Math.cos(angle);
+      let y = center + labelRadius * Math.sin(angle);
+
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("dominant-baseline", "middle");
+      text.setAttribute("fill", "#4af");
+      text.setAttribute("font-size", "14");
+      text.setAttribute("font-weight", "700");
+
+      // Ajustar posição e alinhamento baseado no ângulo
+      if (attr.angle === 0) {
+        // Direita (HP)
+        text.setAttribute("text-anchor", "start");
+        x += 12;
+      } else if (attr.angle === 60) {
+        // Sudeste (STA)
+        text.setAttribute("text-anchor", "start");
+        x += 10;
+        y += 8;
+      } else if (attr.angle === 120) {
+        // Sudoeste (AG)
+        text.setAttribute("text-anchor", "end");
+        x -= 10;
+        y += 8;
+      } else if (attr.angle === 180) {
+        // Esquerda (CH)
+        text.setAttribute("text-anchor", "end");
+        x -= 12;
+      } else if (attr.angle === 240) {
+        // Noroeste (VL)
+        text.setAttribute("text-anchor", "end");
+        x -= 10;
+        y -= 8;
+      } else if (attr.angle === 300) {
+        // Nordeste (PM)
+        text.setAttribute("text-anchor", "start");
+        x += 10;
+        y -= 8;
+      } else {
+        text.setAttribute("text-anchor", "middle");
+      }
+
+      text.setAttribute("x", x);
+      text.setAttribute("y", y);
+      text.textContent = attr.name;
+      svg.appendChild(text);
+    });
   }
 
   function handleAttributeChange(e, totalAtributos) {
@@ -660,13 +828,52 @@
     let value = parseInt(input.value) || 0;
 
     if (action === "plus") {
-      value++;
+      // Calcular pontos atuais
+      const attrValues = {
+        hp: parseInt(document.getElementById("attr-hp").value) || 0,
+        sta: parseInt(document.getElementById("attr-sta").value) || 0,
+        ag: parseInt(document.getElementById("attr-ag").value) || 0,
+        ch: parseInt(document.getElementById("attr-ch").value) || 0,
+        vl: parseInt(document.getElementById("attr-vl").value) || 0,
+        pm: parseInt(document.getElementById("attr-pm").value) || 0
+      };
+      const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+      const available = totalAtributos - totalUsed;
+
+      // Só permite aumentar se houver pontos disponíveis
+      if (available > 0) {
+        value++;
+      }
     } else if (action === "minus") {
       value = Math.max(0, value - 1);
     }
 
     input.value = value;
     updateAttributeDisplay(totalAtributos);
+  }
+
+  function validateAttributeInput(input, totalAtributos) {
+    // Calcular pontos atuais (excluindo este input)
+    const attrValues = {
+      hp: parseInt(document.getElementById("attr-hp").value) || 0,
+      sta: parseInt(document.getElementById("attr-sta").value) || 0,
+      ag: parseInt(document.getElementById("attr-ag").value) || 0,
+      ch: parseInt(document.getElementById("attr-ch").value) || 0,
+      vl: parseInt(document.getElementById("attr-vl").value) || 0,
+      pm: parseInt(document.getElementById("attr-pm").value) || 0
+    };
+    
+    const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+    const available = totalAtributos - totalUsed;
+
+    // Se não há pontos disponíveis, manter no valor anterior
+    let inputName = input.id.replace("attr-", "");
+    let currentValue = attrValues[inputName] || 0;
+    let inputValue = parseInt(input.value) || 0;
+
+    if (totalUsed > totalAtributos) {
+      input.value = currentValue;
+    }
   }
 
   function updateAttributeDisplay(totalAtributos) {
@@ -694,6 +901,9 @@
     document.getElementById("attr-total").textContent = totalAtributos;
     document.getElementById("attr-available").textContent = available;
     document.getElementById("attr-used").textContent = totalUsed;
+
+    // Atualizar gráfico radar
+    updateRadarChart();
   }
 
   async function saveAttributes() {
@@ -715,15 +925,17 @@
     }
 
     try {
-      await updateDoc(doc(db, "fichas", currentUID), {
+      await setDoc(doc(db, "fichas", currentUID), {
         atributos: attrValues
-      });
+      }, { merge: true });
 
       userData.atributos = attrValues;
       alert("✅ Atributos salvos com sucesso!");
     } catch (error) {
       console.error("Erro ao salvar atributos:", error);
-      alert("❌ Erro ao salvar atributos!");
+      console.error("UID:", currentUID);
+      console.error("Dados tentando salvar:", { atributos: attrValues });
+      alert("❌ Erro ao salvar atributos!\n\nDetalhes: " + error.message);
     }
   }
 
