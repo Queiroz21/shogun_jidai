@@ -273,6 +273,7 @@ function makeCard(skill) {
 
       if (type === "doujutsu") {
         current = normalizeDoujutsus().join(", ") || "Nenhum";
+        console.log("Current Doujutsus:", current);
         need = req.value;
         label = "Doujutsu";
         ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
@@ -399,7 +400,18 @@ function renderTreeByCategory() {
   const chart = document.getElementById("org-chart");
   chart.innerHTML = "";
 
-  const catSkills = skills.filter(s => s.parent === currentCategory);
+  // Verificar se é Doujutsu e filtrar apenas os que o usuário possui
+  let catSkills = skills.filter(s => s.parent === currentCategory);
+
+  if (currentCategory === "doujutsu") {
+    const userDoujutsus = normalizeDoujutsus();
+    if (userDoujutsus.length === 0) {
+      chart.innerHTML = "<p class='empty'>Você não possui nenhum doujutsu cadastrado.</p>";
+      return;
+    }
+    // Filtrar apenas os doujutsus que o usuário possui
+    catSkills = catSkills.filter(s => userDoujutsus.includes(s.id));
+  }
 
   if (!catSkills.length) {
     chart.innerHTML = "<p class='empty'>Nenhuma skill nesta categoria</p>";
