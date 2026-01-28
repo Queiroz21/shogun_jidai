@@ -266,6 +266,7 @@
       <div class="ficha-row"><span class="ficha-label">Nível:</span><strong id="perfil-nivel">—</strong></div>
       <div class="ficha-row"><span class="ficha-label">XP Atual:</span><strong id="perfil-xp">—</strong></div>
       <div class="ficha-row"><span class="ficha-label">Pontos disponíveis:</span><strong id="perfil-pontos">—</strong></div>
+      <div class="ficha-row"><span class="ficha-label">Pontos totais de Atributo:</span><strong id="perfil-atributos-totais">—</strong></div>
     </div>
   </div>
 
@@ -397,6 +398,7 @@
     document.getElementById("perfil-nivel").textContent  = userData.nivel;
     document.getElementById("perfil-xp").textContent     = userData.xp;
     document.getElementById("perfil-pontos").textContent = userData.pontos;
+    document.getElementById("perfil-atributos-totais").textContent = 250 + (userData.nivel-1)*40;
   }
 
   function renderSkills() {
