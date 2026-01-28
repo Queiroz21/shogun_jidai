@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invocações Naruto</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+	<header id="top-header">
+
+		<!-- ESQUERDA: XP -->
+		<div id="header-left">
+			<p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
+		</div>
+
+		<!-- CENTRO: NOME -->
+		<div id="header-center">
+			<span id="infoTopo">---</span>
+		</div>
+		<!-- DIREITA: AÇÕES -->
+		<div id="header-right">
+			<button class="header-btn" id="btnPerfil">Perfil</button>
+			<button class="header-btn" id="btnArvore">Árvore de Habilidades</button>
+		</div>
+
+	</header>
+	
+    <h1>Invocações</h1>
+	
+	<div id="levelUpPopup" class="level-up-popup"></div>
+	
+	<div id="xpBar" style="margin-top:12px; color:white;"></div>
+	<div id="levelInfo" style="margin-top:12px; color:white;"></div>
+	<div id="categoryBar" class="category-bar">
+	  <!-- Categorias de invocações serão adicionadas dinamicamente -->
+    </div>
+    <div id="tree-viewport">
+  		<div id="org-chart"></div>
+	</div>
+		
+	<div id="confirmModal" class="modal hidden">
+	  <div class="modal-box">
+		<h3 id="modalTitle"></h3>
+		<p id="modalText"></p>
+
+		<div class="modal-actions">
+		  <button id="btnConfirm">Confirmar</button>
+		  <button id="btnCancel">Cancelar</button>
+		</div>
+	  </div>
+	</div>
+	<!--<div id="tooltip-layer" class="tooltip-layer hidden"></div>-->
+	<script type="module" src="invocacoes.js"></script>
+	<script>
+		const layer = document.getElementById("tooltip-layer");
+
+		function positionLayer(skillEl) {
+			const r = skillEl.getBoundingClientRect();
+			const w = layer.offsetWidth;
+			const h = layer.offsetHeight;
+
+			let left = r.left + r.width / 2 - w / 2;
+			let top = r.top - h - 12;
+
+			const pad = 8;
+			if (left < pad) left = pad;
+			if (left + w > window.innerWidth - pad)
+			left = window.innerWidth - w - pad;
+
+			if (top < pad) top = r.bottom + 12;
+
+			layer.style.left = left + "px";
+			layer.style.top = top + "px";
+		}
+
+		function showTooltip(skillEl) {
+			const tip = skillEl.querySelector(".tooltip");
+			if (!tip) return;
+
+			layer.innerHTML = tip.innerHTML;
+			layer.classList.remove("hidden");
+
+			// precisa estar visível antes de medir
+			requestAnimationFrame(() => positionLayer(skillEl));
+		}
+
+		function hideTooltip() {
+			layer.classList.add("hidden");
+			layer.innerHTML = "";
+		}
+
+		// Delegação → funciona com skills criadas dinamicamente
+		document.addEventListener("mouseover", e => {
+			const skill = e.target.closest(".skill");
+			if (skill) showTooltip(skill);
+		});
+
+		document.addEventListener("mouseout", e => {
+			if (e.target.closest(".skill")) hideTooltip();
+		});
+
+		document.addEventListener("scroll", hideTooltip, true);
+		window.addEventListener("resize", hideTooltip);
+
+	</script>
+	
+</body>
+</html>

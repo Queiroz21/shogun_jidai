@@ -17,11 +17,14 @@ let openNodes = new Set();
 
 /* =========================================================
    XP — PROGRESSÃO REAL (100, 300, 600…)
+   Usado em: render(), checkLevelUp()
 ========================================================= */
 function xpToReachLevel(level) {
   return 100 * (level - 1) * level / 2;
 }
 
+// Calcula o nível atual baseado no XP total
+// Usado em: checkLevelUp()
 function calculateLevelFromXP(xp) {
   let level = 1;
   while (xp >= xpToReachLevel(level + 1)) {
@@ -32,6 +35,8 @@ function calculateLevelFromXP(xp) {
 
 /* =========================================================
    UTIL — NORMALIZA DOUJUTSUS
+   Tolerância pra campo que pode ser "doujutsus" ou "doujutsu"
+   Usado em: renderTreeByCategory()
 ========================================================= */
 function normalizeDoujutsus() {
   if (Array.isArray(userData.doujutsus)) return userData.doujutsus;
@@ -42,6 +47,9 @@ function normalizeDoujutsus() {
 
 /* =========================================================
    LOAD SKILLS
+   Carrega do Firestore (game_data/skills_v1)
+   Tolerância: Skills (maiúsculo) ou skills (minúsculo)
+   Usado em: onAuthStateChanged auth listener
 ========================================================= */
 //OLD VERSION -> PRIMEIRO JSON
 // async function loadSkills() {
@@ -116,6 +124,8 @@ onAuthStateChanged(auth, async user => {
   userData.nivel ??= 1;
   userData.pontos ??= 0;
   userData.skills ??= {};
+  
+  console.log("userData após inicialização:", userData);
 
   skillsState = { ...userData.skills };
   skills = await loadSkills();
@@ -126,13 +136,20 @@ onAuthStateChanged(auth, async user => {
 
 /* =========================================================
    LEVEL UP — XP REAL + POPUP
+   Verifica se jogador atingiu novo nível
+   Se sim: ganha +3 pontos de árvore e +40 de atributo
+   Usado em: onAuthStateChanged auth listener
 ========================================================= */
+// Cálculo de XP necessário pra atingir um nível
+// Usado em: checkLevelUp()
 function xpTotalForLevel(level) {
   // progressão: 100, +200, +300, +400...
   // fórmula: 50 * level * (level - 1)
   return  100 * (level - 1) * level / 2;
 }
 
+// Detecta level up e distribui rewards (pontos árvore + atributo)
+// Mostra popup com informações dos ganhos
 async function checkLevelUp() {
   let oldLevel = userData.nivel;
 
@@ -184,6 +201,8 @@ async function checkLevelUp() {
   }, 3500);
 }*/
 
+// Mostra alerta de level up com detalhes
+// Usado em: checkLevelUp()
 function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
   alert(
     "LEVEL UP!\n\n" +
@@ -194,7 +213,12 @@ function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
 
 /* =========================================================
    REGRAS — FONTE ÚNICA DA VERDADE
+   Valida se uma skill pode ser desbloqueada
+   Suporta: skill level, player level, doujutsu, clan
+   Usado em: makeCard(), levelUp()
 ========================================================= */
+// Verifica todos os requisitos de uma skill
+// Retorna { unlocked: bool, missing: [] }
 function checkRequirements(skill) {
   const userDoujutsus = normalizeDoujutsus();
   let missing = [];
@@ -226,7 +250,9 @@ function checkRequirements(skill) {
 }
 
 /* =========================================================
-   MAKE CARD
+   MAKE CARD — RENDERIZA CARD DA SKILL
+   Valida requisitos, mostra nível, botão de ação
+   Usado em: buildBranch(), renderNode()
 ========================================================= */
 function makeCard(skill) {
   const el = document.createElement("div");
@@ -320,8 +346,10 @@ function makeCard(skill) {
 }
 
 /* =========================================================
-   BUILD TREE
-
+   BUILD TREE — RECURSIVO
+   Monta a árvore de skills por parent->child
+   Usado em: renderTreeByCategory()
+========================================================= */
 function buildBranch(parent) {
   const branch = document.createElement("div");
   branch.className = "branch";
@@ -337,10 +365,10 @@ function buildBranch(parent) {
   return branch;
 }
 
-========================================================= */
-
 /* =========================================================
-   RENDER
+   RENDER — ATUALIZA TELA INTEIRA
+   Chamado após qualquer mudança (level up, skill upgrade, etc)
+   Usado em: checkLevelUp(), levelUp(), onAuthStateChanged
 ========================================================= */
 function render() {
 
@@ -381,6 +409,13 @@ function render() {
     playerOnlyXp.textContent =
       `XP: ${userData.xp} / ${xpNext}`;
   }
+  const playerOnlyPontos = document.getElementById("playerOnlyPontos");
+  console.log("playerOnlyPontos elemento:", playerOnlyPontos);
+  if (playerOnlyPontos) {
+    playerOnlyPontos.textContent =
+      `Pontos: ${userData.pontos || 0}`;
+    console.log("playerOnlyPontos atualizado para:", `Pontos: ${userData.pontos || 0}`);
+  }
   const playerXp = document.getElementById("player-xp");
   if (playerXp) {
     playerXp.textContent =
@@ -398,6 +433,9 @@ function render() {
 
 /* =========================================================
    RENDER GRID POR CATEGORIA
+   Filtra skills por categoria e mostra a árvore
+   Doujutsu: só mostra se o usuário tem no userData.doujutsus
+   Usado em: render(), event listeners de categoria
 ========================================================= */
 function renderTreeByCategory() {
   const viewport = document.getElementById("tree-viewport");
@@ -460,7 +498,9 @@ function renderTreeByCategory() {
 }
 
 /* =========================================================
-   RENDER NODE RECURSIVO
+   RENDER NODE RECURSIVO — COM EXPANSÃO
+   Monta node com toggle (expandir/colapsar) por skill
+   Usado em: renderTreeByCategory()
 ========================================================= */
 function renderNode(skill) {
   const wrapper = document.createElement("div");
@@ -519,7 +559,10 @@ function renderNode(skill) {
 }
 
 /* =========================================================
-   LEVEL UP SKILL
+   LEVEL UP SKILL — INCREMENTA E SALVA
+   Gasta 1 ponto, valida requisitos e max level
+   Salva em Firebase e chama render() pra atualizar
+   Usado em: closeConfirm() após confirmação do modal
 ========================================================= */
 async function levelUp(id) {
   const sk = skills.find(s => s.id === id);
@@ -540,6 +583,9 @@ async function levelUp(id) {
 
 let pendingSkillId = null;
 
+// Abre modal de confirmação com detalhes da skill
+// Salva ID temporário em pendingSkillId pra confirmação
+// Usado em: makeCard() onclick
 function openConfirm(skill) {
   pendingSkillId = skill.id;
 
@@ -557,6 +603,8 @@ function openConfirm(skill) {
   document.getElementById("confirmModal").classList.remove("hidden");
 }
 
+// Fecha modal e limpa estado temporário
+// Usado em: btnCancel onclick, após levelUp()
 function closeConfirm() {
   pendingSkillId = null;
   document.getElementById("confirmModal").classList.add("hidden");
@@ -574,7 +622,9 @@ document.getElementById("btnConfirm").onclick = async (e) => {
 document.getElementById("btnCancel").onclick = closeConfirm;
 
 /* =========================================================
- CENTRALIZAÇÃO AUTOMÁTICA DA ÁRVORE
+   CENTRALIZAÇÃO AUTOMÁTICA DA ÁRVORE
+   Centra a viewport quando carrega e em resize
+   Usado em: window load e resize events
 ========================================================= */
 function centerTree() {
   const vp = document.getElementById("tree-viewport");
@@ -667,4 +717,8 @@ document.querySelectorAll(".cat").forEach(btn => {
 
 document.getElementById("btnPerfil")?.addEventListener("click", () => {
   window.open("perfil.html", "_self");
+});
+
+document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
+  window.open("invocacoes.html", "_self");
 });

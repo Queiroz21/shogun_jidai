@@ -404,7 +404,7 @@
 
 <header id="top-header">
   <div id="header-left">
-    <p><span id="playerOnlyXp">XP: -- / --</span></p>
+    <p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
   </div>
   <div id="header-center">
     <span id="infoTopo">---</span>
@@ -484,6 +484,13 @@
             <button class="attr-btn" data-attr="pm" data-action="plus">+</button>
           </td>
         </tr>
+        <tr>
+          <td><label for="attr-fo">FO</label></td>
+          <td><input type="number" id="attr-fo" class="attr-input" min="0" value="0"></td>
+          <td>
+            <button class="attr-btn" data-attr="fo" data-action="plus">+</button>
+          </td>
+        </tr>
       </tbody>
     </table>
     <div class="attributes-actions">
@@ -538,6 +545,7 @@
   let allSkills = [];
   let currentCategory = "fisico";
   let currentFilter = "all";
+  let savedAttributeValues = {}; // Rastrear valores salvos para impedir redução
 
   const modal = document.getElementById("skillModal");
   const closeModal = document.getElementById("closeModal");
@@ -546,6 +554,8 @@
   modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("show"); };
 
   async function loadSkills() {
+    // Carrega skills do Firestore (game_data/skills_v1)
+    // Usado em: onAuthStateChanged auth listener
     const snap = await getDoc(doc(db, "game_data", "skills_v1"));
     if (!snap.exists()) throw new Error("skills_v1 não encontrado");
 
@@ -567,6 +577,9 @@
   }
 
   function getAllDescendants(categoryId) {
+    // Helper recursivo pra categorias hierárquicas
+    // Retorna Set de todos os skill IDs em subcategorias
+    // Usado em: renderSkills() para filtrar por categoria
     const descendants = new Set([categoryId]);
     function recurse(id) {
       allSkills
@@ -610,12 +623,19 @@
   });
 
   function renderPerfil() {
+    // Renderiza info principal do perfil (nick, clã, nível, XP)
+    // Atualiza displays de header e panel esquerdo
+    // Chama initializeAttributes() pra montar sistema de atributos
+    // Usado em: onAuthStateChanged auth listener
     document.getElementById("infoTopo").textContent = 
       `${userData.nick} | Clã: ${userData.cla}`;
 
     const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
     document.getElementById("playerOnlyXp").textContent = 
       `XP: ${userData.xp} / ${nextLevelXP}`;
+    
+    document.getElementById("playerOnlyPontos").textContent = 
+      `Pontos: ${userData.pontos}`;
 
     document.getElementById("perfil-nick").textContent   = userData.nick;
     document.getElementById("perfil-cla").textContent    = userData.cla;
@@ -628,6 +648,11 @@
   }
 
   function initializeAttributes() {
+    // Setup inicial da tabela de atributos
+    // Carrega valores salvos ou inicializa com defaults (0)
+    // Setup event listeners para buttons e inputs
+    // Inicializa gráfico radar
+    // Usado em: renderPerfil()
     const totalAtributos = 250 + (userData.nivel - 1) * 40;
 
     // Inicializar dados de atributos se não existirem
@@ -637,7 +662,8 @@
       ag: 0,
       ch: 0,
       vl: 0,
-      pm: 0
+      pm: 0,
+      fo: 0
     };
 
     // Atualizar inputs com valores salvos
@@ -647,6 +673,18 @@
     document.getElementById("attr-ch").value = userData.atributos.ch ?? 0;
     document.getElementById("attr-vl").value = userData.atributos.vl ?? 0;
     document.getElementById("attr-pm").value = userData.atributos.pm ?? 0;
+    document.getElementById("attr-fo").value = userData.atributos.fo ?? 0;
+    
+    // Rastrear valores salvos para impedir redução
+    savedAttributeValues = {
+      hp: userData.atributos.hp ?? 0,
+      sta: userData.atributos.sta ?? 0,
+      ag: userData.atributos.ag ?? 0,
+      ch: userData.atributos.ch ?? 0,
+      vl: userData.atributos.vl ?? 0,
+      pm: userData.atributos.pm ?? 0,
+      fo: userData.atributos.fo ?? 0
+    };
 
     // Atualizar displays de pontos
     updateAttributeDisplay(totalAtributos);
@@ -676,23 +714,33 @@
   }
 
   function initializeRadarChart() {
+    // Inicializa o gráfico radar de atributos
+    // Chamado apenas uma vez no setup
+    // Usado em: initializeAttributes()
     updateRadarChart();
   }
 
   function updateRadarChart() {
+    // Atualiza o gráfico radar com valores atuais dos inputs
+    // Chamado toda vez que um atributo muda
+    // Usado em: handleAttributeChange(), validateAttributeInput(), updateAttributeDisplay()
     const attrValues = {
       hp: parseInt(document.getElementById("attr-hp").value) || 0,
       sta: parseInt(document.getElementById("attr-sta").value) || 0,
       ag: parseInt(document.getElementById("attr-ag").value) || 0,
       ch: parseInt(document.getElementById("attr-ch").value) || 0,
       vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0
+      pm: parseInt(document.getElementById("attr-pm").value) || 0,
+      fo: parseInt(document.getElementById("attr-fo").value) || 0
     };
 
     drawRadarChart(attrValues);
   }
 
   function drawRadarChart(attrValues) {
+    // Desenha o gráfico radar SVG com 7 atributos
+    // Mostra: grid, eixos, polígono (vermelho), vértices, labels
+    // Usado em: updateRadarChart()
     const svg = document.getElementById("radarChart");
     svg.innerHTML = "";
 
@@ -702,11 +750,12 @@
     const levels = 5;
     const attributes = [
       { name: "HP", value: attrValues.hp, angle: 0 },
-      { name: "STA", value: attrValues.sta, angle: 60 },
-      { name: "AG", value: attrValues.ag, angle: 120 },
-      { name: "CH", value: attrValues.ch, angle: 180 },
-      { name: "VL", value: attrValues.vl, angle: 240 },
-      { name: "PM", value: attrValues.pm, angle: 300 }
+      { name: "STA", value: attrValues.sta, angle: 51.43 },
+      { name: "AG", value: attrValues.ag, angle: 102.86 },
+      { name: "CH", value: attrValues.ch, angle: 154.29 },
+      { name: "VL", value: attrValues.vl, angle: 205.71 },
+      { name: "PM", value: attrValues.pm, angle: 257.14 },
+      { name: "FO", value: attrValues.fo, angle: 308.57 }
     ];
 
     // Desenhar grid circular
@@ -750,8 +799,8 @@
     const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     const pointsStr = points.map(p => p.join(",")).join(" ");
     polygon.setAttribute("points", pointsStr);
-    polygon.setAttribute("fill", "rgba(74, 170, 255, 0.25)");
-    polygon.setAttribute("stroke", "#4af");
+    polygon.setAttribute("fill", "rgba(255, 0, 0, 0.2)");
+    polygon.setAttribute("stroke", "#f00");
     polygon.setAttribute("stroke-width", "2");
     svg.appendChild(polygon);
 
@@ -785,32 +834,36 @@
         // Direita (HP)
         text.setAttribute("text-anchor", "start");
         x += 12;
-      } else if (attr.angle === 60) {
-        // Sudeste (STA)
+      } else if (attr.angle < 90) {
+        // Direita-cima
         text.setAttribute("text-anchor", "start");
         x += 10;
-        y += 8;
-      } else if (attr.angle === 120) {
-        // Sudoeste (AG)
+        y -= 8;
+      } else if (attr.angle === 90) {
+        // Cima
+        text.setAttribute("text-anchor", "middle");
+      } else if (attr.angle < 180) {
+        // Cima-esquerda
         text.setAttribute("text-anchor", "end");
         x -= 10;
-        y += 8;
+        y -= 8;
       } else if (attr.angle === 180) {
         // Esquerda (CH)
         text.setAttribute("text-anchor", "end");
         x -= 12;
-      } else if (attr.angle === 240) {
-        // Noroeste (VL)
+      } else if (attr.angle < 270) {
+        // Esquerda-baixo
         text.setAttribute("text-anchor", "end");
         x -= 10;
-        y -= 8;
-      } else if (attr.angle === 300) {
-        // Nordeste (PM)
+        y += 8;
+      } else if (attr.angle === 270) {
+        // Baixo
+        text.setAttribute("text-anchor", "middle");
+      } else {
+        // Direita-baixo
         text.setAttribute("text-anchor", "start");
         x += 10;
-        y -= 8;
-      } else {
-        text.setAttribute("text-anchor", "middle");
+        y += 8;
       }
 
       text.setAttribute("x", x);
@@ -821,6 +874,10 @@
   }
 
   function handleAttributeChange(e, totalAtributos) {
+    // Incrementa atributo via botão "+"
+    // Valida se há pontos disponíveis antes de incrementar
+    // Chama updateAttributeDisplay() pra atualizar UI
+    // Usado em: Event listeners dos buttons .attr-btn
     const btn = e.target;
     const attr = btn.dataset.attr;
     const action = btn.dataset.action;
@@ -835,7 +892,8 @@
         ag: parseInt(document.getElementById("attr-ag").value) || 0,
         ch: parseInt(document.getElementById("attr-ch").value) || 0,
         vl: parseInt(document.getElementById("attr-vl").value) || 0,
-        pm: parseInt(document.getElementById("attr-pm").value) || 0
+        pm: parseInt(document.getElementById("attr-pm").value) || 0,
+        fo: parseInt(document.getElementById("attr-fo").value) || 0
       };
       const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
       const available = totalAtributos - totalUsed;
@@ -853,11 +911,23 @@
   }
 
   function validateAttributeInput(input, totalAtributos) {
+    // Valida entrada manual de atributo no input
+    // Bloqueia redução abaixo do valor salvo (savedAttributeValues)
+    // Auto-corrige se total exceder limite
+    // Usado em: Event listeners dos inputs .attr-input
     let inputValue = parseInt(input.value) || 0;
+    let inputName = input.id.replace("attr-", "");
+    let savedValue = savedAttributeValues[inputName] || 0;
 
     // Garantir que não seja negativo
     if (inputValue < 0) {
-      input.value = 0;
+      input.value = savedValue;
+      return;
+    }
+
+    // Impedir redução abaixo do valor salvo
+    if (inputValue < savedValue) {
+      input.value = savedValue;
       return;
     }
 
@@ -868,7 +938,8 @@
       ag: parseInt(document.getElementById("attr-ag").value) || 0,
       ch: parseInt(document.getElementById("attr-ch").value) || 0,
       vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0
+      pm: parseInt(document.getElementById("attr-pm").value) || 0,
+      fo: parseInt(document.getElementById("attr-fo").value) || 0
     };
     
     const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
@@ -887,13 +958,19 @@
   }
 
   function updateAttributeDisplay(totalAtributos) {
+    // Atualiza displays: pontos usados, disponíveis, total
+    // Muda cor pra vermelho se exceder limite
+    // Desabilita botão salvar se excedido
+    // Chama updateRadarChart() pra atualizar gráfico
+    // Usado em: handleAttributeChange(), validateAttributeInput()
     const attrValues = {
       hp: parseInt(document.getElementById("attr-hp").value) || 0,
       sta: parseInt(document.getElementById("attr-sta").value) || 0,
       ag: parseInt(document.getElementById("attr-ag").value) || 0,
       ch: parseInt(document.getElementById("attr-ch").value) || 0,
       vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0
+      pm: parseInt(document.getElementById("attr-pm").value) || 0,
+      fo: parseInt(document.getElementById("attr-fo").value) || 0
     };
 
     const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
@@ -917,13 +994,18 @@
   }
 
   async function saveAttributes() {
+    // Valida total de atributos e salva no Firebase
+    // Atualiza userData.atributos e savedAttributeValues (bloqueia redução)
+    // Mostra alerta de sucesso/erro
+    // Usado em: Click handler do botão #btnSaveAttributes
     const attrValues = {
       hp: parseInt(document.getElementById("attr-hp").value) || 0,
       sta: parseInt(document.getElementById("attr-sta").value) || 0,
       ag: parseInt(document.getElementById("attr-ag").value) || 0,
       ch: parseInt(document.getElementById("attr-ch").value) || 0,
       vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0
+      pm: parseInt(document.getElementById("attr-pm").value) || 0,
+      fo: parseInt(document.getElementById("attr-fo").value) || 0
     };
 
     const totalAtributos = 250 + (userData.nivel - 1) * 40;
@@ -940,6 +1022,7 @@
       }, { merge: true });
 
       userData.atributos = attrValues;
+      savedAttributeValues = { ...attrValues }; // Atualizar valores salvos para impedir redução
       alert("✅ Atributos salvos com sucesso!");
     } catch (error) {
       console.error("Erro ao salvar atributos:", error);
@@ -950,6 +1033,9 @@
   }
 
   function resetAttributes() {
+    // BETA: Reseta todos os atributos para 0
+    // Pede confirmação antes de executar
+    // Usado em: Click handler do botão #btnResetAttributes (se existir)
     if (!confirm("Tem certeza que deseja resetar todos os atributos?")) return;
 
     document.getElementById("attr-hp").value = 0;
@@ -964,6 +1050,10 @@
   }
 
   function renderSkills() {
+    // Renderiza grid de skills/categorias
+    // Filtra skills pela categoria ativa (categoria_bar buttons)
+    // Chama showSkillModal() ao clicar em card
+    // Usado em: onAuthStateChanged auth listener, category button clicks
     const container = document.getElementById("skills-grid");
     container.innerHTML = "";
 
@@ -1010,6 +1100,9 @@
   }
 
   function showSkillModal(skill) {
+    // Abre modal com detalhes completos da skill
+    // Mostra: nome, ícone, descrição, requisitos
+    // Usado em: Click handler dos cards na grid
     const level = skill.level ?? 0;
     const isUnlocked = level >= 1;
     const iconIndex = Math.min(level, skill.max || 5);
