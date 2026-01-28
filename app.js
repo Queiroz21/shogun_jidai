@@ -528,6 +528,7 @@ function makeCard(skill) {
 
   el.onclick = () => {
     if (!unlocked) return;
+    
     openConfirm(skill);
   };
 
