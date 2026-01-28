@@ -250,7 +250,126 @@ function checkRequirements(skill) {
 }
 
 /* =========================================================
-   MAKE CARD — RENDERIZA CARD DA SKILL
+   PARSER DE NÍVEIS — EXTRAI DESCRIÇÕES E REQUISITOS
+   Busca por padrão: "lvl 1 → descrição", "lvl 2 → descrição"
+   Separa descrições dos requisitos (seção final do texto)
+   
+   Formato esperado:
+   lvl 1 → Descrição aqui
+   lvl 2 → Descrição aqui
+   ...
+   
+   Requisitos:
+   • Habilidade: X / Y
+   • Nível: X / Y
+   
+   Retorna: { levels: [{level, desc}], requirements: [...]}
+   Retorna: null se não encontrou formato padronizado
+   Usado em: renderCarrossel()
+========================================================= */
+function parseSkillLevels(desc) {
+  if (!desc) return null;
+
+  const lines = desc.split('\n').map(l => l.trim()).filter(l => l);
+  const levels = [];
+  let requirements = [];
+
+  let inRequirements = false;
+
+  for (const line of lines) {
+    // Detectar início da seção de requisitos
+    if (line.toLowerCase().startsWith('requisitos:')) {
+      inRequirements = true;
+      continue;
+    }
+
+    if (inRequirements) {
+      // Capturar linhas que começam com • ou -
+      if (line.startsWith('•') || line.startsWith('-')) {
+        requirements.push(line.substring(1).trim());
+      } else if (line && !line.toLowerCase().startsWith('lvl')) {
+        // Capturar linhas soltas que são requisitos (sem • ou -)
+        requirements.push(line);
+      }
+    } else {
+      // Procura por "lvl N →"
+      const match = line.match(/^lvl\s+(\d+)\s*→\s*(.+)$/i);
+      if (match) {
+        levels.push({
+          level: parseInt(match[1]),
+          desc: match[2].trim()
+        });
+      }
+    }
+  }
+
+  // Retorna null se não encontrou formato padrão
+  if (levels.length === 0) return null;
+
+  return { levels, requirements };
+}
+
+/* =========================================================
+   RENDERIZA CARROSSEL DE NÍVEIS
+   Template HTML com setas ◄ ►, nível atual, descrição
+   
+   Features:
+   - Setas navegáveis (prev/next)
+   - Cores dinâmicas: verde (desbloqueado), vermelho (bloqueado)
+   - Requisitos listados para nível específico
+   - Data-attributes para event delegation funcionar
+   
+   Retorna: HTML string do carrossel
+   Retorna: null se formato não-padronizado (fallback pro mega texto)
+   Usado em: makeCard() quando skill.desc.includes("lvl 1 →")
+========================================================= */
+function renderCarrossel(skill) {
+  const parsed = parseSkillLevels(skill.desc);
+  if (!parsed) return null; // Formato não-padronizado
+
+  const { levels, requirements } = parsed;
+  const skillLevel = skill.level ?? 0;
+
+  // Determinar cor do primeiro nível (baseado se skill foi desbloqueada)
+  const isFirstLevelUnlocked = skillLevel >= 1;
+  const descClass = isFirstLevelUnlocked ? 'unlocked' : 'locked';
+
+  // Template inicial do carrossel (vai ser modificado por JS)
+  let html = `
+    <div class="tooltip-carousel" data-skill-id="${skill.id}" data-max-level="${levels.length}" data-current-level="${skillLevel}">
+      <button class="carousel-btn prev" data-action="prev">◄</button>
+      <div class="carousel-content">
+        <div class="carousel-level" data-level="1">Lvl <span class="level-num">1</span>/<span class="level-max">${levels.length}</span></div>
+        <div class="carousel-desc ${descClass}" data-level="1">${levels[0]?.desc || ''}</div>
+      </div>
+      <button class="carousel-btn next" data-action="next">►</button>
+    </div>
+  `;
+
+  // Adicionar requisitos (se houver)
+  if (requirements.length > 0) {
+    html += `
+      <div class="tooltip-requirements">
+        <div class="req-title">Requisitos (Lvl 1):</div>
+        ${requirements.map(req => {
+          // Simples parse: "Habilidade: X / Y"
+          const match = req.match(/(.+):\s*(\d+)\s*\/\s*(\d+)/);
+          if (match) {
+            const [_, name, current, need] = match;
+            const isMet = parseInt(current) >= parseInt(need);
+            return `<div class="req-item ${isMet ? 'met' : 'unmet'}">• ${req}</div>`;
+          }
+          return `<div class="req-item">${req}</div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+/* =========================================================
+   CARD DA SKILL — CRIA ELEMENTO VISUAL
    Valida requisitos, mostra nível, botão de ação
    Usado em: buildBranch(), renderNode()
 ========================================================= */
@@ -269,66 +388,136 @@ function makeCard(skill) {
   if (!unlocked) el.classList.add("blocked");
   else if (skill.level > 0) el.classList.add("active");
 
-  /* ========================= TOOLTIP (IGUAL AO ANTIGO) ========================= */
+  /* ========================= TOOLTIP — 3 TIPOS ========================= */
 
-  let tooltipHTML = `
-    <strong>${skill.name}</strong><br>
-    <small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
-  `;
+  let tooltipHTML = `<strong>${skill.name}</strong>`;
 
-  if (skill.desc) {
-    tooltipHTML += `<br><br>${skill.desc}`;
+  // TIPO 1: SKILL GUIA (max = 0)
+  if (skill.max === 0) {
+    tooltipHTML += `
+      <br><span class="badge-guide">🌳 Árvore Guia</span>
+      <br><br><em>${skill.desc || 'Nenhuma descrição'}</em>
+    `;
+  }
+  // TIPO 2: SKILL COMPRADA COM FORMATO PADRONIZADO
+  else if (skill.desc?.includes("lvl 1 →")) {
+    tooltipHTML += `<br><small>Nível: ${skill.level ?? 0} / ${skill.max}</small><br><br>`;
+    const carrossel = renderCarrossel(skill);
+    if (carrossel) {
+      tooltipHTML += carrossel;
+    }
+    
+    // Adicionar requisitos do Firestore para carrossel
+    if (skill.requires?.length) {
+      tooltipHTML += `<br><strong>Requisitos (Lvl 1):</strong><br>`;
+      
+      skill.requires.forEach(req => {
+        const type = req.type ?? "skill";
+        let label = "";
+        let current = "-";
+        let need = "-";
+        let ok = "❌";
+
+        if (type === "skill") {
+          const sk = skills.find(s => s.id === req.id);
+          current = sk?.level ?? 0;
+          need = req.level ?? req.lvl ?? 1;
+          label = sk?.name ?? req.id;
+          ok = current >= need ? "✔" : "❌";
+        }
+
+        if (type === "playerLevel") {
+          current = userData.nivel ?? 0;
+          need = req.level;
+          label = "Nível";
+          ok = current >= need ? "✔" : "❌";
+        }
+
+        if (type === "doujutsu") {
+          current = normalizeDoujutsus().join(", ") || "Nenhum";
+          need = req.value;
+          label = "Doujutsu";
+          ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
+        }
+
+        if (type === "region") {
+          current = userData.regiao ?? "Nenhuma";
+          need = req.value;
+          label = "Região";
+          ok = current === need ? "✔" : "❌";
+        }
+
+        if (type === "clan") {
+          current = userData.cla ?? "Nenhum";
+          need = req.value;
+          label = "Clã";
+          ok = current === need ? "✔" : "❌";
+        }
+
+        tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
+      });
+    }
+  }
+  // TIPO 3: SKILL NÃO-FORMATADA (em desenvolvimento)
+  else {
+    tooltipHTML += `
+      <br><span class="badge-wip">⚠️ Em Modificação</span>
+      <br><small>Nível: ${skill.level ?? 0} / ${skill.max}</small>
+      <br><br><small>${skill.desc || 'Sem descrição'}</small>
+    `;
   }
 
-  if (skill.requires?.length) {
-    tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
+  // Adicionar requisitos SOMENTE se não for SKILL GUIA e não tiver carrossel
+  if (skill.max > 0 && !skill.desc?.includes("lvl 1 →")) {
+    if (skill.requires?.length) {
+      tooltipHTML += `<br><br><strong>Requisitos:</strong><br>`;
 
-    skill.requires.forEach(req => {
-      const type = req.type ?? "skill";
-      let label = "";
-      let current = "-";
-      let need = "-";
-      let ok = "❌";
+      skill.requires.forEach(req => {
+        const type = req.type ?? "skill";
+        let label = "";
+        let current = "-";
+        let need = "-";
+        let ok = "❌";
 
-      if (type === "skill") {
-        const sk = skills.find(s => s.id === req.id);
-        current = sk?.level ?? 0;
-        need = req.level ?? req.lvl ?? 1;
-        label = sk?.name ?? req.id;
-        ok = current >= need ? "✔" : "❌";
-      }
+        if (type === "skill") {
+          const sk = skills.find(s => s.id === req.id);
+          current = sk?.level ?? 0;
+          need = req.level ?? req.lvl ?? 1;
+          label = sk?.name ?? req.id;
+          ok = current >= need ? "✔" : "❌";
+        }
 
-      if (type === "playerLevel") {
-        current = userData.nivel ?? 0;
-        need = req.level;
-        label = "Conta";
-        ok = current >= need ? "✔" : "❌";
-      }
+        if (type === "playerLevel") {
+          current = userData.nivel ?? 0;
+          need = req.level;
+          label = "Conta";
+          ok = current >= need ? "✔" : "❌";
+        }
 
-      if (type === "doujutsu") {
-        current = normalizeDoujutsus().join(", ") || "Nenhum";
-        console.log("Current Doujutsus:", current);
-        need = req.value;
-        label = "Doujutsu";
-        ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
-      }
+        if (type === "doujutsu") {
+          current = normalizeDoujutsus().join(", ") || "Nenhum";
+          need = req.value;
+          label = "Doujutsu";
+          ok = normalizeDoujutsus().includes(req.value) ? "✔" : "❌";
+        }
 
-      if (type === "region") {
-        current = userData.regiao ?? "Nenhuma";
-        need = req.value;
-        label = "Região";
-        ok = current === need ? "✔" : "❌";
-      }
+        if (type === "region") {
+          current = userData.regiao ?? "Nenhuma";
+          need = req.value;
+          label = "Região";
+          ok = current === need ? "✔" : "❌";
+        }
 
-      if (type === "clan") {
-        current = userData.cla ?? "Nenhum";
-        need = req.value;
-        label = "Clã";
-        ok = current === need ? "✔" : "❌";
-      }
+        if (type === "clan") {
+          current = userData.cla ?? "Nenhum";
+          need = req.value;
+          label = "Clã";
+          ok = current === need ? "✔" : "❌";
+        }
 
-      tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
-    });
+        tooltipHTML += `• ${label}: ${current} / ${need} ${ok}<br>`;
+      });
+    }
   }
 
   el.innerHTML = `
@@ -620,6 +809,65 @@ document.getElementById("btnConfirm").onclick = async (e) => {
 };
 
 document.getElementById("btnCancel").onclick = closeConfirm;
+
+/* =========================================================
+   CARROSSEL DE NÍVEIS — EVENT DELEGATION
+   Delegação de eventos para setas do carrossel
+   Permite navegar entre níveis com setas ◄ ►
+   Cores dinâmicas: verde (desbloqueado), vermelho (bloqueado)
+   Usado em: Tooltip hover com renderCarrossel()
+========================================================= */
+document.addEventListener('click', (e) => {
+  // Detectar cliques nas setas do carrossel
+  const btn = e.target.closest('.carousel-btn');
+  if (!btn) return;
+
+  const carousel = btn.closest('.tooltip-carousel');
+  if (!carousel) return;
+
+  const skillId = carousel.dataset.skillId;
+  const maxLevel = parseInt(carousel.dataset.maxLevel);
+  let currentLevel = parseInt(carousel.dataset.currentLevel) || 1;
+  const action = btn.dataset.action;
+
+  // Navegação das setas
+  if (action === 'prev' && currentLevel > 1) currentLevel--;
+  if (action === 'next' && currentLevel < maxLevel) currentLevel++;
+
+  // Atualizar dataset
+  carousel.dataset.currentLevel = currentLevel;
+
+  // Buscar a skill para pegar a descrição
+  const skill = skills.find(s => s.id === skillId);
+  if (!skill) return;
+
+  const parsed = parseSkillLevels(skill.desc);
+  if (!parsed) return;
+
+  const levelData = parsed.levels.find(l => l.level === currentLevel);
+  const userCurrentLevel = skill.level ?? 0;
+  const isUnlocked = currentLevel <= userCurrentLevel;
+
+  // Atualizar nível exibido
+  carousel.querySelector('.level-num').textContent = currentLevel;
+
+  // Atualizar descrição com cor
+  const descElement = carousel.querySelector('.carousel-desc');
+  if (descElement && levelData) {
+    descElement.textContent = levelData.desc;
+    descElement.className = `carousel-desc ${isUnlocked ? 'unlocked' : 'locked'}`;
+  }
+
+  // Atualizar requisitos (se houver)
+  const reqsContainer = carousel.nextElementSibling;
+  if (reqsContainer?.classList.contains('tooltip-requirements')) {
+    reqsContainer.querySelector('.req-title').textContent = `Requisitos (Lvl ${currentLevel}):`;
+  }
+
+  // Atualizar estado dos botões
+  btn.parentElement.querySelector('[data-action="prev"]').disabled = currentLevel <= 1;
+  btn.parentElement.querySelector('[data-action="next"]').disabled = currentLevel >= maxLevel;
+});
 
 /* =========================================================
    CENTRALIZAÇÃO AUTOMÁTICA DA ÁRVORE

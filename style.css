@@ -265,6 +265,121 @@ h1 { margin-top: 15px; }
   display: none;
 }
 
+/* Permitir interação quando tooltip está visível */
+.skill:hover .tooltip {
+  pointer-events: auto;
+}
+
+/* CARROSSEL DE NÍVEIS */
+.tooltip-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.carousel-btn {
+  background: rgba(74, 170, 255, 0.2);
+  border: 1px solid #4af;
+  color: #4af;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-btn:hover {
+  background: rgba(74, 170, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.carousel-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.carousel-content {
+  flex: 1;
+  text-align: center;
+}
+
+.carousel-level {
+  font-size: 11px;
+  color: #4af;
+  margin-bottom: 4px;
+}
+
+.carousel-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 40px;
+}
+
+.carousel-desc.locked {
+  color: #ff6b6b;
+}
+
+.carousel-desc.unlocked {
+  color: #51cf66;
+}
+
+/* REQUISITOS DO NÍVEL */
+.tooltip-requirements {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(74, 170, 255, 0.3);
+  font-size: 11px;
+}
+
+.req-title {
+  color: #4af;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.req-item {
+  margin: 3px 0;
+  text-align: left;
+}
+
+.req-item.met {
+  color: #51cf66;
+}
+
+.req-item.unmet {
+  color: #ff6b6b;
+}
+
+/* BADGE "EM MODIFICAÇÃO" */
+.badge-wip {
+  display: inline-block;
+  background: #ff6b00;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* ÁRVORE GUIA BADGE */
+.badge-guide {
+  display: inline-block;
+  background: rgba(74, 170, 255, 0.3);
+  color: #4af;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
 .tooltip::after{
   content: '';
   position: absolute;

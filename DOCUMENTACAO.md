@@ -11,7 +11,9 @@
 - **checkLevelUp()** → Detecta level up, distribui +3 pontos árvore e +40 atributo, mostra alerta
 - **showLevelUpPopup()** → Alerta com detalhes do level up
 - **checkRequirements()** → Valida requisitos da skill (skill level, player level, doujutsu, clan)
-- **makeCard()** → Renderiza card visual da skill com validação de requisitos
+- **parseSkillLevels()** → **NOVO** Parser do mega texto, extrai "lvl N → desc" e requisitos
+- **renderCarrossel()** → **NOVO** Renderiza carrossel HTML com setas ◄ ►, cores verde/vermelho
+- **makeCard()** → **MELHORADO** 3 tipos de tooltip: Guia (simples), Carrossel (padronizado), WIP (aviso)
 - **buildBranch()** → Recursivo, monta árvore parent→child de skills
 - **render()** → Atualiza tela inteira (header, XP, grid de skills) - MAIN
 - **renderTreeByCategory()** → Filtra e renderiza skills por categoria, com filtro doujutsu especial
@@ -19,6 +21,7 @@
 - **levelUp()** → Incrementa nível da skill (-1 ponto, +1 level), salva Firebase
 - **openConfirm()** → Abre modal com detalhes da skill (onclick em makeCard)
 - **closeConfirm()** → Fecha modal e limpa estado temporário
+- **Carrossel Event Delegation** → **NOVO** Delegação de eventos para setas, navegação de níveis
 - **centerTree()** → Centra viewport da árvore no load e resize
 
 **EVENT LISTENERS:**
@@ -76,7 +79,105 @@
 
 ---
 
-## 🗄️ Estrutura do Firestore
+## 🎨 NOVO: Sistema de Tooltips Inteligentes (v2.0)
+
+### 3 Tipos de Tooltip:
+
+#### **1️⃣ SKILL GUIA** (max = 0)
+```
+┌─────────────────────────┐
+│ Chakra Elemental        │
+│ 🌳 Árvore Guia          │
+├─────────────────────────┤
+│ Descrição da categoria  │
+│ (sem nível, sem level up)
+│                         │
+│ Chakra > Elemental      │
+└─────────────────────────┘
+```
+- Simples, sem carrossel
+- Sem requisitos mostrados
+- Sem botão de compra
+
+#### **2️⃣ SKILL COMPRADA COM FORMATO PADRONIZADO** ✨
+```
+┌────────────────────────────────┐
+│ Manipulação de Correntes       │
+│ Nível: 2 / 5                   │
+├────────────────────────────────┤
+│ ◄ Lvl 2/5 ►                    │
+│ Detecta inimigos por          │
+│ vibrações... [VERDE]           │
+├────────────────────────────────┤
+│ Requisitos (Lvl 2):            │
+│ ✓ Criação de Água: 2/2 [VERDE] │
+│ ✗ Nível: 5/10 [VERMELHO]       │
+└────────────────────────────────┘
+```
+- Carrossel interativo com ◄ ►
+- Descrição dinâmica por nível
+- Cores: Verde (desbloqueado), Vermelho (bloqueado)
+- Requisitos atualizados por nível
+
+**Formato esperado no Firestore:**
+```
+lvl 1 → Controla fluxo próximo (até 5 quadrados)
+lvl 2 → Detecta inimigos por vibrações
+lvl 3 → Manipula correntes médias (rios)
+lvl 4 → Cria redemoínhos (2x2)
+lvl 5 → Controla correntes oceânicas
+
+Requisitos:
+• Criacao de Agua: 2 / 2
+• Suiton: 4 / 4
+```
+
+#### **3️⃣ SKILL NÃO-FORMATADA** ⚠️
+```
+┌─────────────────────────────┐
+│ Nome da Skill               │
+│ ⚠️ Em Modificação             │
+│ Nível: 0 / 5                │
+├─────────────────────────────┤
+│ [mega texto conforme está   │
+│  no Firestore, sem parse]   │
+└─────────────────────────────┘
+```
+- Badge laranja "⚠️ Em Modificação"
+- Mostra texto bruto (não parseia)
+- Aviso visual de que precisa padronizar
+
+---
+
+### 🔧 Implementação Técnica:
+
+**parseSkillLevels(desc)**
+- Procura por regex: `/^lvl\s+(\d+)\s*→\s*(.+)$/i`
+- Extrai levels e requisitos
+- Retorna `null` se formato não-padronizado
+
+**renderCarrossel(skill)**
+- Monta HTML do carrossel
+- Setas ◄ ► com data-action
+- Template com data-attributes para JS
+
+**Event Delegation**
+- Listener único em document para todos os carrosséis
+- Busca skill e re-renderiza nível selecionado
+- Atualiza cores dinamicamente
+
+---
+
+### 📝 Como Migrar Skills Gradualmente:
+
+1. **Skills críticas primeiro** → Formatar com `lvl N →`
+2. **Skills secundárias** → Deixar em WIP temporariamente
+3. **Skills guia** → Deixar com max=0 (sem mudanças)
+4. **Testar cada uma** → Confirmar cores e requisitos
+
+---
+
+
 
 ### Coleção: **fichas** (por UID do usuário)
 ```javascript
