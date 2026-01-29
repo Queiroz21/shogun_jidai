@@ -11,8 +11,9 @@
     .profile-container {
       max-width: 1100px;
       margin: 90px auto 40px;
-      padding: 0 20px;
+      padding: 0 240px 0 20px;
       color: #eee;
+      position: relative;
     }
 
     .ficha-header {
@@ -398,6 +399,85 @@
       .modal-content { padding: 20px; }
       .modal-icon { width: 64px; height: 64px; }
     }
+
+    /* ────────────────────────────────────────────────
+       LEADERBOARD
+    ──────────────────────────────────────────────── */
+    #ranking-container {
+      position: absolute;
+      right: 20px;
+      top: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      border-radius: 12px;
+      padding: 12px;
+      color: white;
+      width: 200px;
+      font-family: Arial, sans-serif;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
+    }
+
+    #ranking-container h3 {
+      text-align: center;
+      margin: 0 0 8px;
+      color: #ffcc00;
+      font-size: 1.05rem;
+    }
+
+    #leaderboard {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #leaderboard li {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    #leaderboard li:last-child {
+      border-bottom: none;
+    }
+
+    .leaderboard-rank {
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .leaderboard-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    #leaderboard li:nth-child(1) { color: gold; }
+    #leaderboard li:nth-child(2) { color: silver; }
+    #leaderboard li:nth-child(3) { color: #cd7f32; }
+
+    .leaderboard-empty {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .profile-container {
+        padding-right: 20px;
+      }
+
+      #ranking-container {
+        position: static;
+        width: auto;
+        margin-bottom: 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -415,6 +495,13 @@
 </header>
 
 <div class="profile-container">
+  <aside id="ranking-container" aria-labelledby="ranking-title">
+    <h3 id="ranking-title">Leaderboard</h3>
+    <ol id="leaderboard"></ol>
+    <p id="leaderboard-empty" class="leaderboard-empty" hidden>
+      Nenhum dado para exibir.
+    </p>
+  </aside>
   <div class="ficha-header">
     <h1>Ficha do Personagem</h1>
     <div class="ficha-info-grid">
@@ -537,7 +624,17 @@
 
 <script type="module">
   import { auth, db } from "./oauth.js";
-  import { doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    setDoc,
+    updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   let currentUID = null;
@@ -574,6 +671,54 @@
       requires: s.requires ?? [],
       max: s.max ?? 0
     }));
+  }
+
+  async function loadLeaderboard() {
+    const leaderboard = document.getElementById("leaderboard");
+    const emptyState = document.getElementById("leaderboard-empty");
+
+    if (!leaderboard || !emptyState) {
+      console.error("Elemento do leaderboard não encontrado no DOM.");
+      return;
+    }
+
+    leaderboard.innerHTML = "";
+    emptyState.hidden = true;
+
+    try {
+      const playersRef = collection(db, "fichas");
+      const playersQuery = query(playersRef, orderBy("xp", "desc"), limit(10));
+      const querySnapshot = await getDocs(playersQuery);
+
+      let rank = 1;
+      querySnapshot.forEach((docSnap) => {
+        const player = docSnap.data() ?? {};
+        const listItem = document.createElement("li");
+
+        const nick = player.nick ?? "Desconhecido";
+        const clan = player.cla ?? "Sem clã";
+        const xp = player.xp ?? 0;
+
+        listItem.innerHTML = `
+          <span><span class="leaderboard-rank">${rank}º</span>${nick}</span>
+          <span class="leaderboard-meta">
+            <span>${clan}</span>
+            <span>${xp} XP</span>
+          </span>
+        `;
+
+        leaderboard.appendChild(listItem);
+        rank += 1;
+      });
+
+      if (rank === 1) {
+        emptyState.hidden = false;
+      }
+    } catch (error) {
+      console.error("Erro ao carregar o leaderboard:", error);
+      emptyState.hidden = false;
+      emptyState.textContent = "Erro ao carregar o leaderboard.";
+    }
   }
 
   function getAllDescendants(categoryId) {
@@ -620,6 +765,7 @@
 
     renderPerfil();
     renderSkills();
+    loadLeaderboard();
   });
 
   function renderPerfil() {
