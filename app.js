@@ -528,7 +528,6 @@ function makeCard(skill) {
 
   el.onclick = () => {
     if (!unlocked) return;
-    
     openConfirm(skill);
   };
 
@@ -970,4 +969,44 @@ document.getElementById("btnPerfil")?.addEventListener("click", () => {
 
 document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
   window.open("invocacoes.html", "_self");
+});
+
+async function loadLeaderboard() {
+  try {
+    const leaderboard = document.getElementById("leaderboard");
+    if (!leaderboard) {
+      console.error("O elemento #leaderboard não foi encontrado no DOM.");
+      return;
+    }
+
+    // Limpa a lista do Ranking
+    leaderboard.innerHTML = "";
+
+    const playersRef = collection(db, "players");
+    const playersQuery = query(playersRef, orderBy("xp", "desc"), limit(10));
+    const querySnapshot = await getDocs(playersQuery);
+
+    let rank = 1;
+    querySnapshot.forEach((doc) => {
+      const player = doc.data();
+      
+      // Cria o item da lista com as informações do jogador
+      const listItem = document.createElement("li");
+      listItem.innerHTML = `
+        <span>${rank}° ${player.nick || "Desconhecido"} - ${player.cla || "Sem clã"} ... ${player.xp || 0} XP</span>`;
+      leaderboard.appendChild(listItem);
+
+      rank++;
+    });
+
+    console.log("Ranking carregado com sucesso.");
+  } catch (error) {
+    console.error("Erro ao carregar o Ranking:", error);
+  }
+}
+
+// Faz o carregamento ao carregar a página
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("Chamando loadLeaderboard...");
+  loadLeaderboard();
 });

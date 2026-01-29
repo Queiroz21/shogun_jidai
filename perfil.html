@@ -1,1204 +1,1351 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Perfil - Árvore de Habilidades Naruto</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    /* Estilos da página + modal */
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Perfil - Árvore de Habilidades Naruto</title>
+<link rel="stylesheet" href="style.css" />
+<style>
+/* Estilos da página + modal */
 
-    .profile-container {
-      max-width: 1100px;
-      margin: 90px auto 40px;
-      padding: 0 20px;
-      color: #eee;
-    }
+.profile-container {
+max-width: 1100px;
+margin: 90px auto 40px;
+      padding: 0 240px 0 20px;
+color: #eee;
+      position: relative;
+}
 
-    .ficha-header {
-      background: rgba(5, 10, 25, 0.92);
-      border: 1px solid #4af;
+.ficha-header {
+background: rgba(5, 10, 25, 0.92);
+border: 1px solid #4af;
+border-radius: 12px;
+padding: 20px;
+margin-bottom: 30px;
+box-shadow: 0 0 16px rgba(80,180,255,0.3);
+backdrop-filter: blur(6px);
+}
+
+.ficha-header h1 {
+margin: 0 0 16px;
+font-size: 2.1rem;
+color: #4af;
+}
+
+.ficha-info-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+gap: 16px 24px;
+font-size: 1.05rem;
+}
+
+.ficha-row {
+display: flex;
+justify-content: space-between;
+padding: 8px 0;
+border-bottom: 1px solid rgba(74, 170, 255, 0.18);
+}
+
+.ficha-row:last-child { border-bottom: none; }
+
+.ficha-label { color: #88ccff; font-weight: 500; }
+
+.skills-section { margin-top: 40px; }
+
+.filters-bar {
+display: flex;
+flex-wrap: wrap;
+gap: 12px;
+margin: 16px 0 24px;
+justify-content: center;
+}
+
+.filter-btn {
+padding: 8px 16px;
+border-radius: 20px;
+border: 1px solid #4af;
+background: rgba(20,40,90,0.4);
+color: white;
+cursor: pointer;
+transition: all 0.2s;
+font-size: 0.95rem;
+}
+
+.filter-btn.active {
+background: rgba(80,180,255,0.7);
+box-shadow: 0 0 10px #4af;
+}
+
+.filter-btn:hover:not(.active) {
+background: rgba(60,120,255,0.5);
+}
+
+.skills-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+gap: 28px 16px;
+}
+
+.skill-preview {
+display: flex;
+flex-direction: column;
+align-items: center;
+text-align: center;
+background: rgba(10, 20, 50, 0.4);
+border: 1px solid #444;
+border-radius: 10px;
+padding: 12px 8px;
+transition: all 0.22s;
+cursor: pointer;
+}
+
+.skill-preview:hover {
+transform: translateY(-4px);
+background: rgba(20, 60, 120, 0.55);
+border-color: #6af;
+box-shadow: 0 6px 16px rgba(80,180,255,0.25);
+}
+
+.skill-preview.locked {
+opacity: 0.55;
+filter: grayscale(0.7);
+}
+
+.skill-preview img {
+width: 64px;
+height: 64px;
+object-fit: contain;
+border-radius: 8px;
+border: 2px solid #555;
+margin-bottom: 8px;
+}
+
+.skill-preview .name {
+font-size: 0.9rem;
+line-height: 1.15;
+max-width: 100%;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+
+.skill-preview .level {
+font-size: 0.82rem;
+margin-top: 4px;
+}
+
+.skill-preview .level.unlocked { color: #0f8; }
+.skill-preview .level.locked   { color: #f66; }
+
+.no-skills {
+text-align: center;
+color: #888;
+font-style: italic;
+padding: 60px 20px;
+font-size: 1.15rem;
+background: rgba(10,20,50,0.3);
+border-radius: 12px;
+border: 1px dashed #555;
+}
+
+/* ────────────────────────────────────────────────
+      MODAL
+   ──────────────────────────────────────────────── */
+#skillModal {
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.75);
+display: none;
+align-items: center;
+justify-content: center;
+z-index: 9999;
+}
+
+#skillModal.show {
+display: flex;
+}
+
+.modal-content {
+background: rgba(10, 15, 35, 0.98);
+border: 1px solid #4af;
+border-radius: 12px;
+width: 90%;
+max-width: 420px;
+padding: 24px;
+box-shadow: 0 0 30px rgba(74,170,255,0.4);
+backdrop-filter: blur(6px);
+color: #eee;
+position: relative;
+}
+
+.modal-close {
+position: absolute;
+top: 12px;
+right: 16px;
+font-size: 28px;
+color: #aaa;
+cursor: pointer;
+transition: color 0.2s;
+}
+
+.modal-close:hover {
+color: #fff;
+}
+
+.modal-icon {
+display: block;
+width: 80px;
+height: 80px;
+object-fit: contain;
+margin: 0 auto 16px;
+border: 2px solid #555;
+border-radius: 10px;
+}
+
+.modal-title {
+text-align: center;
+font-size: 1.5rem;
+margin-bottom: 8px;
+color: #4af;
+}
+
+.modal-level {
+text-align: center;
+font-size: 1.1rem;
+margin-bottom: 16px;
+}
+
+.modal-desc {
+margin: 16px 0;
+line-height: 1.5;
+font-size: 0.98rem;
+}
+
+.modal-reqs {
+margin-top: 20px;
+}
+
+.modal-reqs h4 {
+margin-bottom: 8px;
+color: #88ccff;
+}
+
+.req-item {
+margin: 6px 0;
+font-size: 0.95rem;
+}
+
+.req-ok   { color: #0f8; }
+.req-fail { color: #f66; }
+
+/* ────────────────────────────────────────────────
+      ATRIBUTOS
+   ──────────────────────────────────────────────── */
+.attributes-section {
+background: rgba(5, 10, 25, 0.92);
+border: 1px solid #4af;
+border-radius: 12px;
+padding: 20px;
+margin-bottom: 30px;
+box-shadow: 0 0 16px rgba(80,180,255,0.3);
+backdrop-filter: blur(6px);
+}
+
+.attributes-section h2 {
+color: #4af;
+margin-bottom: 16px;
+font-size: 1.4rem;
+}
+
+.attributes-info {
+display: flex;
+gap: 20px;
+margin-bottom: 16px;
+padding: 12px;
+background: rgba(20, 40, 90, 0.4);
+border-radius: 8px;
+font-size: 0.95rem;
+}
+
+.attributes-info span {
+color: #88ccff;
+}
+
+.attributes-info strong {
+color: #4af;
+}
+
+.attributes-table {
+width: 100%;
+border-collapse: collapse;
+margin-bottom: 16px;
+}
+
+.attributes-table thead {
+background: rgba(20, 40, 90, 0.6);
+}
+
+.attributes-table th {
+padding: 12px;
+text-align: left;
+color: #4af;
+font-weight: 600;
+border-bottom: 2px solid rgba(74, 170, 255, 0.3);
+}
+
+.attributes-table td {
+padding: 12px;
+border-bottom: 1px solid rgba(74, 170, 255, 0.15);
+color: #eee;
+}
+
+.attributes-table td label {
+font-weight: 500;
+color: #88ccff;
+}
+
+.attr-input {
+width: 80px;
+padding: 6px 8px;
+background: rgba(10, 20, 50, 0.8);
+border: 1px solid #4af;
+border-radius: 4px;
+color: #eee;
+font-size: 1rem;
+text-align: center;
+}
+
+.attr-input:focus {
+outline: none;
+border-color: #6af;
+box-shadow: 0 0 8px rgba(74, 170, 255, 0.5);
+}
+
+.attr-btn {
+padding: 4px 10px;
+margin: 0 2px;
+background: rgba(60, 120, 255, 0.5);
+border: 1px solid #4af;
+color: #eee;
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.2s;
+font-weight: 600;
+}
+
+.attr-btn:hover {
+background: rgba(80, 180, 255, 0.7);
+box-shadow: 0 0 8px #4af;
+}
+
+.attributes-actions {
+display: flex;
+gap: 12px;
+justify-content: center;
+}
+
+.btn-save-attr, .btn-reset-attr {
+padding: 10px 24px;
+border-radius: 6px;
+border: none;
+font-size: 1rem;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.3s;
+}
+
+.btn-save-attr {
+background: rgba(0, 200, 0, 0.6);
+color: #0f8;
+border: 1px solid #0f8;
+}
+
+.btn-save-attr:hover {
+background: rgba(0, 200, 0, 0.8);
+box-shadow: 0 0 12px rgba(0, 200, 0, 0.5);
+}
+
+.btn-reset-attr {
+background: rgba(200, 100, 0, 0.6);
+color: #fa8;
+border: 1px solid #fa8;
+}
+
+.btn-reset-attr:hover {
+background: rgba(200, 100, 0, 0.8);
+box-shadow: 0 0 12px rgba(250, 170, 100, 0.5);
+}
+
+/* ────────────────────────────────────────────────
+      GRÁFICO RADAR
+   ──────────────────────────────────────────────── */
+.attributes-chart-container {
+display: flex;
+justify-content: center;
+align-items: center;
+margin-top: 24px;
+padding: 20px;
+background: rgba(20, 40, 90, 0.3);
+border-radius: 10px;
+}
+
+#radarChart {
+max-width: 350px;
+width: 100%;
+height: auto;
+}
+
+@media (max-width: 500px) {
+.modal-content { padding: 20px; }
+.modal-icon { width: 64px; height: 64px; }
+}
+
+    /* ────────────────────────────────────────────────
+       LEADERBOARD
+    ──────────────────────────────────────────────── */
+    #ranking-container {
+      position: absolute;
+      right: 20px;
+      top: 0;
+      background-color: rgba(0, 0, 0, 0.8);
       border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 30px;
-      box-shadow: 0 0 16px rgba(80,180,255,0.3);
-      backdrop-filter: blur(6px);
+      padding: 12px;
+      color: white;
+      width: 200px;
+      font-family: Arial, sans-serif;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
     }
 
-    .ficha-header h1 {
-      margin: 0 0 16px;
-      font-size: 2.1rem;
-      color: #4af;
-    }
-
-    .ficha-info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px 24px;
+    #ranking-container h3 {
+      text-align: center;
+      margin: 0 0 8px;
+      color: #ffcc00;
       font-size: 1.05rem;
     }
 
-    .ficha-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(74, 170, 255, 0.18);
+    #leaderboard {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
     }
 
-    .ficha-row:last-child { border-bottom: none; }
-
-    .ficha-label { color: #88ccff; font-weight: 500; }
-
-    .skills-section { margin-top: 40px; }
-
-    .filters-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin: 16px 0 24px;
-      justify-content: center;
-    }
-
-    .filter-btn {
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1px solid #4af;
-      background: rgba(20,40,90,0.4);
-      color: white;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.95rem;
-    }
-
-    .filter-btn.active {
-      background: rgba(80,180,255,0.7);
-      box-shadow: 0 0 10px #4af;
-    }
-
-    .filter-btn:hover:not(.active) {
-      background: rgba(60,120,255,0.5);
-    }
-
-    .skills-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 28px 16px;
-    }
-
-    .skill-preview {
+    #leaderboard li {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      text-align: center;
-      background: rgba(10, 20, 50, 0.4);
-      border: 1px solid #444;
-      border-radius: 10px;
-      padding: 12px 8px;
-      transition: all 0.22s;
-      cursor: pointer;
+      gap: 2px;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .skill-preview:hover {
-      transform: translateY(-4px);
-      background: rgba(20, 60, 120, 0.55);
-      border-color: #6af;
-      box-shadow: 0 6px 16px rgba(80,180,255,0.25);
+    #leaderboard li:last-child {
+      border-bottom: none;
     }
 
-    .skill-preview.locked {
-      opacity: 0.55;
-      filter: grayscale(0.7);
+    .leaderboard-rank {
+      font-weight: 700;
+      margin-right: 4px;
     }
 
-    .skill-preview img {
-      width: 64px;
-      height: 64px;
-      object-fit: contain;
-      border-radius: 8px;
-      border: 2px solid #555;
-      margin-bottom: 8px;
-    }
-
-    .skill-preview .name {
-      font-size: 0.9rem;
-      line-height: 1.15;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .skill-preview .level {
-      font-size: 0.82rem;
-      margin-top: 4px;
-    }
-
-    .skill-preview .level.unlocked { color: #0f8; }
-    .skill-preview .level.locked   { color: #f66; }
-
-    .no-skills {
-      text-align: center;
-      color: #888;
-      font-style: italic;
-      padding: 60px 20px;
-      font-size: 1.15rem;
-      background: rgba(10,20,50,0.3);
-      border-radius: 12px;
-      border: 1px dashed #555;
-    }
-
-    /* ────────────────────────────────────────────────
-       MODAL
-    ──────────────────────────────────────────────── */
-    #skillModal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    #skillModal.show {
+    .leaderboard-meta {
       display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.7);
     }
 
-    .modal-content {
-      background: rgba(10, 15, 35, 0.98);
-      border: 1px solid #4af;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 420px;
-      padding: 24px;
-      box-shadow: 0 0 30px rgba(74,170,255,0.4);
-      backdrop-filter: blur(6px);
-      color: #eee;
-      position: relative;
-    }
+    #leaderboard li:nth-child(1) { color: gold; }
+    #leaderboard li:nth-child(2) { color: silver; }
+    #leaderboard li:nth-child(3) { color: #cd7f32; }
 
-    .modal-close {
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      font-size: 28px;
-      color: #aaa;
-      cursor: pointer;
-      transition: color 0.2s;
-    }
-
-    .modal-close:hover {
-      color: #fff;
-    }
-
-    .modal-icon {
-      display: block;
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      margin: 0 auto 16px;
-      border: 2px solid #555;
-      border-radius: 10px;
-    }
-
-    .modal-title {
-      text-align: center;
-      font-size: 1.5rem;
-      margin-bottom: 8px;
-      color: #4af;
-    }
-
-    .modal-level {
-      text-align: center;
-      font-size: 1.1rem;
-      margin-bottom: 16px;
-    }
-
-    .modal-desc {
-      margin: 16px 0;
-      line-height: 1.5;
-      font-size: 0.98rem;
-    }
-
-    .modal-reqs {
-      margin-top: 20px;
-    }
-
-    .modal-reqs h4 {
-      margin-bottom: 8px;
-      color: #88ccff;
-    }
-
-    .req-item {
-      margin: 6px 0;
-      font-size: 0.95rem;
-    }
-
-    .req-ok   { color: #0f8; }
-    .req-fail { color: #f66; }
-
-    /* ────────────────────────────────────────────────
-       ATRIBUTOS
-    ──────────────────────────────────────────────── */
-    .attributes-section {
-      background: rgba(5, 10, 25, 0.92);
-      border: 1px solid #4af;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 30px;
-      box-shadow: 0 0 16px rgba(80,180,255,0.3);
-      backdrop-filter: blur(6px);
-    }
-
-    .attributes-section h2 {
-      color: #4af;
-      margin-bottom: 16px;
-      font-size: 1.4rem;
-    }
-
-    .attributes-info {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: rgba(20, 40, 90, 0.4);
-      border-radius: 8px;
-      font-size: 0.95rem;
-    }
-
-    .attributes-info span {
-      color: #88ccff;
-    }
-
-    .attributes-info strong {
-      color: #4af;
-    }
-
-    .attributes-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 16px;
-    }
-
-    .attributes-table thead {
-      background: rgba(20, 40, 90, 0.6);
-    }
-
-    .attributes-table th {
-      padding: 12px;
-      text-align: left;
-      color: #4af;
-      font-weight: 600;
-      border-bottom: 2px solid rgba(74, 170, 255, 0.3);
-    }
-
-    .attributes-table td {
-      padding: 12px;
-      border-bottom: 1px solid rgba(74, 170, 255, 0.15);
-      color: #eee;
-    }
-
-    .attributes-table td label {
-      font-weight: 500;
-      color: #88ccff;
-    }
-
-    .attr-input {
-      width: 80px;
-      padding: 6px 8px;
-      background: rgba(10, 20, 50, 0.8);
-      border: 1px solid #4af;
-      border-radius: 4px;
-      color: #eee;
-      font-size: 1rem;
+    .leaderboard-empty {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
       text-align: center;
     }
 
-    .attr-input:focus {
-      outline: none;
-      border-color: #6af;
-      box-shadow: 0 0 8px rgba(74, 170, 255, 0.5);
-    }
+    @media (max-width: 900px) {
+      .profile-container {
+        padding-right: 20px;
+      }
 
-    .attr-btn {
-      padding: 4px 10px;
-      margin: 0 2px;
-      background: rgba(60, 120, 255, 0.5);
-      border: 1px solid #4af;
-      color: #eee;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 600;
+      #ranking-container {
+        position: static;
+        width: auto;
+        margin-bottom: 20px;
+      }
     }
-
-    .attr-btn:hover {
-      background: rgba(80, 180, 255, 0.7);
-      box-shadow: 0 0 8px #4af;
-    }
-
-    .attributes-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
-
-    .btn-save-attr, .btn-reset-attr {
-      padding: 10px 24px;
-      border-radius: 6px;
-      border: none;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .btn-save-attr {
-      background: rgba(0, 200, 0, 0.6);
-      color: #0f8;
-      border: 1px solid #0f8;
-    }
-
-    .btn-save-attr:hover {
-      background: rgba(0, 200, 0, 0.8);
-      box-shadow: 0 0 12px rgba(0, 200, 0, 0.5);
-    }
-
-    .btn-reset-attr {
-      background: rgba(200, 100, 0, 0.6);
-      color: #fa8;
-      border: 1px solid #fa8;
-    }
-
-    .btn-reset-attr:hover {
-      background: rgba(200, 100, 0, 0.8);
-      box-shadow: 0 0 12px rgba(250, 170, 100, 0.5);
-    }
-
-    /* ────────────────────────────────────────────────
-       GRÁFICO RADAR
-    ──────────────────────────────────────────────── */
-    .attributes-chart-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-top: 24px;
-      padding: 20px;
-      background: rgba(20, 40, 90, 0.3);
-      border-radius: 10px;
-    }
-
-    #radarChart {
-      max-width: 350px;
-      width: 100%;
-      height: auto;
-    }
-
-    @media (max-width: 500px) {
-      .modal-content { padding: 20px; }
-      .modal-icon { width: 64px; height: 64px; }
-    }
-  </style>
+</style>
 </head>
 <body>
 
 <header id="top-header">
-  <div id="header-left">
-    <p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
-  </div>
-  <div id="header-center">
-    <span id="infoTopo">---</span>
-  </div>
-  <div id="header-right">
-    <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
-  </div>
+<div id="header-left">
+<p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
+</div>
+<div id="header-center">
+<span id="infoTopo">---</span>
+</div>
+<div id="header-right">
+<button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
+</div>
 </header>
 
 <div class="profile-container">
-  <div class="ficha-header">
-    <h1>Ficha do Personagem</h1>
-    <div class="ficha-info-grid">
-      <div class="ficha-row"><span class="ficha-label">Nome/Nick:</span><strong id="perfil-nick">Carregando...</strong></div>
-      <div class="ficha-row"><span class="ficha-label">Clã:</span><strong id="perfil-cla">—</strong></div>
-      <div class="ficha-row"><span class="ficha-label">Nível:</span><strong id="perfil-nivel">—</strong></div>
-      <div class="ficha-row"><span class="ficha-label">XP Atual:</span><strong id="perfil-xp">—</strong></div>
-      <div class="ficha-row"><span class="ficha-label">Pontos disponíveis:</span><strong id="perfil-pontos">—</strong></div>
-      <div class="ficha-row"><span class="ficha-label">Pontos totais de Atributo:</span><strong id="perfil-atributos-totais">—</strong></div>
-    </div>
-  </div>
+  <aside id="ranking-container" aria-labelledby="ranking-title">
+    <h3 id="ranking-title">Leaderboard</h3>
+    <ol id="leaderboard"></ol>
+    <p id="leaderboard-empty" class="leaderboard-empty" hidden>
+      Nenhum dado para exibir.
+    </p>
+  </aside>
+<div class="ficha-header">
+<h1>Ficha do Personagem</h1>
+<div class="ficha-info-grid">
+<div class="ficha-row"><span class="ficha-label">Nome/Nick:</span><strong id="perfil-nick">Carregando...</strong></div>
+<div class="ficha-row"><span class="ficha-label">Clã:</span><strong id="perfil-cla">—</strong></div>
+<div class="ficha-row"><span class="ficha-label">Nível:</span><strong id="perfil-nivel">—</strong></div>
+<div class="ficha-row"><span class="ficha-label">XP Atual:</span><strong id="perfil-xp">—</strong></div>
+<div class="ficha-row"><span class="ficha-label">Pontos disponíveis:</span><strong id="perfil-pontos">—</strong></div>
+<div class="ficha-row"><span class="ficha-label">Pontos totais de Atributo:</span><strong id="perfil-atributos-totais">—</strong></div>
+</div>
+</div>
 
-  <div class="attributes-section">
-    <h2>Distribuição de Atributos</h2>
-    <div class="attributes-info">
-      <span>Pontos disponíveis: <strong id="attr-available">0</strong> / <strong id="attr-total">0</strong></span>
-      <span>Pontos usados: <strong id="attr-used">0</strong></span>
-    </div>
-    <table class="attributes-table">
-      <thead>
-        <tr>
-          <th>Atributo</th>
-          <th>Valor Atual</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><label for="attr-hp">HP</label></td>
-          <td><input type="number" id="attr-hp" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="hp" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-sta">STA</label></td>
-          <td><input type="number" id="attr-sta" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="sta" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-ag">AG</label></td>
-          <td><input type="number" id="attr-ag" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="ag" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-ch">CH</label></td>
-          <td><input type="number" id="attr-ch" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="ch" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-vl">VL</label></td>
-          <td><input type="number" id="attr-vl" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="vl" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-pm">PM</label></td>
-          <td><input type="number" id="attr-pm" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="pm" data-action="plus">+</button>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="attr-fo">FO</label></td>
-          <td><input type="number" id="attr-fo" class="attr-input" min="0" value="0"></td>
-          <td>
-            <button class="attr-btn" data-attr="fo" data-action="plus">+</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="attributes-actions">
-      <button id="btnSaveAttributes" class="btn-save-attr">Salvar Atributos</button>
-    </div>
-    <div class="attributes-chart-container">
-      <svg id="radarChart" viewBox="-50 -50 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-  </div>
+<div class="attributes-section">
+<h2>Distribuição de Atributos</h2>
+<div class="attributes-info">
+<span>Pontos disponíveis: <strong id="attr-available">0</strong> / <strong id="attr-total">0</strong></span>
+<span>Pontos usados: <strong id="attr-used">0</strong></span>
+</div>
+<table class="attributes-table">
+<thead>
+<tr>
+<th>Atributo</th>
+<th>Valor Atual</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><label for="attr-hp">HP</label></td>
+<td><input type="number" id="attr-hp" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="hp" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-sta">STA</label></td>
+<td><input type="number" id="attr-sta" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="sta" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-ag">AG</label></td>
+<td><input type="number" id="attr-ag" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="ag" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-ch">CH</label></td>
+<td><input type="number" id="attr-ch" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="ch" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-vl">VL</label></td>
+<td><input type="number" id="attr-vl" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="vl" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-pm">PM</label></td>
+<td><input type="number" id="attr-pm" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="pm" data-action="plus">+</button>
+</td>
+</tr>
+<tr>
+<td><label for="attr-fo">FO</label></td>
+<td><input type="number" id="attr-fo" class="attr-input" min="0" value="0"></td>
+<td>
+<button class="attr-btn" data-attr="fo" data-action="plus">+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="attributes-actions">
+<button id="btnSaveAttributes" class="btn-save-attr">Salvar Atributos</button>
+</div>
+<div class="attributes-chart-container">
+<svg id="radarChart" viewBox="-50 -50 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+</div>
 
-  <div class="skills-section">
-    <h2>Habilidades</h2>
-    
-    <div id="categoryBar" class="category-bar">
-      <button class="cat active" data-cat="fisico">Físico</button>
-      <button class="cat" data-cat="chakra">Chakra</button>
-      <button class="cat" data-cat="mental">Mental</button>
-      <button class="cat" data-cat="KKG">Kekkei Genkai</button>
-      <button class="cat" data-cat="doujutsu">Doujutsu</button>
-      <button class="cat" data-cat="jinchuuriki">Jinchuuriki</button>
-    </div>
+<div class="skills-section">
+<h2>Habilidades</h2>
 
-    <div class="filters-bar">
-      <button class="filter-btn active" data-filter="all">Todas</button>
-      <button class="filter-btn" data-filter="unlocked">Já desbloqueadas</button>
-      <button class="filter-btn" data-filter="locked">Não desbloqueadas</button>
-    </div>
+<div id="categoryBar" class="category-bar">
+<button class="cat active" data-cat="fisico">Físico</button>
+<button class="cat" data-cat="chakra">Chakra</button>
+<button class="cat" data-cat="mental">Mental</button>
+<button class="cat" data-cat="KKG">Kekkei Genkai</button>
+<button class="cat" data-cat="doujutsu">Doujutsu</button>
+<button class="cat" data-cat="jinchuuriki">Jinchuuriki</button>
+</div>
 
-    <div id="skills-grid" class="skills-grid"></div>
-  </div>
+<div class="filters-bar">
+<button class="filter-btn active" data-filter="all">Todas</button>
+<button class="filter-btn" data-filter="unlocked">Já desbloqueadas</button>
+<button class="filter-btn" data-filter="locked">Não desbloqueadas</button>
+</div>
+
+<div id="skills-grid" class="skills-grid"></div>
+</div>
 </div>
 
 <!-- MODAL -->
 <div id="skillModal">
-  <div class="modal-content">
-    <span class="modal-close" id="closeModal">&times;</span>
-    <img id="modalIcon" class="modal-icon" src="" alt="">
-    <h2 id="modalTitle" class="modal-title"></h2>
-    <div id="modalLevel" class="modal-level"></div>
-    <div id="modalDesc" class="modal-desc"></div>
-    <div id="modalReqs" class="modal-reqs"></div>
-  </div>
+<div class="modal-content">
+<span class="modal-close" id="closeModal">&times;</span>
+<img id="modalIcon" class="modal-icon" src="" alt="">
+<h2 id="modalTitle" class="modal-title"></h2>
+<div id="modalLevel" class="modal-level"></div>
+<div id="modalDesc" class="modal-desc"></div>
+<div id="modalReqs" class="modal-reqs"></div>
+</div>
 </div>
 
 <script type="module">
-  import { auth, db } from "./oauth.js";
-  import { doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth, db } from "./oauth.js";
+  import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    setDoc,
+    updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  let currentUID = null;
-  let userData = {};
-  let allSkills = [];
-  let currentCategory = "fisico";
-  let currentFilter = "all";
-  let savedAttributeValues = {}; // Rastrear valores salvos para impedir redução
+let currentUID = null;
+let userData = {};
+let allSkills = [];
+let currentCategory = "fisico";
+let currentFilter = "all";
+let savedAttributeValues = {}; // Rastrear valores salvos para impedir redução
 
-  const modal = document.getElementById("skillModal");
-  const closeModal = document.getElementById("closeModal");
+const modal = document.getElementById("skillModal");
+const closeModal = document.getElementById("closeModal");
 
-  closeModal.onclick = () => modal.classList.remove("show");
-  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("show"); };
+closeModal.onclick = () => modal.classList.remove("show");
+modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("show"); };
 
-  async function loadSkills() {
-    // Carrega skills do Firestore (game_data/skills_v1)
-    // Usado em: onAuthStateChanged auth listener
-    const snap = await getDoc(doc(db, "game_data", "skills_v1"));
-    if (!snap.exists()) throw new Error("skills_v1 não encontrado");
+async function loadSkills() {
+// Carrega skills do Firestore (game_data/skills_v1)
+// Usado em: onAuthStateChanged auth listener
+const snap = await getDoc(doc(db, "game_data", "skills_v1"));
+if (!snap.exists()) throw new Error("skills_v1 não encontrado");
 
-    const data = snap.data();
-    let raw = data.Skills ?? data.skills ?? {};
+const data = snap.data();
+let raw = data.Skills ?? data.skills ?? {};
 
-    if (typeof raw === "object" && !Array.isArray(raw)) {
-      raw = Object.entries(raw).map(([id, obj]) => ({ id, ...obj }));
-    }
+if (typeof raw === "object" && !Array.isArray(raw)) {
+raw = Object.entries(raw).map(([id, obj]) => ({ id, ...obj }));
+}
 
-    if (!Array.isArray(raw)) throw new Error("Formato inválido de Skills");
+if (!Array.isArray(raw)) throw new Error("Formato inválido de Skills");
 
-    return raw.map(s => ({
-      ...s,
-      level: 0,
-      requires: s.requires ?? [],
-      max: s.max ?? 0
-    }));
-  }
+return raw.map(s => ({
+...s,
+level: 0,
+requires: s.requires ?? [],
+max: s.max ?? 0
+}));
+}
 
-  function getAllDescendants(categoryId) {
-    // Helper recursivo pra categorias hierárquicas
-    // Retorna Set de todos os skill IDs em subcategorias
-    // Usado em: renderSkills() para filtrar por categoria
-    const descendants = new Set([categoryId]);
-    function recurse(id) {
-      allSkills
-        .filter(s => s.parent === id)
-        .forEach(s => {
-          if (!descendants.has(s.id)) {
-            descendants.add(s.id);
-            recurse(s.id);
-          }
-        });
-    }
-    recurse(categoryId);
-    return descendants;
-  }
+  async function loadLeaderboard() {
+    const leaderboard = document.getElementById("leaderboard");
+    const emptyState = document.getElementById("leaderboard-empty");
 
-  onAuthStateChanged(auth, async user => {
-    if (!user) {
-      window.location.href = "index.html";
+    if (!leaderboard || !emptyState) {
+      console.error("Elemento do leaderboard não encontrado no DOM.");
       return;
     }
 
-    currentUID = user.uid;
-    const userSnap = await getDoc(doc(db, "fichas", currentUID));
-    userData = userSnap.data() ?? {};
-
-    userData.nick   ??= "Sem Nome";
-    userData.cla    ??= "Nenhum";
-    userData.xp     ??= 0;
-    userData.nivel  ??= 1;
-    userData.pontos ??= 0;
-    userData.skills ??= {};
-
-    allSkills = await loadSkills();
-
-    allSkills.forEach(skill => {
-      skill.level = userData.skills[skill.id] ?? 0;
-    });
-
-    renderPerfil();
-    renderSkills();
-  });
-
-  function renderPerfil() {
-    // Renderiza info principal do perfil (nick, clã, nível, XP)
-    // Atualiza displays de header e panel esquerdo
-    // Chama initializeAttributes() pra montar sistema de atributos
-    // Usado em: onAuthStateChanged auth listener
-    document.getElementById("infoTopo").textContent = 
-      `${userData.nick} | Clã: ${userData.cla}`;
-
-    const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
-    document.getElementById("playerOnlyXp").textContent = 
-      `XP: ${userData.xp} / ${nextLevelXP}`;
-    
-    document.getElementById("playerOnlyPontos").textContent = 
-      `Pontos: ${userData.pontos}`;
-
-    document.getElementById("perfil-nick").textContent   = userData.nick;
-    document.getElementById("perfil-cla").textContent    = userData.cla;
-    document.getElementById("perfil-nivel").textContent  = userData.nivel;
-    document.getElementById("perfil-xp").textContent     = userData.xp;
-    document.getElementById("perfil-pontos").textContent = userData.pontos;
-    document.getElementById("perfil-atributos-totais").textContent = 250 + (userData.nivel-1)*40 ;
-    
-    initializeAttributes();
-  }
-
-  function initializeAttributes() {
-    // Setup inicial da tabela de atributos
-    // Carrega valores salvos ou inicializa com defaults (0)
-    // Setup event listeners para buttons e inputs
-    // Inicializa gráfico radar
-    // Usado em: renderPerfil()
-    const totalAtributos = 250 + (userData.nivel - 1) * 40;
-
-    // Inicializar dados de atributos se não existirem
-    userData.atributos ??= {
-      hp: 0,
-      sta: 0,
-      ag: 0,
-      ch: 0,
-      vl: 0,
-      pm: 0,
-      fo: 0
-    };
-
-    // Atualizar inputs com valores salvos
-    document.getElementById("attr-hp").value = userData.atributos.hp ?? 0;
-    document.getElementById("attr-sta").value = userData.atributos.sta ?? 0;
-    document.getElementById("attr-ag").value = userData.atributos.ag ?? 0;
-    document.getElementById("attr-ch").value = userData.atributos.ch ?? 0;
-    document.getElementById("attr-vl").value = userData.atributos.vl ?? 0;
-    document.getElementById("attr-pm").value = userData.atributos.pm ?? 0;
-    document.getElementById("attr-fo").value = userData.atributos.fo ?? 0;
-    
-    // Rastrear valores salvos para impedir redução
-    savedAttributeValues = {
-      hp: userData.atributos.hp ?? 0,
-      sta: userData.atributos.sta ?? 0,
-      ag: userData.atributos.ag ?? 0,
-      ch: userData.atributos.ch ?? 0,
-      vl: userData.atributos.vl ?? 0,
-      pm: userData.atributos.pm ?? 0,
-      fo: userData.atributos.fo ?? 0
-    };
-
-    // Atualizar displays de pontos
-    updateAttributeDisplay(totalAtributos);
-
-    // Event listeners para botões
-    document.querySelectorAll(".attr-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => handleAttributeChange(e, totalAtributos));
-    });
-
-    // Event listeners para inputs diretos
-    document.querySelectorAll(".attr-input").forEach(input => {
-      input.addEventListener("change", () => {
-        validateAttributeInput(input, totalAtributos);
-        updateAttributeDisplay(totalAtributos);
-      });
-      input.addEventListener("input", () => {
-        validateAttributeInput(input, totalAtributos);
-        updateAttributeDisplay(totalAtributos);
-      });
-    });
-
-    // Botões de salvar
-    document.getElementById("btnSaveAttributes").addEventListener("click", saveAttributes);
-
-    // Inicializar gráfico radar
-    initializeRadarChart();
-  }
-
-  function initializeRadarChart() {
-    // Inicializa o gráfico radar de atributos
-    // Chamado apenas uma vez no setup
-    // Usado em: initializeAttributes()
-    updateRadarChart();
-  }
-
-  function updateRadarChart() {
-    // Atualiza o gráfico radar com valores atuais dos inputs
-    // Chamado toda vez que um atributo muda
-    // Usado em: handleAttributeChange(), validateAttributeInput(), updateAttributeDisplay()
-    const attrValues = {
-      hp: parseInt(document.getElementById("attr-hp").value) || 0,
-      sta: parseInt(document.getElementById("attr-sta").value) || 0,
-      ag: parseInt(document.getElementById("attr-ag").value) || 0,
-      ch: parseInt(document.getElementById("attr-ch").value) || 0,
-      vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0,
-      fo: parseInt(document.getElementById("attr-fo").value) || 0
-    };
-
-    drawRadarChart(attrValues);
-  }
-
-  function drawRadarChart(attrValues) {
-    // Desenha o gráfico radar SVG com 7 atributos
-    // Mostra: grid, eixos, polígono (vermelho), vértices, labels
-    // Usado em: updateRadarChart()
-    const svg = document.getElementById("radarChart");
-    svg.innerHTML = "";
-
-    const size = 300;
-    const center = size / 2;
-    const maxValue = 2000;
-    const levels = 5;
-    const attributes = [
-      { name: "HP", value: attrValues.hp, angle: 0 },
-      { name: "STA", value: attrValues.sta, angle: 51.43 },
-      { name: "AG", value: attrValues.ag, angle: 102.86 },
-      { name: "CH", value: attrValues.ch, angle: 154.29 },
-      { name: "VL", value: attrValues.vl, angle: 205.71 },
-      { name: "PM", value: attrValues.pm, angle: 257.14 },
-      { name: "FO", value: attrValues.fo, angle: 308.57 }
-    ];
-
-    // Desenhar grid circular
-    for (let i = 1; i <= levels; i++) {
-      const radius = (size / 2 - 40) * (i / levels);
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", center);
-      circle.setAttribute("cy", center);
-      circle.setAttribute("r", radius);
-      circle.setAttribute("fill", "none");
-      circle.setAttribute("stroke", "rgba(74, 170, 255, 0.2)");
-      circle.setAttribute("stroke-width", "1");
-      svg.appendChild(circle);
-    }
-
-    // Desenhar linhas dos eixos
-    attributes.forEach(attr => {
-      const angle = (attr.angle * Math.PI) / 180;
-      const x = center + (size / 2 - 40) * Math.cos(angle);
-      const y = center + (size / 2 - 40) * Math.sin(angle);
-
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", center);
-      line.setAttribute("y1", center);
-      line.setAttribute("x2", x);
-      line.setAttribute("y2", y);
-      line.setAttribute("stroke", "rgba(74, 170, 255, 0.3)");
-      line.setAttribute("stroke-width", "1");
-      svg.appendChild(line);
-    });
-
-    // Desenhar polígono dos valores
-    const points = attributes.map(attr => {
-      const angle = (attr.angle * Math.PI) / 180;
-      const radius = ((size / 2 - 40) * attr.value) / maxValue;
-      const x = center + radius * Math.cos(angle);
-      const y = center + radius * Math.sin(angle);
-      return [x, y];
-    });
-
-    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    const pointsStr = points.map(p => p.join(",")).join(" ");
-    polygon.setAttribute("points", pointsStr);
-    polygon.setAttribute("fill", "rgba(255, 0, 0, 0.2)");
-    polygon.setAttribute("stroke", "#f00");
-    polygon.setAttribute("stroke-width", "2");
-    svg.appendChild(polygon);
-
-    // Desenhar pontos nos vértices
-    points.forEach((point, i) => {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", point[0]);
-      circle.setAttribute("cy", point[1]);
-      circle.setAttribute("r", "4");
-      circle.setAttribute("fill", "#4af");
-      circle.setAttribute("stroke", "#fff");
-      circle.setAttribute("stroke-width", "1.5");
-      svg.appendChild(circle);
-    });
-
-    // Desenhar rótulos dos atributos
-    attributes.forEach(attr => {
-      const angle = (attr.angle * Math.PI) / 180;
-      const labelRadius = (size / 2 - 40) + 45;
-      let x = center + labelRadius * Math.cos(angle);
-      let y = center + labelRadius * Math.sin(angle);
-
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("dominant-baseline", "middle");
-      text.setAttribute("fill", "#4af");
-      text.setAttribute("font-size", "14");
-      text.setAttribute("font-weight", "700");
-
-      // Ajustar posição e alinhamento baseado no ângulo
-      if (attr.angle === 0) {
-        // Direita (HP)
-        text.setAttribute("text-anchor", "start");
-        x += 12;
-      } else if (attr.angle < 90) {
-        // Direita-cima
-        text.setAttribute("text-anchor", "start");
-        x += 10;
-        y -= 8;
-      } else if (attr.angle === 90) {
-        // Cima
-        text.setAttribute("text-anchor", "middle");
-      } else if (attr.angle < 180) {
-        // Cima-esquerda
-        text.setAttribute("text-anchor", "end");
-        x -= 10;
-        y -= 8;
-      } else if (attr.angle === 180) {
-        // Esquerda (CH)
-        text.setAttribute("text-anchor", "end");
-        x -= 12;
-      } else if (attr.angle < 270) {
-        // Esquerda-baixo
-        text.setAttribute("text-anchor", "end");
-        x -= 10;
-        y += 8;
-      } else if (attr.angle === 270) {
-        // Baixo
-        text.setAttribute("text-anchor", "middle");
-      } else {
-        // Direita-baixo
-        text.setAttribute("text-anchor", "start");
-        x += 10;
-        y += 8;
-      }
-
-      text.setAttribute("x", x);
-      text.setAttribute("y", y);
-      text.textContent = attr.name;
-      svg.appendChild(text);
-    });
-  }
-
-  function handleAttributeChange(e, totalAtributos) {
-    // Incrementa atributo via botão "+"
-    // Valida se há pontos disponíveis antes de incrementar
-    // Chama updateAttributeDisplay() pra atualizar UI
-    // Usado em: Event listeners dos buttons .attr-btn
-    const btn = e.target;
-    const attr = btn.dataset.attr;
-    const action = btn.dataset.action;
-    const input = document.getElementById(`attr-${attr}`);
-    let value = parseInt(input.value) || 0;
-
-    if (action === "plus") {
-      // Calcular pontos atuais
-      const attrValues = {
-        hp: parseInt(document.getElementById("attr-hp").value) || 0,
-        sta: parseInt(document.getElementById("attr-sta").value) || 0,
-        ag: parseInt(document.getElementById("attr-ag").value) || 0,
-        ch: parseInt(document.getElementById("attr-ch").value) || 0,
-        vl: parseInt(document.getElementById("attr-vl").value) || 0,
-        pm: parseInt(document.getElementById("attr-pm").value) || 0,
-        fo: parseInt(document.getElementById("attr-fo").value) || 0
-      };
-      const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
-      const available = totalAtributos - totalUsed;
-
-      // Só permite aumentar se houver pontos disponíveis
-      if (available > 0) {
-        value++;
-      }
-    } else if (action === "minus") {
-      value = Math.max(0, value - 1);
-    }
-
-    input.value = value;
-    updateAttributeDisplay(totalAtributos);
-  }
-
-  function validateAttributeInput(input, totalAtributos) {
-    // Valida entrada manual de atributo no input
-    // Bloqueia redução abaixo do valor salvo (savedAttributeValues)
-    // Auto-corrige se total exceder limite
-    // Usado em: Event listeners dos inputs .attr-input
-    let inputValue = parseInt(input.value) || 0;
-    let inputName = input.id.replace("attr-", "");
-    let savedValue = savedAttributeValues[inputName] || 0;
-
-    // Garantir que não seja negativo
-    if (inputValue < 0) {
-      input.value = savedValue;
-      return;
-    }
-
-    // Impedir redução abaixo do valor salvo
-    if (inputValue < savedValue) {
-      input.value = savedValue;
-      return;
-    }
-
-    // Calcular pontos atuais (excluindo este input)
-    const attrValues = {
-      hp: parseInt(document.getElementById("attr-hp").value) || 0,
-      sta: parseInt(document.getElementById("attr-sta").value) || 0,
-      ag: parseInt(document.getElementById("attr-ag").value) || 0,
-      ch: parseInt(document.getElementById("attr-ch").value) || 0,
-      vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0,
-      fo: parseInt(document.getElementById("attr-fo").value) || 0
-    };
-    
-    const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
-    const available = totalAtributos - totalUsed;
-
-    // Se o total ultrapassar o limite, corrigir para o máximo permitido
-    if (totalUsed > totalAtributos) {
-      // Descobrir qual input foi alterado
-      let inputName = input.id.replace("attr-", "");
-      let currentInputValue = attrValues[inputName] || 0;
-      
-      // Reduzir esse atributo para o máximo permitido
-      let maxAllowedForThis = currentInputValue - (totalUsed - totalAtributos);
-      input.value = Math.max(0, maxAllowedForThis);
-    }
-  }
-
-  function updateAttributeDisplay(totalAtributos) {
-    // Atualiza displays: pontos usados, disponíveis, total
-    // Muda cor pra vermelho se exceder limite
-    // Desabilita botão salvar se excedido
-    // Chama updateRadarChart() pra atualizar gráfico
-    // Usado em: handleAttributeChange(), validateAttributeInput()
-    const attrValues = {
-      hp: parseInt(document.getElementById("attr-hp").value) || 0,
-      sta: parseInt(document.getElementById("attr-sta").value) || 0,
-      ag: parseInt(document.getElementById("attr-ag").value) || 0,
-      ch: parseInt(document.getElementById("attr-ch").value) || 0,
-      vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0,
-      fo: parseInt(document.getElementById("attr-fo").value) || 0
-    };
-
-    const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
-    const available = totalAtributos - totalUsed;
-
-    // Validar se excedeu o limite
-    if (totalUsed > totalAtributos) {
-      document.getElementById("attr-available").style.color = "#f66";
-      document.getElementById("btnSaveAttributes").disabled = true;
-    } else {
-      document.getElementById("attr-available").style.color = "#4af";
-      document.getElementById("btnSaveAttributes").disabled = false;
-    }
-
-    document.getElementById("attr-total").textContent = totalAtributos;
-    document.getElementById("attr-available").textContent = available;
-    document.getElementById("attr-used").textContent = totalUsed;
-
-    // Atualizar gráfico radar
-    updateRadarChart();
-  }
-
-  async function saveAttributes() {
-    // Valida total de atributos e salva no Firebase
-    // Atualiza userData.atributos e savedAttributeValues (bloqueia redução)
-    // Mostra alerta de sucesso/erro
-    // Usado em: Click handler do botão #btnSaveAttributes
-    const attrValues = {
-      hp: parseInt(document.getElementById("attr-hp").value) || 0,
-      sta: parseInt(document.getElementById("attr-sta").value) || 0,
-      ag: parseInt(document.getElementById("attr-ag").value) || 0,
-      ch: parseInt(document.getElementById("attr-ch").value) || 0,
-      vl: parseInt(document.getElementById("attr-vl").value) || 0,
-      pm: parseInt(document.getElementById("attr-pm").value) || 0,
-      fo: parseInt(document.getElementById("attr-fo").value) || 0
-    };
-
-    const totalAtributos = 250 + (userData.nivel - 1) * 40;
-    const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
-
-    if (totalUsed > totalAtributos) {
-      alert("❌ A soma dos atributos não pode ser maior que " + totalAtributos);
-      return;
-    }
+    leaderboard.innerHTML = "";
+    emptyState.hidden = true;
 
     try {
-      await setDoc(doc(db, "fichas", currentUID), {
-        atributos: attrValues
-      }, { merge: true });
+      const playersRef = collection(db, "fichas");
+      const playersQuery = query(playersRef, orderBy("xp", "desc"), limit(10));
+      const querySnapshot = await getDocs(playersQuery);
 
-      userData.atributos = attrValues;
-      savedAttributeValues = { ...attrValues }; // Atualizar valores salvos para impedir redução
-      alert("✅ Atributos salvos com sucesso!");
+      let rank = 1;
+      querySnapshot.forEach((docSnap) => {
+        const player = docSnap.data() ?? {};
+        const listItem = document.createElement("li");
+
+        const nick = player.nick ?? "Desconhecido";
+        const clan = player.cla ?? "Sem clã";
+        const xp = player.xp ?? 0;
+
+        listItem.innerHTML = `
+          <span><span class="leaderboard-rank">${rank}º</span>${nick}</span>
+          <span class="leaderboard-meta">
+            <span>${clan}</span>
+            <span>${xp} XP</span>
+          </span>
+        `;
+
+        leaderboard.appendChild(listItem);
+        rank += 1;
+      });
+
+      if (rank === 1) {
+        emptyState.hidden = false;
+      }
     } catch (error) {
-      console.error("Erro ao salvar atributos:", error);
-      console.error("UID:", currentUID);
-      console.error("Dados tentando salvar:", { atributos: attrValues });
-      alert("❌ Erro ao salvar atributos!\n\nDetalhes: " + error.message);
+      console.error("Erro ao carregar o leaderboard:", error);
+      emptyState.hidden = false;
+      emptyState.textContent = "Erro ao carregar o leaderboard.";
     }
   }
 
-  function resetAttributes() {
-    // BETA: Reseta todos os atributos para 0
-    // Pede confirmação antes de executar
-    // Usado em: Click handler do botão #btnResetAttributes (se existir)
-    if (!confirm("Tem certeza que deseja resetar todos os atributos?")) return;
+function getAllDescendants(categoryId) {
+// Helper recursivo pra categorias hierárquicas
+// Retorna Set de todos os skill IDs em subcategorias
+// Usado em: renderSkills() para filtrar por categoria
+const descendants = new Set([categoryId]);
+function recurse(id) {
+allSkills
+.filter(s => s.parent === id)
+.forEach(s => {
+if (!descendants.has(s.id)) {
+descendants.add(s.id);
+recurse(s.id);
+}
+});
+}
+recurse(categoryId);
+return descendants;
+}
 
-    document.getElementById("attr-hp").value = 0;
-    document.getElementById("attr-sta").value = 0;
-    document.getElementById("attr-ag").value = 0;
-    document.getElementById("attr-ch").value = 0;
-    document.getElementById("attr-vl").value = 0;
-    document.getElementById("attr-pm").value = 0;
+onAuthStateChanged(auth, async user => {
+if (!user) {
+window.location.href = "index.html";
+return;
+}
 
-    const totalAtributos = 250 + (userData.nivel - 1) * 40;
-    updateAttributeDisplay(totalAtributos);
-  }
+currentUID = user.uid;
+const userSnap = await getDoc(doc(db, "fichas", currentUID));
+userData = userSnap.data() ?? {};
 
-  function renderSkills() {
-    // Renderiza grid de skills/categorias
-    // Filtra skills pela categoria ativa (categoria_bar buttons)
-    // Chama showSkillModal() ao clicar em card
-    // Usado em: onAuthStateChanged auth listener, category button clicks
-    const container = document.getElementById("skills-grid");
-    container.innerHTML = "";
+userData.nick   ??= "Sem Nome";
+userData.cla    ??= "Nenhum";
+userData.xp     ??= 0;
+userData.nivel  ??= 1;
+userData.pontos ??= 0;
+userData.skills ??= {};
 
-    const descendants = getAllDescendants(currentCategory);
+allSkills = await loadSkills();
 
-    const filteredSkills = allSkills
-      .filter(s => descendants.has(s.id))
-      .filter(s => {
-        if (currentFilter === "all")      return true;
-        if (currentFilter === "unlocked") return (s.level ?? 0) >= 1;
-        if (currentFilter === "locked")   return (s.level ?? 0) === 0;
-        return true;
-      });
+allSkills.forEach(skill => {
+skill.level = userData.skills[skill.id] ?? 0;
+});
 
-    if (filteredSkills.length === 0) {
-      container.innerHTML = '<div class="no-skills">Nenhuma habilidade corresponde ao filtro selecionado.</div>';
-      return;
-    }
+renderPerfil();
+renderSkills();
+    loadLeaderboard();
+});
 
-    filteredSkills.forEach(skill => {
-      const level = skill.level ?? 0;
-      const isUnlocked = level >= 1;
-      const iconIndex = Math.min(level, skill.max || 5);
-      const iconFile = isUnlocked 
-        ? `${skill.icon || "default"}_${iconIndex}.png`
-        : `${skill.icon || "default"}_locked.png`;
+function renderPerfil() {
+// Renderiza info principal do perfil (nick, clã, nível, XP)
+// Atualiza displays de header e panel esquerdo
+// Chama initializeAttributes() pra montar sistema de atributos
+// Usado em: onAuthStateChanged auth listener
+document.getElementById("infoTopo").textContent = 
+`${userData.nick} | Clã: ${userData.cla}`;
 
-      const div = document.createElement("div");
-      div.className = `skill-preview ${isUnlocked ? "" : "locked"}`;
-      div.dataset.skillId = skill.id;
+const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
+document.getElementById("playerOnlyXp").textContent = 
+`XP: ${userData.xp} / ${nextLevelXP}`;
 
-      div.innerHTML = `
-        <img src="assets/icons/${iconFile}" alt="${skill.name || skill.id}">
-        <div class="name">${skill.name || skill.id}</div>
-        <div class="level ${isUnlocked ? "unlocked" : "locked"}">
-          ${isUnlocked ? `Nv ${level}` : "Bloqueada"}
-        </div>
-      `;
+document.getElementById("playerOnlyPontos").textContent = 
+`Pontos: ${userData.pontos}`;
 
-      div.addEventListener("click", () => showSkillModal(skill));
+document.getElementById("perfil-nick").textContent   = userData.nick;
+document.getElementById("perfil-cla").textContent    = userData.cla;
+document.getElementById("perfil-nivel").textContent  = userData.nivel;
+document.getElementById("perfil-xp").textContent     = userData.xp;
+document.getElementById("perfil-pontos").textContent = userData.pontos;
+document.getElementById("perfil-atributos-totais").textContent = 250 + (userData.nivel-1)*40 ;
 
-      container.appendChild(div);
-    });
-  }
+initializeAttributes();
+}
 
-  function showSkillModal(skill) {
-    // Abre modal com detalhes completos da skill
-    // Mostra: nome, ícone, descrição, requisitos
-    // Usado em: Click handler dos cards na grid
-    const level = skill.level ?? 0;
-    const isUnlocked = level >= 1;
-    const iconIndex = Math.min(level, skill.max || 5);
-    const iconFile = isUnlocked 
-      ? `${skill.icon || "default"}_${iconIndex}.png`
-      : `${skill.icon || "default"}_locked.png`;
+function initializeAttributes() {
+// Setup inicial da tabela de atributos
+// Carrega valores salvos ou inicializa com defaults (0)
+// Setup event listeners para buttons e inputs
+// Inicializa gráfico radar
+// Usado em: renderPerfil()
+const totalAtributos = 250 + (userData.nivel - 1) * 40;
 
-    document.getElementById("modalIcon").src = `assets/icons/${iconFile}`;
-    document.getElementById("modalTitle").textContent = skill.name || skill.id;
-    document.getElementById("modalLevel").textContent = `Nível: ${level} / ${skill.max || "?"}`;
+// Inicializar dados de atributos se não existirem
+userData.atributos ??= {
+hp: 0,
+sta: 0,
+ag: 0,
+ch: 0,
+vl: 0,
+pm: 0,
+fo: 0
+};
 
-    const descEl = document.getElementById("modalDesc");
-    descEl.textContent = skill.desc || "Sem descrição disponível.";
+// Atualizar inputs com valores salvos
+document.getElementById("attr-hp").value = userData.atributos.hp ?? 0;
+document.getElementById("attr-sta").value = userData.atributos.sta ?? 0;
+document.getElementById("attr-ag").value = userData.atributos.ag ?? 0;
+document.getElementById("attr-ch").value = userData.atributos.ch ?? 0;
+document.getElementById("attr-vl").value = userData.atributos.vl ?? 0;
+document.getElementById("attr-pm").value = userData.atributos.pm ?? 0;
+document.getElementById("attr-fo").value = userData.atributos.fo ?? 0;
 
-    const reqsEl = document.getElementById("modalReqs");
-    reqsEl.innerHTML = "";
+// Rastrear valores salvos para impedir redução
+savedAttributeValues = {
+hp: userData.atributos.hp ?? 0,
+sta: userData.atributos.sta ?? 0,
+ag: userData.atributos.ag ?? 0,
+ch: userData.atributos.ch ?? 0,
+vl: userData.atributos.vl ?? 0,
+pm: userData.atributos.pm ?? 0,
+fo: userData.atributos.fo ?? 0
+};
 
-    if (skill.requires?.length > 0) {
-      const h4 = document.createElement("h4");
-      h4.textContent = "Requisitos:";
-      reqsEl.appendChild(h4);
+// Atualizar displays de pontos
+updateAttributeDisplay(totalAtributos);
 
-      skill.requires.forEach(req => {
-        const type = req.type || "skill";
-        let label = "";
-        let currentVal = "";
-        let needed = "";
-        let ok = false;
+// Event listeners para botões
+document.querySelectorAll(".attr-btn").forEach(btn => {
+btn.addEventListener("click", (e) => handleAttributeChange(e, totalAtributos));
+});
 
-        if (type === "skill") {
-          const reqSkill = allSkills.find(s => s.id === req.id);
-          label = reqSkill?.name || req.id;
-          currentVal = reqSkill?.level ?? 0;
-          needed = req.level ?? req.lvl ?? 1;
-          ok = currentVal >= needed;
-        } else if (type === "playerLevel") {
-          label = "Nível da conta";
-          currentVal = userData.nivel ?? 0;
-          needed = req.level;
-          ok = currentVal >= needed;
-        } else if (type === "doujutsu") {
-          label = "Doujutsu";
-          currentVal = userData.doujutsus?.join(", ") || "Nenhum";
-          needed = req.value;
-          ok = (userData.doujutsus || []).includes(req.value);
-        } else if (type === "clan") {
-          label = "Clã";
-          currentVal = userData.cla || "Nenhum";
-          needed = req.value;
-          ok = currentVal === req.value;
-        } else {
-          label = req.type || "Desconhecido";
-          currentVal = "?";
-          needed = req.value || req.level || "?";
-        }
+// Event listeners para inputs diretos
+document.querySelectorAll(".attr-input").forEach(input => {
+input.addEventListener("change", () => {
+validateAttributeInput(input, totalAtributos);
+updateAttributeDisplay(totalAtributos);
+});
+input.addEventListener("input", () => {
+validateAttributeInput(input, totalAtributos);
+updateAttributeDisplay(totalAtributos);
+});
+});
 
-        const p = document.createElement("p");
-        p.className = "req-item";
-        p.innerHTML = `• ${label}: ${currentVal} / ${needed} `;
-        p.innerHTML += ok 
-          ? '<span class="req-ok">✓</span>'
-          : '<span class="req-fail">✗</span>';
-        reqsEl.appendChild(p);
-      });
-    } else {
-      reqsEl.innerHTML = "<p style='opacity:0.7;'>Nenhum requisito específico.</p>";
-    }
+// Botões de salvar
+document.getElementById("btnSaveAttributes").addEventListener("click", saveAttributes);
 
-    modal.classList.add("show");
-  }
+// Inicializar gráfico radar
+initializeRadarChart();
+}
 
-  // Navegação categorias
-  document.querySelectorAll(".cat").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".cat").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentCategory = btn.dataset.cat;
-      renderSkills();
-    });
-  });
+function initializeRadarChart() {
+// Inicializa o gráfico radar de atributos
+// Chamado apenas uma vez no setup
+// Usado em: initializeAttributes()
+updateRadarChart();
+}
 
-  // Filtros
-  document.querySelectorAll(".filter-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentFilter = btn.dataset.filter;
-      renderSkills();
-    });
-  });
+function updateRadarChart() {
+// Atualiza o gráfico radar com valores atuais dos inputs
+// Chamado toda vez que um atributo muda
+// Usado em: handleAttributeChange(), validateAttributeInput(), updateAttributeDisplay()
+const attrValues = {
+hp: parseInt(document.getElementById("attr-hp").value) || 0,
+sta: parseInt(document.getElementById("attr-sta").value) || 0,
+ag: parseInt(document.getElementById("attr-ag").value) || 0,
+ch: parseInt(document.getElementById("attr-ch").value) || 0,
+vl: parseInt(document.getElementById("attr-vl").value) || 0,
+pm: parseInt(document.getElementById("attr-pm").value) || 0,
+fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
 
-  // Botão voltar
-  document.getElementById("btnHabilidades")?.addEventListener("click", () => {
-    window.location.href = "arvore_habilidade.html";
-  });
+drawRadarChart(attrValues);
+}
+
+function drawRadarChart(attrValues) {
+// Desenha o gráfico radar SVG com 7 atributos
+// Mostra: grid, eixos, polígono (vermelho), vértices, labels
+// Usado em: updateRadarChart()
+const svg = document.getElementById("radarChart");
+svg.innerHTML = "";
+
+const size = 300;
+const center = size / 2;
+const maxValue = 2000;
+const levels = 5;
+const attributes = [
+{ name: "HP", value: attrValues.hp, angle: 0 },
+{ name: "STA", value: attrValues.sta, angle: 51.43 },
+{ name: "AG", value: attrValues.ag, angle: 102.86 },
+{ name: "CH", value: attrValues.ch, angle: 154.29 },
+{ name: "VL", value: attrValues.vl, angle: 205.71 },
+{ name: "PM", value: attrValues.pm, angle: 257.14 },
+{ name: "FO", value: attrValues.fo, angle: 308.57 }
+];
+
+// Desenhar grid circular
+for (let i = 1; i <= levels; i++) {
+const radius = (size / 2 - 40) * (i / levels);
+const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+circle.setAttribute("cx", center);
+circle.setAttribute("cy", center);
+circle.setAttribute("r", radius);
+circle.setAttribute("fill", "none");
+circle.setAttribute("stroke", "rgba(74, 170, 255, 0.2)");
+circle.setAttribute("stroke-width", "1");
+svg.appendChild(circle);
+}
+
+// Desenhar linhas dos eixos
+attributes.forEach(attr => {
+const angle = (attr.angle * Math.PI) / 180;
+const x = center + (size / 2 - 40) * Math.cos(angle);
+const y = center + (size / 2 - 40) * Math.sin(angle);
+
+const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+line.setAttribute("x1", center);
+line.setAttribute("y1", center);
+line.setAttribute("x2", x);
+line.setAttribute("y2", y);
+line.setAttribute("stroke", "rgba(74, 170, 255, 0.3)");
+line.setAttribute("stroke-width", "1");
+svg.appendChild(line);
+});
+
+// Desenhar polígono dos valores
+const points = attributes.map(attr => {
+const angle = (attr.angle * Math.PI) / 180;
+const radius = ((size / 2 - 40) * attr.value) / maxValue;
+const x = center + radius * Math.cos(angle);
+const y = center + radius * Math.sin(angle);
+return [x, y];
+});
+
+const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+const pointsStr = points.map(p => p.join(",")).join(" ");
+polygon.setAttribute("points", pointsStr);
+polygon.setAttribute("fill", "rgba(255, 0, 0, 0.2)");
+polygon.setAttribute("stroke", "#f00");
+polygon.setAttribute("stroke-width", "2");
+svg.appendChild(polygon);
+
+// Desenhar pontos nos vértices
+points.forEach((point, i) => {
+const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+circle.setAttribute("cx", point[0]);
+circle.setAttribute("cy", point[1]);
+circle.setAttribute("r", "4");
+circle.setAttribute("fill", "#4af");
+circle.setAttribute("stroke", "#fff");
+circle.setAttribute("stroke-width", "1.5");
+svg.appendChild(circle);
+});
+
+// Desenhar rótulos dos atributos
+attributes.forEach(attr => {
+const angle = (attr.angle * Math.PI) / 180;
+const labelRadius = (size / 2 - 40) + 45;
+let x = center + labelRadius * Math.cos(angle);
+let y = center + labelRadius * Math.sin(angle);
+
+const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+text.setAttribute("dominant-baseline", "middle");
+text.setAttribute("fill", "#4af");
+text.setAttribute("font-size", "14");
+text.setAttribute("font-weight", "700");
+
+// Ajustar posição e alinhamento baseado no ângulo
+if (attr.angle === 0) {
+// Direita (HP)
+text.setAttribute("text-anchor", "start");
+x += 12;
+} else if (attr.angle < 90) {
+// Direita-cima
+text.setAttribute("text-anchor", "start");
+x += 10;
+y -= 8;
+} else if (attr.angle === 90) {
+// Cima
+text.setAttribute("text-anchor", "middle");
+} else if (attr.angle < 180) {
+// Cima-esquerda
+text.setAttribute("text-anchor", "end");
+x -= 10;
+y -= 8;
+} else if (attr.angle === 180) {
+// Esquerda (CH)
+text.setAttribute("text-anchor", "end");
+x -= 12;
+} else if (attr.angle < 270) {
+// Esquerda-baixo
+text.setAttribute("text-anchor", "end");
+x -= 10;
+y += 8;
+} else if (attr.angle === 270) {
+// Baixo
+text.setAttribute("text-anchor", "middle");
+} else {
+// Direita-baixo
+text.setAttribute("text-anchor", "start");
+x += 10;
+y += 8;
+}
+
+text.setAttribute("x", x);
+text.setAttribute("y", y);
+text.textContent = attr.name;
+svg.appendChild(text);
+});
+}
+
+function handleAttributeChange(e, totalAtributos) {
+// Incrementa atributo via botão "+"
+// Valida se há pontos disponíveis antes de incrementar
+// Chama updateAttributeDisplay() pra atualizar UI
+// Usado em: Event listeners dos buttons .attr-btn
+const btn = e.target;
+const attr = btn.dataset.attr;
+const action = btn.dataset.action;
+const input = document.getElementById(`attr-${attr}`);
+let value = parseInt(input.value) || 0;
+
+if (action === "plus") {
+// Calcular pontos atuais
+const attrValues = {
+hp: parseInt(document.getElementById("attr-hp").value) || 0,
+sta: parseInt(document.getElementById("attr-sta").value) || 0,
+ag: parseInt(document.getElementById("attr-ag").value) || 0,
+ch: parseInt(document.getElementById("attr-ch").value) || 0,
+vl: parseInt(document.getElementById("attr-vl").value) || 0,
+pm: parseInt(document.getElementById("attr-pm").value) || 0,
+fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
+const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+const available = totalAtributos - totalUsed;
+
+// Só permite aumentar se houver pontos disponíveis
+if (available > 0) {
+value++;
+}
+} else if (action === "minus") {
+value = Math.max(0, value - 1);
+}
+
+input.value = value;
+updateAttributeDisplay(totalAtributos);
+}
+
+function validateAttributeInput(input, totalAtributos) {
+// Valida entrada manual de atributo no input
+// Bloqueia redução abaixo do valor salvo (savedAttributeValues)
+// Auto-corrige se total exceder limite
+// Usado em: Event listeners dos inputs .attr-input
+let inputValue = parseInt(input.value) || 0;
+let inputName = input.id.replace("attr-", "");
+let savedValue = savedAttributeValues[inputName] || 0;
+
+// Garantir que não seja negativo
+if (inputValue < 0) {
+input.value = savedValue;
+return;
+}
+
+// Impedir redução abaixo do valor salvo
+if (inputValue < savedValue) {
+input.value = savedValue;
+return;
+}
+
+// Calcular pontos atuais (excluindo este input)
+const attrValues = {
+hp: parseInt(document.getElementById("attr-hp").value) || 0,
+sta: parseInt(document.getElementById("attr-sta").value) || 0,
+ag: parseInt(document.getElementById("attr-ag").value) || 0,
+ch: parseInt(document.getElementById("attr-ch").value) || 0,
+vl: parseInt(document.getElementById("attr-vl").value) || 0,
+pm: parseInt(document.getElementById("attr-pm").value) || 0,
+fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
+
+const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+const available = totalAtributos - totalUsed;
+
+// Se o total ultrapassar o limite, corrigir para o máximo permitido
+if (totalUsed > totalAtributos) {
+// Descobrir qual input foi alterado
+let inputName = input.id.replace("attr-", "");
+let currentInputValue = attrValues[inputName] || 0;
+
+// Reduzir esse atributo para o máximo permitido
+let maxAllowedForThis = currentInputValue - (totalUsed - totalAtributos);
+input.value = Math.max(0, maxAllowedForThis);
+}
+}
+
+function updateAttributeDisplay(totalAtributos) {
+// Atualiza displays: pontos usados, disponíveis, total
+// Muda cor pra vermelho se exceder limite
+// Desabilita botão salvar se excedido
+// Chama updateRadarChart() pra atualizar gráfico
+// Usado em: handleAttributeChange(), validateAttributeInput()
+const attrValues = {
+hp: parseInt(document.getElementById("attr-hp").value) || 0,
+sta: parseInt(document.getElementById("attr-sta").value) || 0,
+ag: parseInt(document.getElementById("attr-ag").value) || 0,
+ch: parseInt(document.getElementById("attr-ch").value) || 0,
+vl: parseInt(document.getElementById("attr-vl").value) || 0,
+pm: parseInt(document.getElementById("attr-pm").value) || 0,
+fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
+
+const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+const available = totalAtributos - totalUsed;
+
+// Validar se excedeu o limite
+if (totalUsed > totalAtributos) {
+document.getElementById("attr-available").style.color = "#f66";
+document.getElementById("btnSaveAttributes").disabled = true;
+} else {
+document.getElementById("attr-available").style.color = "#4af";
+document.getElementById("btnSaveAttributes").disabled = false;
+}
+
+document.getElementById("attr-total").textContent = totalAtributos;
+document.getElementById("attr-available").textContent = available;
+document.getElementById("attr-used").textContent = totalUsed;
+
+// Atualizar gráfico radar
+updateRadarChart();
+}
+
+async function saveAttributes() {
+// Valida total de atributos e salva no Firebase
+// Atualiza userData.atributos e savedAttributeValues (bloqueia redução)
+// Mostra alerta de sucesso/erro
+// Usado em: Click handler do botão #btnSaveAttributes
+const attrValues = {
+hp: parseInt(document.getElementById("attr-hp").value) || 0,
+sta: parseInt(document.getElementById("attr-sta").value) || 0,
+ag: parseInt(document.getElementById("attr-ag").value) || 0,
+ch: parseInt(document.getElementById("attr-ch").value) || 0,
+vl: parseInt(document.getElementById("attr-vl").value) || 0,
+pm: parseInt(document.getElementById("attr-pm").value) || 0,
+fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
+
+const totalAtributos = 250 + (userData.nivel - 1) * 40;
+const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
+
+if (totalUsed > totalAtributos) {
+alert("❌ A soma dos atributos não pode ser maior que " + totalAtributos);
+return;
+}
+
+try {
+await setDoc(doc(db, "fichas", currentUID), {
+atributos: attrValues
+}, { merge: true });
+
+userData.atributos = attrValues;
+savedAttributeValues = { ...attrValues }; // Atualizar valores salvos para impedir redução
+alert("✅ Atributos salvos com sucesso!");
+} catch (error) {
+console.error("Erro ao salvar atributos:", error);
+console.error("UID:", currentUID);
+console.error("Dados tentando salvar:", { atributos: attrValues });
+alert("❌ Erro ao salvar atributos!\n\nDetalhes: " + error.message);
+}
+}
+
+function resetAttributes() {
+// BETA: Reseta todos os atributos para 0
+// Pede confirmação antes de executar
+// Usado em: Click handler do botão #btnResetAttributes (se existir)
+if (!confirm("Tem certeza que deseja resetar todos os atributos?")) return;
+
+document.getElementById("attr-hp").value = 0;
+document.getElementById("attr-sta").value = 0;
+document.getElementById("attr-ag").value = 0;
+document.getElementById("attr-ch").value = 0;
+document.getElementById("attr-vl").value = 0;
+document.getElementById("attr-pm").value = 0;
+
+const totalAtributos = 250 + (userData.nivel - 1) * 40;
+updateAttributeDisplay(totalAtributos);
+}
+
+function renderSkills() {
+// Renderiza grid de skills/categorias
+// Filtra skills pela categoria ativa (categoria_bar buttons)
+// Chama showSkillModal() ao clicar em card
+// Usado em: onAuthStateChanged auth listener, category button clicks
+const container = document.getElementById("skills-grid");
+container.innerHTML = "";
+
+const descendants = getAllDescendants(currentCategory);
+
+const filteredSkills = allSkills
+.filter(s => descendants.has(s.id))
+.filter(s => {
+if (currentFilter === "all")      return true;
+if (currentFilter === "unlocked") return (s.level ?? 0) >= 1;
+if (currentFilter === "locked")   return (s.level ?? 0) === 0;
+return true;
+});
+
+if (filteredSkills.length === 0) {
+container.innerHTML = '<div class="no-skills">Nenhuma habilidade corresponde ao filtro selecionado.</div>';
+return;
+}
+
+filteredSkills.forEach(skill => {
+const level = skill.level ?? 0;
+const isUnlocked = level >= 1;
+const iconIndex = Math.min(level, skill.max || 5);
+const iconFile = isUnlocked 
+? `${skill.icon || "default"}_${iconIndex}.png`
+: `${skill.icon || "default"}_locked.png`;
+
+const div = document.createElement("div");
+div.className = `skill-preview ${isUnlocked ? "" : "locked"}`;
+div.dataset.skillId = skill.id;
+
+div.innerHTML = `
+       <img src="assets/icons/${iconFile}" alt="${skill.name || skill.id}">
+       <div class="name">${skill.name || skill.id}</div>
+       <div class="level ${isUnlocked ? "unlocked" : "locked"}">
+         ${isUnlocked ? `Nv ${level}` : "Bloqueada"}
+       </div>
+     `;
+
+div.addEventListener("click", () => showSkillModal(skill));
+
+container.appendChild(div);
+});
+}
+
+function showSkillModal(skill) {
+// Abre modal com detalhes completos da skill
+// Mostra: nome, ícone, descrição, requisitos
+// Usado em: Click handler dos cards na grid
+const level = skill.level ?? 0;
+const isUnlocked = level >= 1;
+const iconIndex = Math.min(level, skill.max || 5);
+const iconFile = isUnlocked 
+? `${skill.icon || "default"}_${iconIndex}.png`
+: `${skill.icon || "default"}_locked.png`;
+
+document.getElementById("modalIcon").src = `assets/icons/${iconFile}`;
+document.getElementById("modalTitle").textContent = skill.name || skill.id;
+document.getElementById("modalLevel").textContent = `Nível: ${level} / ${skill.max || "?"}`;
+
+const descEl = document.getElementById("modalDesc");
+descEl.textContent = skill.desc || "Sem descrição disponível.";
+
+const reqsEl = document.getElementById("modalReqs");
+reqsEl.innerHTML = "";
+
+if (skill.requires?.length > 0) {
+const h4 = document.createElement("h4");
+h4.textContent = "Requisitos:";
+reqsEl.appendChild(h4);
+
+skill.requires.forEach(req => {
+const type = req.type || "skill";
+let label = "";
+let currentVal = "";
+let needed = "";
+let ok = false;
+
+if (type === "skill") {
+const reqSkill = allSkills.find(s => s.id === req.id);
+label = reqSkill?.name || req.id;
+currentVal = reqSkill?.level ?? 0;
+needed = req.level ?? req.lvl ?? 1;
+ok = currentVal >= needed;
+} else if (type === "playerLevel") {
+label = "Nível da conta";
+currentVal = userData.nivel ?? 0;
+needed = req.level;
+ok = currentVal >= needed;
+} else if (type === "doujutsu") {
+label = "Doujutsu";
+currentVal = userData.doujutsus?.join(", ") || "Nenhum";
+needed = req.value;
+ok = (userData.doujutsus || []).includes(req.value);
+} else if (type === "clan") {
+label = "Clã";
+currentVal = userData.cla || "Nenhum";
+needed = req.value;
+ok = currentVal === req.value;
+} else {
+label = req.type || "Desconhecido";
+currentVal = "?";
+needed = req.value || req.level || "?";
+}
+
+const p = document.createElement("p");
+p.className = "req-item";
+p.innerHTML = `• ${label}: ${currentVal} / ${needed} `;
+p.innerHTML += ok 
+? '<span class="req-ok">✓</span>'
+: '<span class="req-fail">✗</span>';
+reqsEl.appendChild(p);
+});
+} else {
+reqsEl.innerHTML = "<p style='opacity:0.7;'>Nenhum requisito específico.</p>";
+}
+
+modal.classList.add("show");
+}
+
+// Navegação categorias
+document.querySelectorAll(".cat").forEach(btn => {
+btn.addEventListener("click", () => {
+document.querySelectorAll(".cat").forEach(b => b.classList.remove("active"));
+btn.classList.add("active");
+currentCategory = btn.dataset.cat;
+renderSkills();
+});
+});
+
+// Filtros
+document.querySelectorAll(".filter-btn").forEach(btn => {
+btn.addEventListener("click", () => {
+document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+btn.classList.add("active");
+currentFilter = btn.dataset.filter;
+renderSkills();
+});
+});
+
+// Botão voltar
+document.getElementById("btnHabilidades")?.addEventListener("click", () => {
+window.location.href = "arvore_habilidade.html";
+});
 </script>
 
 </body>
+</html>
 </html>

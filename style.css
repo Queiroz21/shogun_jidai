@@ -719,3 +719,50 @@ margin-right: 100px; /* 👈 puxa os botões para a esquerda */
   cursor: not-allowed;
   filter: grayscale(100%);
 } */ 
+
+
+/* =========================================================
+ 🏆 RANKING LATERA  
+ */
+#ranking-container {
+  position: absolute; /* ou 'fixed' dependendo de onde você quer */
+  right: 20px; /* Ajuste a posição na lateral direita */
+  top: 50px;   /* Ajuste a posição na altura desejada */
+  background-color: rgba(0, 0, 0, 0.8); /* Fundo semi-transparente */
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  width: 200px; /* Ajuste conforme necessário */
+  font-family: Arial, sans-serif;
+}
+
+#ranking-container h3 {
+  text-align: center;
+  margin: 0;
+  color: #ffcc00; /* Título destacado */
+}
+
+#leaderboard {
+  list-style-type: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+#leaderboard li {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+#leaderboard li:nth-child(1) {
+  color: gold; /* Primeiro lugar dourado */
+}
+
+#leaderboard li:nth-child(2) {
+  color: silver; /* Segundo lugar prateado */
+}
+
+#leaderboard li:nth-child(3) {
+  color: #cd7f32; /* Terceiro lugar bronze */
+}
