@@ -218,35 +218,95 @@ function showLevelUpPopup(oldLevel, newLevel, gainedPoints) {
    Usado em: makeCard(), levelUp()
 ========================================================= */
 // Verifica todos os requisitos de uma skill
-// Retorna { unlocked: bool, missing: [] }
+// Retorna { unlocked: bool, missing: [] }function checkRequirements(skill) {
 function checkRequirements(skill) {
   const userDoujutsus = normalizeDoujutsus();
+
+  // 🔹 NORMALIZA requires
+  // - formato antigo vira [{ all: [...] }]
+  // - formato novo permanece igual
+  const groups = skill.requires?.[0]?.all
+    ? skill.requires
+    : [{ all: skill.requires ?? [] }];
+
   let missing = [];
 
-  for (const req of skill.requires ?? []) {
-    const type = req.type ?? "skill";
+  // OR: basta UM grupo válido
+  for (const group of groups) {
+    let groupValid = true;
+    let groupMissing = [];
 
-    if (type === "skill") {
-      const sk = skills.find(s => s.id === req.id);
-      const cur = sk?.level ?? 0;
-      const need = req.level ?? req.lvl ?? 1;
-      if (cur < need) missing.push({ label: sk?.name ?? req.id, cur, need });
+    // AND dentro do grupo
+    for (const req of group.all) {
+      const type = req.type ?? "skill";
+
+      if (type === "skill") {
+        const sk = skills.find(s => s.id === req.id);
+        const cur = sk?.level ?? 0;
+        const need = req.level ?? req.lvl ?? 1;
+        if (cur < need) {
+          groupValid = false;
+          groupMissing.push({ label: sk?.name ?? req.id, cur, need });
+        }
+      }
+
+      if (type === "playerLevel" && userData.nivel < req.level) {
+        groupValid = false;
+        groupMissing.push({
+          label: "Conta",
+          cur: userData.nivel,
+          need: req.level
+        });
+      }
+
+      if (type === "doujutsu" && !userDoujutsus.includes(req.value)) {
+        groupValid = false;
+        groupMissing.push({
+          label: "Doujutsu",
+          cur: "Nenhum",
+          need: req.value
+        });
+      }
+
+      if (type === "clan" && userData.cla !== req.value) {
+        groupValid = false;
+        groupMissing.push({
+          label: "Clã",
+          cur: userData.cla,
+          need: req.value
+        });
+      }
+
+      if (type === "element" && !userData.elementos?.includes(req.value)) {
+        groupValid = false;
+        groupMissing.push({
+          label: "Elemento",
+          cur: userData.elementos?.join(", ") ?? "Nenhum",
+          need: req.value
+        });
+      }
+
+      if (type === "jinchuriki" && userData.biju !== req.value) {
+        groupValid = false;
+        groupMissing.push({
+          label: "Bijuu",
+          cur: userData.biju ?? "Nenhum",
+          need: req.value
+        });
+      }
     }
 
-    if (type === "playerLevel" && userData.nivel < req.level) {
-      missing.push({ label: "Conta", cur: userData.nivel, need: req.level });
+    // ✅ se UM grupo passar → skill liberada
+    if (groupValid) {
+      return { unlocked: true, missing: [] };
     }
 
-    if (type === "doujutsu" && !userDoujutsus.includes(req.value)) {
-      missing.push({ label: "Doujutsu", cur: "Nenhum", need: req.value });
-    }
-
-    if (type === "clan" && userData.cla !== req.value) {
-      missing.push({ label: "Clã", cur: userData.cla, need: req.value });
-    }
+    // guarda o missing do grupo (para feedback)
+    missing.push(groupMissing);
   }
 
-  return { unlocked: missing.length === 0, missing };
+  // ❌ nenhum grupo passou
+  return { unlocked: false, missing };
 }
 
 /* =========================================================

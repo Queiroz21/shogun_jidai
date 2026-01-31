@@ -1,0 +1,287 @@
+[
+  {
+    "id": "fornalha_baixo_carbono",
+    "name": "Fornalha de aço baixo carbono",
+    "parent": "forja",
+    "max": 5,
+    "icon": "mental",
+    "requires": [],
+    "desc": "Resistente o suficiente para armas simples.\\nmais simples de 'afiar'\\npermite criar itens E"
+  },
+  {
+    "id": "fornalha_bronze",
+    "name": "Fornalha de Bronze",
+    "parent": "forja",
+    "max": 5,
+    "icon": "mental",
+    "requires": [],
+    "desc": "Melhora a qualidade de sua forja, podendo extrair o melhor dos itens (utilizando a passiva do minerais)"
+  },
+  {
+    "id": "vinculo_ferramenta_basica",
+    "name": "Vinculo De Ferramentas Basicas",
+    "parent": "forja",
+    "max": 5,
+    "icon": "mental",
+    "requires": [],
+    "desc": "permite que você confeccione ferramentas basics de rank E"
+  },
+  {
+    "id": "confeccao_peca_reposicao",
+    "name": "Confecçãode Peças de Reposição",
+    "parent": "forja",
+    "max": 5,
+    "icon": "mental",
+    "requires": [],
+    "desc": "Permite que você arrume ferramentas até rank D que foram quebradas, utilizando 1 mineral a menos (minino 1 para forjar)"
+  },
+  {
+    "id": "ignicao_falha",
+    "name": "Ignição Falha",
+    "parent": "forja",
+    "max": 5,
+    "icon": "mental",
+    "requires": [],
+    "desc": "A utilização do material condutor de chakra, com forma ineficiente, você pode conseguir moldar um aço adamantino vermelho, a resistencia dele será utilizada, mas sem a devida habilidade, suas propriedades serão falhas"
+  },
+  {
+    "id": "linhagem_mecanismos",
+    "name": "Linhagem de Mecanismos",
+    "parent": "fornalha_baixo_carbono",
+    "max": 5,
+    "icon": "mental",
+    "requires": [
+      {
+        "id": "fornalha_baixo_carbono",
+        "lvl": 3
+      }
+    ],
+    "desc": "permite que crie disparadores de kunai e pequenos prototipos mecanicos SIMPLES"
+  },
+  {
+    "id": "linha_arma_combate_ninja",
+    "name": "Linhagem de Armas de Combate Ninja",
+    "parent": "fornalha_baixo_carbono",
+    "max": 5,
+    "icon": "mental",
+    "requires": [
+      {
+        "id": "fornalha_baixo_carbono",
+        "lvl": 2
+      }
+    ],
+    "desc": "Permite que você crie projetos de até ranking D de novas armas ninjas"
+  },
+  {
+    "id": "linhagem_arma_pesada",
+    "name": "Linhagem de Armas Pesadas",
+    "parent": "fornalha_bronze",
+    "max": 5,
+    "icon": "mental",
+    "requires": [
+      {
+        "id": "fornalha_bronze",
+        "lvl": 2
+      }
+    ],
+    "desc": "Permite que você crie receits e confecione com maestria armas de grande porte (duas mãos/longas) para combates geral"
+  },
+  {
+    "id": "bukijutsu",
+    "name": "Bukijutsu",
+    "parent": "fisico",
+    "max": 0,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Arvore Guia de Bukijutsu"
+  },
+  {
+    "id": "movimento_corte",
+    "name": "Movimentos de Corte",
+    "parent": "bukijutsu",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Você aprendeu a manusear armas a fim de cortar seus adversários. Até mesmo armas improvisadas.\\nA cada nível, maior sua velocidade e maestria no manuseio."
+  },
+  {
+    "id": "lamina_longa",
+    "name": "Lamina Longa",
+    "parent": "movimento_corte",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "movimento_corte",
+        "lvl": 2
+      }
+    ],
+    "desc": "Você se especializou em cortes utilizando armas longas.\\nSeu alcance é maior e os cortes são mais profundos, em troca da velocidade.\\nA cada nível, maior a velocidade e precisão.\\n(Espadas longas, Katanas, etc)"
+  },
+  {
+    "id": "lamina_pequena",
+    "name": "Lamina Pequena",
+    "parent": "movimento_corte",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "movimento_corte",
+        "lvl": 1
+      }
+    ],
+    "desc": "Você se especializou na utilização de lâminas curtas. \\nSeus golpes tem um alcance menor, mas são mais ágeis e precisos.\\nA cada nível, maior a velocidade e precisão.\\n(Kunais, espadas curtas e facas)"
+  },
+  {
+    "id": "estocada_perfucao",
+    "name": "Estocada e Perfuracao",
+    "parent": "bukijutsu",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Você aprendeu a manusear armas a fim de utilizar sua ponta para golpear seus adversários. \\nTanto armas longas quanto armas pequenas, e até mesmo armas improvisadas.\\nA cada nível, melhor sua velocidade e maestria no manuseio."
+  },
+  {
+    "id": "agulhada",
+    "name": "Agulhada",
+    "parent": "estocada_perfuracao",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "estocada_perfuracao",
+        "lvl": 5
+      }
+    ],
+    "desc": "Você se especializou em utilizar senbons e agulhas diversas em combate corpo a corpo. \\nPode usufruir de todas as habilidades que envolvem armas leves e pequenas enquanto manuseia a agulha."
+  },
+  {
+    "id": "estocada_distante",
+    "name": "Estocada Distante",
+    "parent": "estocada_perfuracao",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "estocada_perfuracao",
+        "lvl": 3
+      }
+    ],
+    "desc": "Você passa a usufruir das Habilidades do ramo de Estocada Básica com armas de haste longa.\\n(lanças, bastões de monge, alabardas)\\nQuanto maior o nível, mais rápido é seu manuseio para estocar com armas de haste."
+  },
+  {
+    "id": "revestimento_chakra",
+    "name": "Revestimento de Chakra",
+    "parent": "bukijutsu",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Você se tornou capaz de colocar seu chakra em qualquer arma. Lâminas e pontas se tornam mais afiadas e penetrantes, hastes se tornam mais resistentes, e partes contundentes ficam mais duras e acertam com mais força.\\nPara cada nível, maior o dano, chance de crítico, e força de seus ataques.\\nPré-requisito: Fluxo de Chakra"
+  },
+  {
+    "id": "atibuicao_caracteristica",
+    "name": "Atribuição de Caracterista",
+    "parent": "revestimento_chakra",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "revestimento_chakra",
+        "lvl": 1
+      },
+      {
+        "id": "fluxo_chakra",
+        "lvl": 5
+      }
+    ],
+    "desc": "Você se tornou capaz de adicionar a característica do seu charka a arma que está empunhando.\\nSeus golpes e movimentos passam a levar a caraterística do seu chakra em cada um de seus movimentos. \\nA cada nível, maior a magnitude de sua característica.\\nPré-requisito: Fluxo de Chakra, alguma característica de chakra.\\n(katon, fuuton, raiton etc)"
+  },
+  {
+    "id": "manuseio_haste",
+    "name": "Manuseio de Haste",
+    "parent": "bukijutsu",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Você aprendeu a golpear seus inimigos com o torque da haste de uma arma. \\nAté mesmo de armas improvisadas."
+  },
+  {
+    "id": "cacetada",
+    "name": "Cacetada",
+    "parent": "manuseio_haste",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "manuseio_haste",
+        "lvl": 2
+      }
+    ],
+    "desc": "Você aprendeu a golpear seus inimigos com o torque da haste de uma arma. \\nAté mesmo de armas improvisadas."
+  },
+  {
+    "id": "impulso_circular",
+    "name": "Impulso Circular",
+    "parent": "manuseio_haste",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "manuseio_haste",
+        "lvl": 3
+      }
+    ],
+    "desc": "Você se especializou em aproveitar do torque da haste de sua arma para gerar velocidade e impulso. Seus movimentos consistem em rotacionar a haste em volta de seu corpo para golpear o oponente com maior velocidade e precisão.\\n(Apenas com armas de Haste LEVES)\\nA cada nível, maior velocidade e precisão."
+  },
+  {
+    "id": "guarda_basica",
+    "name": "Guarda Basica",
+    "parent": "bukijutsu",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [],
+    "desc": "Você aprendeu o básico de postura defensiva enquanto empunha uma arma, seja ela real ou improvisada."
+  },
+  {
+    "id": "ambidestresia",
+    "name": "Ambidestresia",
+    "parent": "guarda_basica",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "guarda_basica",
+        "lvl": 1
+      }
+    ],
+    "desc": "Você se tornou capaz de manusear armas com ambas as mãos, com tanto que tenha força e tamanho para manuseá-las.\\nQuanto maior o nível, maior a velocidade e maestria com a mão inábil. No quinto nível, ela se torna tão boa quanto a hábil."
+  },
+  {
+    "id": "passos_duelista",
+    "name": "Passos de Duelista",
+    "parent": "guarda_basica",
+    "max": 5,
+    "icon": "fisica",
+    "requires": [
+      {
+        "id": "guarda_basica",
+        "lvl": 1
+      }
+    ],
+    "desc": "Você se tornou capaz de prestar atenção nos seus passos e nos passos de seu adversário, aumentando sua chance de prever seus recuos e investidas armadas.\\nPara cada nível, maior sua Destreza e Velocidade para esquivas, recuos e avanços."
+  },
+  {
+    "id": "aparar_com_armas",
+    "name": "Aparar com Armas",
+    "parent": "guarda_basica",
+    "max": 5,
+    "icon": "fisico",
+    "requires": [
+      {
+        "id": "guarda_basica",
+        "lvl": 4
+      }
+    ],
+    "desc": "Você se tornou hábil o suficiente para aparar ataques corpo a corpo enquanto manuseia uma arma, a colocando na frente do ataque de um adversário para desviar sua trajetória.\\nQuanto maior o nível, maior sua velocidade na hora de aparar um ataque corpo a corpo."
+  }
+]
