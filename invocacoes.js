@@ -18,6 +18,21 @@ let currentRegion = null;
 let openFamilias = new Set(); // Famílias expandidas/fechadas
 
 /* =========================================================
+   XP - FÓRMULA: XP(n) = 75 * n * (n + 1) / 2
+========================================================= */
+function xpForLevel(level) {
+  return 75 * level * (level + 1) / 2;
+}
+
+function levelFromXp(xp) {
+  // Inverter: 75*n^2 + 75*n - 2*xp = 0
+  // n = (-75 + √(75² + 4*75*2*xp)) / (2*75)
+  const discriminant = 75 * 75 + 4 * 75 * 2 * xp;
+  const level = (-75 + Math.sqrt(discriminant)) / (2 * 75);
+  return Math.floor(level);
+}
+
+/* =========================================================
    CARREGA DADOS DO FIREBASE
 ========================================================= */
 async function loadInvocacoesAndRegions() {
@@ -198,22 +213,24 @@ function makeFamiliaNode(famKey, familyMeta, invList) {
   
   node.appendChild(header);
   
-  // GRID DE ANIMAIS (se expansível)
-  if (openFamilias.has(famKey) || invList.length > 0) {
+  // GRID DE ANIMAIS (mostrar sempre se há invocações, mesmo se não expandida)
+  if (invList.length > 0) {
     const grid = document.createElement("div");
     grid.className = "animais-grid";
     
-    if (invList.length === 0) {
-      const empty = document.createElement("p");
-      empty.style.cssText = "color:#888; grid-column: 1/-1; padding:20px 0;";
-      empty.textContent = "(Nenhuma invocação disponível)";
-      grid.appendChild(empty);
-    } else {
-      invList.forEach(inv => {
-        grid.appendChild(makeAnimalCard(inv));
-      });
-    }
+    invList.forEach(inv => {
+      grid.appendChild(makeAnimalCard(inv));
+    });
     
+    node.appendChild(grid);
+  } else if (openFamilias.has(famKey)) {
+    // Se expandida mas sem invocações, mostra mensagem
+    const grid = document.createElement("div");
+    grid.className = "animais-grid";
+    const empty = document.createElement("p");
+    empty.style.cssText = "color:#888; grid-column: 1/-1; padding:20px 0;";
+    empty.textContent = "(Nenhuma invocação disponível)";
+    grid.appendChild(empty);
     node.appendChild(grid);
   }
   
@@ -233,71 +250,64 @@ function makeAnimalCard(inv) {
   const familyUnlocked = inv.family && familiaInvocacao[inv.family] ? true : false;
   
   // Afinidade dentro da família (novo formato)
-  let currentLevel = 0;
+  let afinidade = 0;
   if (familyUnlocked && familiaInvocacao[inv.family]) {
     const animal = familiaInvocacao[inv.family].find(a => a.name === inv.name || a.id === inv.id);
-    currentLevel = animal ? (animal.afinidade || 0) : 0;
+    afinidade = animal ? (animal.afinidade || 0) : 0;
   }
+  
+  // Calcula nível e XP baseado em afinidade
+  const nivel = levelFromXp(afinidade);
+  const xpAtual = afinidade;
+  const xpProximo = xpForLevel(nivel + 1);
+  const xpNivelAtual = xpForLevel(nivel);
+  const xpNivelEntreAtualEProximo = xpProximo - xpNivelAtual;
+  const xpEntreAtualEProximo = xpAtual - xpNivelAtual;
+  let progressoNivel = (xpEntreAtualEProximo / xpNivelEntreAtualEProximo) * 100;
+  // Clampa entre 0 e 100 para evitar valores inválidos
+  progressoNivel = Math.max(0, Math.min(100, progressoNivel));
   
   // Ícone: desbloqueado vs bloqueado (baseado na família, não invocação individual)
   const isLocked = !familyUnlocked && !userData.admin;
   const iconUrl = isLocked ? "assets/icons/kuchiyose_locked.png" : "assets/icons/kuchiyose.png";
   
+  // Ícone
   const icon = document.createElement("img");
   icon.className = "animal-icon" + (isLocked ? " bloqueado" : "");
   icon.src = iconUrl;
   icon.alt = inv.name;
+  icon.style.cssText = "width: 70px; height: 70px; border-radius: 6px; object-fit: cover; border: 2px solid #4af; transition: filter 0.2s, border-color 0.2s; margin: 0 auto;";
   card.appendChild(icon);
+  
+  // Barra de Afinidade (abaixo do ícone)
+  const barContainer = document.createElement("div");
+  barContainer.style.cssText = "width: 70px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; margin: 6px auto 0; overflow: hidden; position: relative; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);";
+  
+  const barFill = document.createElement("div");
+  barFill.style.cssText = `height: 100%; width: ${progressoNivel}%; background: linear-gradient(90deg, #00ff00, #00ffff); transition: width 0.3s ease; box-shadow: 0 0 6px rgba(0, 255, 200, 0.6);`;
+  barContainer.appendChild(barFill);
+  
+  card.appendChild(barContainer);
   
   // Nome do animal
   const nameDiv = document.createElement("div");
   nameDiv.className = "animal-nome";
   nameDiv.textContent = inv.name;
+  nameDiv.style.cssText = "color: #eee; font-size: 0.9rem; text-align: center; margin-top: 8px; max-width: 120px; min-height: 20px;";
   card.appendChild(nameDiv);
-  
-  // Barra de Afinidade
-  const barContainer = document.createElement("div");
-  barContainer.className = "afinidade-bar";
-  
-  const barFill = document.createElement("div");
-  barFill.className = "afinidade-fill";
-  const maxLevel = inv.max || 10;
-  barFill.style.width = ((currentLevel || 0) / maxLevel * 100) + "%";
-  barContainer.appendChild(barFill);
-  card.appendChild(barContainer);
   
   // Tooltip
   const tooltip = document.createElement("div");
   tooltip.className = "tooltip";
   
-  let tooltipHTML = `<strong style="color:#4af;">${inv.name}</strong>\n`;
-  tooltipHTML += `<small style="color:#aaa;">Afinidade: ${currentLevel || 0}/${maxLevel}</small>\n`;
-  
-  if (inv.desc) {
-    tooltipHTML += `\n${inv.desc}\n`;
-  }
-  
-  // Jutsus
-  if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
-    tooltipHTML += `\n<strong style="color:#f0a;">Jutsus:</strong>\n`;
-    inv.jutsus.forEach(j => {
-      const unlocked = currentLevel >= j.unlockLevel;
-      const status = unlocked ? "✓" : "⊘";
-      const color = unlocked ? "#51cf66" : "#ff6b6b";
-      tooltipHTML += `<span style="color:${color};">${status} ${j.name}</span>\n`;
-    });
-  }
-  
-  tooltip.textContent = tooltipHTML;
-  // Melhor converter para innerHTML com escaping adequado
   tooltip.innerHTML = `<strong style="color:#4af;">${escapeHtml(inv.name)}</strong><br>` +
-                       `<small style="color:#aaa;">Afinidade: ${currentLevel || 0}/${maxLevel}</small><br>` +
+                       `<small style="color:#aaa;">Nível: ${nivel} · Afinidade: ${afinidade}</small><br>` +
                        (inv.desc ? `<small>${escapeHtml(inv.desc)}</small><br>` : "");
   
   if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
     tooltip.innerHTML += `<strong style="color:#f0a; display:block; margin-top:6px;">Jutsus:</strong>`;
     inv.jutsus.forEach(j => {
-      const unlocked = currentLevel >= j.unlockLevel;
+      const unlocked = afinidade >= j.unlockLevel;
       const status = unlocked ? "✓" : "⊘";
       const color = unlocked ? "#51cf66" : "#ff6b6b";
       tooltip.innerHTML += `<div style="color:${color}; font-size:11px;">${status} ${escapeHtml(j.name)}</div>`;
@@ -305,14 +315,6 @@ function makeAnimalCard(inv) {
   }
   
   card.appendChild(tooltip);
-  
-  // Clique para invocar
-  card.addEventListener("click", () => {
-    if (isLocked && !userData.admin) {
-      return alert("Você ainda não desbloqueou esta invocação!");
-    }
-    openConfirm(inv);
-  });
   
   return card;
 }
@@ -338,18 +340,26 @@ function openConfirm(inv) {
   const text = document.getElementById("modalText");
   const jutsusDiv = document.getElementById("modalJutsus");
   
-  const currentLevel = (userData.invocacoes && userData.invocacoes[inv.id]) ? userData.invocacoes[inv.id] : 0;
-  const maxLevel = inv.max || 10;
+  // Buscar afinidade na nova estrutura
+  const familiaInvocacao = userData.Familia_Invocação || {};
+  let afinidade = 0;
+  if (inv.family && familiaInvocacao[inv.family]) {
+    const animal = familiaInvocacao[inv.family].find(a => a.name === inv.name || a.id === inv.id);
+    afinidade = animal ? (animal.afinidade || 0) : 0;
+  }
+  
+  const nivel = levelFromXp(afinidade);
+  const xpProximo = xpForLevel(nivel + 1);
   
   title.textContent = `Invocar: ${inv.name}`;
-  text.textContent = `Deseja invocar ${inv.name}? (Afinidade: ${currentLevel}/${maxLevel})`;
+  text.textContent = `Deseja invocar ${inv.name}?\n\nNível: ${nivel} · Afinidade: ${afinidade}/${xpProximo}`;
   
   // Listar jutsus disponíveis
   jutsusDiv.innerHTML = "";
   if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
     jutsusDiv.innerHTML = "<strong style='color:#f0a;'>Jutsus Desbloqueados:</strong>";
     inv.jutsus.forEach(j => {
-      const unlocked = currentLevel >= j.unlockLevel;
+      const unlocked = afinidade >= j.unlockLevel;
       if (unlocked) {
         jutsusDiv.innerHTML += `<div style="color:#51cf66; font-size:12px; margin:4px 0;">✓ ${j.name}</div>`;
       }
@@ -377,7 +387,7 @@ async function invocarSummon(invId) {
   let animal = userData.Familia_Invocação[inv.family].find(a => a.name === inv.name || a.id === inv.id);
   
   if (!animal) {
-    // Primeiro invoke - criar animal
+    // Primeiro invoke - criar animal com afinidade 1
     animal = {
       id: inv.id,
       name: inv.name,
@@ -385,20 +395,22 @@ async function invocarSummon(invId) {
     };
     userData.Familia_Invocação[inv.family].push(animal);
   } else {
-    // Aumentar afinidade existente
-    const maxLevel = inv.max || 10;
-    if (animal.afinidade >= maxLevel) {
-      return alert(`${inv.name} atingiu afinidade máxima!`);
-    }
+    // Aumentar afinidade existente (sem limite, cresce infinitamente)
     animal.afinidade = (animal.afinidade || 0) + 1;
   }
+  
+  const nivelFinal = levelFromXp(animal.afinidade);
   
   try {
     const userRef = doc(db, "fichas", currentUID);
     await updateDoc(userRef, { Familia_Invocação: userData.Familia_Invocação });
-    console.log(`✅ ${inv.name} → Afinidade ${animal.afinidade}/${inv.max || 10}`);
-    render();
-    document.getElementById("confirmModal").classList.add("hidden");
+    console.log(`✅ ${inv.name} → Afinidade ${animal.afinidade} (Nível ${nivelFinal})`);
+    
+    // Aguardar um pouco para garantir que o Firestore foi sincronizado
+    setTimeout(() => {
+      render();
+      document.getElementById("confirmModal").classList.add("hidden");
+    }, 100);
   } catch (error) {
     console.error("❌ Erro ao atualizar afinidade:", error);
     alert("Erro ao atualizar afinidade!");

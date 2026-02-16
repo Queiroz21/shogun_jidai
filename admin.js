@@ -2587,20 +2587,30 @@ async function loadPlayerInvocations(playerId) {
     const playerSnap = await getDoc(playerRef);
     if (!playerSnap.exists()) return;
     const playerData = playerSnap.data();
-    const invocacoes = playerData.invocacoes || [];
+    
+    // Ler de Familia_Invocação (novo formato)
+    const familiaInvocacao = playerData.Familia_Invocação || {};
+    const allInvocations = [];
+    
+    for (const familia in familiaInvocacao) {
+      if (Array.isArray(familiaInvocacao[familia])) {
+        allInvocations.push(...familiaInvocacao[familia]);
+      }
+    }
 
     const select = document.getElementById("xp-invocation");
     if (!select) return;
     select.innerHTML = '<option value="">-- Selecione --</option>';
-    if (!Array.isArray(invocacoes) || invocacoes.length === 0) {
+    
+    if (allInvocations.length === 0) {
       select.innerHTML = '<option disabled>Sem invocações registradas</option>';
       return;
     }
-    invocacoes.forEach(inv => {
+    
+    allInvocations.forEach(inv => {
       const opt = document.createElement("option");
-      // suporte a formatos antigos (string) e novos (objeto com id/name)
-      const val = (inv && (inv.id || inv.name)) ? (inv.id || inv.name) : inv;
-      const label = (inv && inv.name) ? inv.name : (inv && inv.id) ? inv.id : String(inv);
+      const val = inv.id || inv.name;
+      const label = inv.name || inv.id;
       opt.value = val;
       opt.textContent = label;
       select.appendChild(opt);
@@ -2821,13 +2831,24 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
           }
         }
         
-        // Atualizar XP de invocações na ficha do jogador (fichas/{uid}.invocacoesXp)
+        // Atualizar afinidade de invocações na ficha do jogador (fichas/{uid}.Familia_Invocação)
         const fichRef = doc(db, "fichas", playerId);
-        const currentInvXp = playerData.invocacoesXp || {};
-        invocationsUsed.forEach(invName => {
-          currentInvXp[invName] = (currentInvXp[invName] || 0) + xpPerInvocation;
-        });
-        await updateDoc(fichRef, { invocacoesXp: currentInvXp });
+        const familiaInvocacao = playerData.Familia_Invocação || {};
+        
+        // Procurar cada invocação e incrementar afinidade
+        for (const invName of invocationsUsed) {
+          // Procurar qual família contém essa invocação
+          for (const familia in familiaInvocacao) {
+            if (Array.isArray(familiaInvocacao[familia])) {
+              const animal = familiaInvocacao[familia].find(a => a.name === invName || a.id === invName);
+              if (animal) {
+                animal.afinidade = (animal.afinidade || 0) + xpPerInvocation;
+              }
+            }
+          }
+        }
+        
+        await updateDoc(fichRef, { Familia_Invocação: familiaInvocacao });
 
         // Adicionar bonus em árvore especifica se selecionado
         if (treeBonus && treeBonus.treeId && treeBonus.points > 0) {
