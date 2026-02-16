@@ -1,321 +1,445 @@
-/* =========================================================
-   INVOCAÇÕES.JS — GERENCIADOR DE INVOCAÇÕES
-   Estrutura similar a app.js, mas pra tabela de invocações
-   Carrega de: game_data/invocacoes_v1
-   Salva em: userData.invocacoes
-========================================================= */
+// invocacoes.js - NOVA ÁRVORE VISUAL (similar a arvore_habilidade.js)
 
 import { auth, db, requireAuth } from "./oauth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  doc, getDoc, updateDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// ======== PROTEÇÃO: Verificar se usuário está logado ========
+// Proteção: Verificar se usuário está logado
 requireAuth();
 
-/* =========================================================
-   ESTADO GLOBAL
-========================================================= */
-// Armazena UID do usuário autenticado
 let currentUID = null;
-// Dados do usuário (nick, nivel, xp, invocacoes, etc)
 let userData = {};
-// Array de invocações carregadas do Firestore
 let invocacoes = [];
-// Rastreador local de invocações leveled (antes de salvar)
-let invocacoesState = {};
-// Categoria ativa selecionada pelo usuário
-let currentCategory = "todos";
+let regions = {};
+let currentRegion = null;
+let openFamilias = new Set(); // Famílias expandidas/fechadas
 
 /* =========================================================
-   NAVEGAÇÃO — BOTÕES DE HEADER
-   Permite navegar entre páginas principais
-   Usado em: Event listeners onclick de botões
+   CARREGA DADOS DO FIREBASE
 ========================================================= */
-document.getElementById("btnPerfil").addEventListener("click", () => {
-  window.location.href = "perfil.html";
-});
-
-document.getElementById("btnArvore").addEventListener("click", () => {
-  window.location.href = "arvore_habilidade.html";
-});
-
-/* =========================================================
-   UTILIDADES XP — CÁLCULO DE PROGRESSÃO
-   Mesma fórmula usada em app.js e perfil.html
-========================================================= */
-// Calcula XP necessário pra atingir um nível
-// Usado em: render()
-function xpToReachLevel(level) {
-  // progressão: 100, +200, +300, +400...
-  // fórmula: 100 * (level - 1) * level / 2
-  return 100 * (level - 1) * level / 2;
-}
-
-// Calcula XP necessário pra passar de um nível pro próximo (não cumulativo)
-// Usado em: render()
-function xpTotalForLevel(level) {
-  return 100 * (level - 1) * level / 2;
-}
-
-/* =========================================================
-   LOAD INVOCAÇÕES
-   Carrega do Firestore (game_data/invocacoes_v1)
-   Tolerância: Invocacoes (maiúsculo) ou invocacoes (minúsculo)
-   Retorna array de invocações com level = 0 inicialmente
-   Usado em: onAuthStateChanged auth listener
-========================================================= */
-async function loadInvocacoes() {
+async function loadInvocacoesAndRegions() {
   try {
-    const snap = await getDoc(doc(db, "game_data", "invocacoes_v1"));
-    if (!snap.exists()) {
-      console.warn("invocacoes_v1 não encontrado");
-      return [];
+    const docRef = doc(db, "game_data", "invocacoes_v1");
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.log("Documento invocacoes_v1 não encontrado");
+      return;
     }
 
-    const data = snap.data();
-    let raw = data.Invocacoes ?? data.invocacoes ?? [];
+    const data = docSnap.data();
+    invocacoes = Array.isArray(data.invocacoes) ? data.invocacoes : [];
+    regions = data.regions || {};
 
-    if (typeof raw === "object" && !Array.isArray(raw)) {
-      raw = Object.entries(raw).map(([id, obj]) => ({ id, ...obj }));
-    }
-
-    if (!Array.isArray(raw)) {
-      console.warn("Formato inválido de Invocacoes");
-      return [];
-    }
-
-    return raw.map(inv => ({
-      ...inv,
-      level: 0
-    }));
+    console.log("✅ Invocações carregadas:", invocacoes.length);
+    console.log("✅ Regiões carregadas:", Object.keys(regions).length);
   } catch (error) {
-    console.error("Erro ao carregar invocações:", error);
-    return [];
+    console.error("❌ Erro ao carregar invocacoes:", error);
   }
 }
 
 /* =========================================================
-   AUTH — CARREGA USUÁRIO E DADOS
-   Verifica autenticação e carrega userData do Firestore
-   Chama render() após tudo estar pronto
-   Usado em: Listener global quando página carrega
+   EXTRAI REGIÕES ÚNICAS DOS DADOS
 ========================================================= */
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
-
-  currentUID = user.uid;
-  const snap = await getDoc(doc(db, "fichas", currentUID));
-  userData = snap.data() ?? {};
-
-  userData.nick ??= "Sem Nome";
-  userData.cla ??= "Nenhum";
-  userData.xp ??= 0;
-  userData.nivel ??= 1;
-  userData.pontos ??= 0;
-  userData.invocacoes ??= {};
-
-  invocacoesState = { ...userData.invocacoes };
-  invocacoes = await loadInvocacoes();
-
+function extractUniqueRegions() {
+  const unique = new Set();
   invocacoes.forEach(inv => {
-    inv.level = userData.invocacoes[inv.id] ?? 0;
+    if (inv.region) unique.add(inv.region);
   });
-
-  console.log("userData após inicialização:", userData);
-  console.log("invocacoes carregadas:", invocacoes);
-
-  // Mostra botão admin se usuário for admin
-  if (userData.admin) {
-    const btnAdmin = document.getElementById("btnAdmin");
-    if (btnAdmin) {
-      btnAdmin.style.display = "block";
-    }
-  }
-
-  render();
-});
+  
+  // Incluir regiões mesmo que vazias
+  Object.keys(regions).forEach(key => {
+    unique.add(key);
+  });
+  
+  return Array.from(unique).sort();
+}
 
 /* =========================================================
-   RENDER — ATUALIZA TELA INTEIRA
-   Renderiza header (nick, XP, pontos) e grid de invocações
-   Chamado na inicialização e após any action
-   Usado em: onAuthStateChanged, invocarSummon()
+   SETUP: ABAS POR REGIÃO
+========================================================= */
+function setupRegionTabs(uniqueRegions) {
+  const tabsContainer = document.getElementById("region-tabs");
+  if (!tabsContainer) return;
+  
+  tabsContainer.innerHTML = "";
+  
+  uniqueRegions.forEach(regionKey => {
+    const btn = document.createElement("button");
+    btn.className = "region-btn";
+    btn.dataset.region = regionKey;
+    
+    const regionMeta = regions[regionKey];
+    const regionName = regionMeta ? regionMeta.name : regionKey;
+    
+    btn.textContent = regionName;
+    btn.addEventListener("click", () => selectRegion(regionKey));
+    
+    tabsContainer.appendChild(btn);
+  });
+  
+  // Selecionar primeira região por padrão
+  if (uniqueRegions.length > 0) {
+    selectRegion(uniqueRegions[0]);
+  }
+}
+
+/* =========================================================
+   SELECIONA REGIÃO E RENDERIZA
+========================================================= */
+function selectRegion(regionKey) {
+  currentRegion = regionKey;
+  
+  // Marca botão como ativo
+  document.querySelectorAll(".region-btn").forEach(btn => {
+    btn.classList.remove("active");
+    if (btn.dataset.region === regionKey) {
+      btn.classList.add("active");
+    }
+  });
+  
+  // Reset expansões ao trocar região
+  openFamilias.clear();
+  render();
+}
+
+/* =========================================================
+   RENDERIZA ÁRVORE COMPLETA
 ========================================================= */
 function render() {
-  // ===== TOPO =====
-  const infoTopo = document.getElementById("infoTopo");
-  if (infoTopo) {
-    infoTopo.textContent =
-      `${userData.nick} | Clã: ${userData.cla}`;
-  }
-
-  const playerLevel = document.getElementById("player-level");
-  if (playerLevel) {
-    playerLevel.textContent =
-      `Level: ${userData.nivel}`;
-  }
-
-  // ===== XP / LEVEL =====
-  const xpCurrent = xpToReachLevel(userData.nivel);
-  const xpNext = xpToReachLevel(userData.nivel + 1);
-
-  const progress =
-    ((userData.xp - xpCurrent) / (xpNext - xpCurrent)) * 100;
-
-  const xpBar = document.getElementById("xp-bar");
-  if (xpBar) {
-    xpBar.style.width =
-      `${Math.min(Math.max(progress, 0), 100)}%`;
-  }
-
-  const playerOnlyXp = document.getElementById("playerOnlyXp");
-  if (playerOnlyXp) {
-    playerOnlyXp.textContent =
-      `XP: ${userData.xp} / ${xpNext}`;
-  }
-
-  const playerOnlyPontos = document.getElementById("playerOnlyPontos");
-  console.log("playerOnlyPontos elemento:", playerOnlyPontos);
-  if (playerOnlyPontos) {
-    playerOnlyPontos.textContent =
-      `Pontos: ${userData.pontos || 0}`;
-    console.log("playerOnlyPontos atualizado para:", `Pontos: ${userData.pontos || 0}`);
-  }
-
-  // ===== INVOCAÇÕES / CATEGORIAS =====
   const chart = document.getElementById("org-chart");
-  if (chart) {
-    chart.innerHTML = "";
-    renderInvocacoesByCategory();
+  if (!chart) return;
+  
+  chart.innerHTML = "";
+  
+  if (!currentRegion) {
+    chart.innerHTML = "<p style='color:#888;'>Selecione uma região</p>";
+    return;
   }
-}
-
-/* =========================================================
-   RENDER GRID POR CATEGORIA
-   Agrupa invocações por categoria e monta grid visual
-   Cada invocação vira um card clicável
-   Usado em: render()
-========================================================= */
-function renderInvocacoesByCategory() {
-  const chart = document.getElementById("org-chart");
-
-  // Agrupar por categoria
-  const categorias = [...new Set(invocacoes.map(inv => inv.category || "outro"))];
-
-  categorias.forEach(cat => {
-    const catInvocacoes = invocacoes.filter(inv => (inv.category || "outro") === cat);
-
-    const catDiv = document.createElement("div");
-    catDiv.className = "category-section";
-    catDiv.innerHTML = `<h2>${cat}</h2>`;
-
-    const gridDiv = document.createElement("div");
-    gridDiv.className = "invocacoes-grid";
-
-    catInvocacoes.forEach(inv => {
-      gridDiv.appendChild(makeCard(inv));
-    });
-
-    catDiv.appendChild(gridDiv);
-    chart.appendChild(catDiv);
+  
+  const regionInvocacoes = invocacoes.filter(inv => (inv.region || "") === currentRegion);
+  const regionMeta = regions[currentRegion];
+  
+  // Agrupar invocações por família
+  const byFamily = {};
+  (regionMeta && regionMeta.families) ? Object.keys(regionMeta.families).forEach(famKey => {
+    byFamily[famKey] = [];
+  }) : null;
+  
+  regionInvocacoes.forEach(inv => {
+    const famKey = inv.family || "Sem Família";
+    if (!byFamily[famKey]) byFamily[famKey] = [];
+    byFamily[famKey].push(inv);
+  });
+  
+  // Renderizar famílias na ordem definida
+  const familyKeys = regionMeta && regionMeta.families 
+    ? Object.keys(regionMeta.families) 
+    : Object.keys(byFamily);
+  
+  familyKeys.forEach(famKey => {
+    const familyMeta = regionMeta && regionMeta.families ? regionMeta.families[famKey] : null;
+    const invList = byFamily[famKey] || [];
+    
+    const familiaNode = makeFamiliaNode(famKey, familyMeta, invList);
+    chart.appendChild(familiaNode);
   });
 }
 
 /* =========================================================
-   FAZER CARD DE INVOCAÇÃO
-   Cria div com nome, nível, descrição, botão ação
-   Abre modal ao clicar
-   Usado em: renderInvocacoesByCategory()
+   CRIA NÓ DE FAMÍLIA (com toggle + grid de animais)
 ========================================================= */
-function makeCard(inv) {
-  const card = document.createElement("div");
-  card.className = "skill invocacao-card";
-  // Somente permitir ação se a invocação estiver presente na ficha do jogador
-  const hasInFicha = userData.invocacoes && Object.prototype.hasOwnProperty.call(userData.invocacoes, inv.id);
-  if (hasInFicha) {
-    card.onclick = () => openConfirm(inv);
-  } else {
-    // evitar pointer cursor
-    card.style.cursor = 'default';
+function makeFamiliaNode(famKey, familyMeta, invList) {
+  const familyName = familyMeta ? familyMeta.name : famKey;
+  const familyIcon = familyMeta && familyMeta.icon ? familyMeta.icon : "assets/icons/kuchiyose.png";
+  const familyDesc = familyMeta ? familyMeta.description : "";
+  
+  const node = document.createElement("div");
+  node.className = "familia-node";
+  
+  // CABEÇALHO DA FAMÍLIA
+  const header = document.createElement("div");
+  header.className = "familia-header";
+  
+  // Ícone da família
+  const icon = document.createElement("img");
+  icon.className = "familia-icon";
+  icon.src = familyIcon;
+  icon.alt = familyName;
+  header.appendChild(icon);
+  
+  // Nome da família
+  const name = document.createElement("div");
+  name.className = "familia-nome";
+  name.textContent = familyName;
+  if (familyDesc) {
+    name.style.borderBottom = "1px dotted rgba(74, 170, 255, 0.5)";
+    name.style.cursor = "help";
+    name.title = familyDesc;
   }
+  header.appendChild(name);
+  
+  // Botão toggle
+  const toggle = document.createElement("button");
+  toggle.className = "familia-toggle";
+  toggle.textContent = openFamilias.has(famKey) ? "−" : "+";
+  toggle.addEventListener("click", () => {
+    if (openFamilias.has(famKey)) {
+      openFamilias.delete(famKey);
+    } else {
+      openFamilias.add(famKey);
+    }
+    render();
+  });
+  header.appendChild(toggle);
+  
+  node.appendChild(header);
+  
+  // GRID DE ANIMAIS (se expansível)
+  if (openFamilias.has(famKey) || invList.length > 0) {
+    const grid = document.createElement("div");
+    grid.className = "animais-grid";
+    
+    if (invList.length === 0) {
+      const empty = document.createElement("p");
+      empty.style.cssText = "color:#888; grid-column: 1/-1; padding:20px 0;";
+      empty.textContent = "(Nenhuma invocação disponível)";
+      grid.appendChild(empty);
+    } else {
+      invList.forEach(inv => {
+        grid.appendChild(makeAnimalCard(inv));
+      });
+    }
+    
+    node.appendChild(grid);
+  }
+  
+  return node;
+}
 
-  const levelDisplay = inv.level ?? 0;
-  const maxLevel = inv.max ?? 5;
-
-  card.innerHTML = `
-    <div class="skill-header">
-      <h3>${inv.name}</h3>
-    </div>
-    <div class="skill-info">
-      <p><strong>Nível:</strong> ${levelDisplay}/${maxLevel}</p>
-    </div>
-    <div class="skill-desc">${inv.desc || "Sem descrição"}</div>
-    <button class="skill-btn" ${hasInFicha ? "" : "disabled"}>
-      ${levelDisplay >= maxLevel ? "Máx" : (hasInFicha ? "Desbloquear" : "Locked")}
-    </button>
-    ${inv.tooltip ? `<div class="tooltip">${inv.tooltip}</div>` : ""}
-  `;
-
+/* =========================================================
+   CRIA CARD DE ANIMAL (INVOCAÇÃO)
+========================================================= */
+function makeAnimalCard(inv) {
+  const card = document.createElement("div");
+  card.className = "animal-card";
+  card.dataset.invId = inv.id;
+  
+  // Verifica se usuário tem no ficha
+  const hasInvocation = userData.invocacoes && userData.invocacoes[inv.id];
+  const currentLevel = (userData.invocacoes && userData.invocacoes[inv.id]) ? userData.invocacoes[inv.id] : 0;
+  
+  // Ícone: desbloqueado vs bloqueado
+  const isLocked = !hasInvocation;
+  const iconUrl = isLocked ? "assets/icons/kuchiyose_locked.png" : "assets/icons/kuchiyose.png";
+  
+  const icon = document.createElement("img");
+  icon.className = "animal-icon" + (isLocked ? " bloqueado" : "");
+  icon.src = iconUrl;
+  icon.alt = inv.name;
+  card.appendChild(icon);
+  
+  // Nome do animal
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "animal-nome";
+  nameDiv.textContent = inv.name;
+  card.appendChild(nameDiv);
+  
+  // Barra de Afinidade
+  const barContainer = document.createElement("div");
+  barContainer.className = "afinidade-bar";
+  
+  const barFill = document.createElement("div");
+  barFill.className = "afinidade-fill";
+  const maxLevel = inv.max || 10;
+  barFill.style.width = ((currentLevel || 0) / maxLevel * 100) + "%";
+  barContainer.appendChild(barFill);
+  card.appendChild(barContainer);
+  
+  // Tooltip
+  const tooltip = document.createElement("div");
+  tooltip.className = "tooltip";
+  
+  let tooltipHTML = `<strong style="color:#4af;">${inv.name}</strong>\n`;
+  tooltipHTML += `<small style="color:#aaa;">Afinidade: ${currentLevel || 0}/${maxLevel}</small>\n`;
+  
+  if (inv.desc) {
+    tooltipHTML += `\n${inv.desc}\n`;
+  }
+  
+  // Jutsus
+  if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
+    tooltipHTML += `\n<strong style="color:#f0a;">Jutsus:</strong>\n`;
+    inv.jutsus.forEach(j => {
+      const unlocked = currentLevel >= j.unlockLevel;
+      const status = unlocked ? "✓" : "⊘";
+      const color = unlocked ? "#51cf66" : "#ff6b6b";
+      tooltipHTML += `<span style="color:${color};">${status} ${j.name}</span>\n`;
+    });
+  }
+  
+  tooltip.textContent = tooltipHTML;
+  // Melhor converter para innerHTML com escaping adequado
+  tooltip.innerHTML = `<strong style="color:#4af;">${escapeHtml(inv.name)}</strong><br>` +
+                       `<small style="color:#aaa;">Afinidade: ${currentLevel || 0}/${maxLevel}</small><br>` +
+                       (inv.desc ? `<small>${escapeHtml(inv.desc)}</small><br>` : "");
+  
+  if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
+    tooltip.innerHTML += `<strong style="color:#f0a; display:block; margin-top:6px;">Jutsus:</strong>`;
+    inv.jutsus.forEach(j => {
+      const unlocked = currentLevel >= j.unlockLevel;
+      const status = unlocked ? "✓" : "⊘";
+      const color = unlocked ? "#51cf66" : "#ff6b6b";
+      tooltip.innerHTML += `<div style="color:${color}; font-size:11px;">${status} ${escapeHtml(j.name)}</div>`;
+    });
+  }
+  
+  card.appendChild(tooltip);
+  
+  // Clique para invocar
+  card.addEventListener("click", () => {
+    if (isLocked && !userData.admin) {
+      return alert("Você ainda não desbloqueou esta invocação!");
+    }
+    openConfirm(inv);
+  });
+  
   return card;
 }
 
+// Helper para evitar XSS
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
 /* =========================================================
-   ABRIR MODAL DE CONFIRMAÇÃO
-   Abre modal com detalhes e pede confirmação
-   Salva ID temporário pra usar depois se confirmar
-   Usado em: Click handler nos cards (makeCard)
+   MODAL DE CONFIRMAÇÃO
 ========================================================= */
 function openConfirm(inv) {
-  const pendingInvId = inv.id;
-
-  document.getElementById("modalTitle").textContent = inv.name;
-  document.getElementById("modalText").innerHTML = `
-  <strong>Você tem certeza?</strong><br><br>
-  Ao confirmar, essa escolha será <b>PERMANENTE</b> e não poderá ser desfeita.<br><br>
-  <hr>
-  <b>${inv.name}</b><br>
-  Nível atual: ${inv.level ?? 0}<br>
-  Próximo nível: ${(inv.level ?? 0) + 1}<br>
-`;
-
   const modal = document.getElementById("confirmModal");
+  const title = document.getElementById("modalTitle");
+  const text = document.getElementById("modalText");
+  const jutsusDiv = document.getElementById("modalJutsus");
+  
+  const currentLevel = (userData.invocacoes && userData.invocacoes[inv.id]) ? userData.invocacoes[inv.id] : 0;
+  const maxLevel = inv.max || 10;
+  
+  title.textContent = `Invocar: ${inv.name}`;
+  text.textContent = `Deseja invocar ${inv.name}? (Afinidade: ${currentLevel}/${maxLevel})`;
+  
+  // Listar jutsus disponíveis
+  jutsusDiv.innerHTML = "";
+  if (Array.isArray(inv.jutsus) && inv.jutsus.length > 0) {
+    jutsusDiv.innerHTML = "<strong style='color:#f0a;'>Jutsus Desbloqueados:</strong>";
+    inv.jutsus.forEach(j => {
+      const unlocked = currentLevel >= j.unlockLevel;
+      if (unlocked) {
+        jutsusDiv.innerHTML += `<div style="color:#51cf66; font-size:12px; margin:4px 0;">✓ ${j.name}</div>`;
+      }
+    });
+  }
+  
   modal.classList.remove("hidden");
-
-  document.getElementById("btnConfirm").onclick = async () => {
-    modal.classList.add("hidden");
-    await invocarSummon(pendingInvId);
-  };
-
-  document.getElementById("btnCancel").onclick = () => {
-    modal.classList.add("hidden");
-  };
+  
+  document.getElementById("btnConfirm").onclick = () => invocarSummon(inv.id);
+  document.getElementById("btnCancel").onclick = () => modal.classList.add("hidden");
 }
 
 /* =========================================================
-   EVOCAR SUMMON — INCREMENTA NÍVEL
-   Valida se invocação não atingiu max level
-   Incrementa level e salva em Firebase
-   Chama render() pra atualizar tela
-   Usado em: Confirmação do modal
+   INVOCAR SUMMON (AUMENTA AFINIDADE)
 ========================================================= */
-async function invocarSummon(id) {
-  const inv = invocacoes.find(i => i.id === id);
-  if (!inv || inv.level >= (inv.max ?? 5)) return;
-
-  inv.level++;
-  invocacoesState[id] = inv.level;
-
-  await updateDoc(doc(db, "fichas", currentUID), {
-    invocacoes: invocacoesState
-  });
-
-  render();
+async function invocarSummon(invId) {
+  if (!userData.invocacoes) userData.invocacoes = {};
+  
+  const inv = invocacoes.find(i => i.id === invId);
+  if (!inv) return alert("Invocação não encontrada");
+  
+  const currentLevel = userData.invocacoes[invId] || 0;
+  const maxLevel = inv.max || 10;
+  
+  if (currentLevel >= maxLevel) {
+    return alert(`${inv.name} atingiu afinidade máxima!`);
+  }
+  
+  const newLevel = currentLevel + 1;
+  userData.invocacoes[invId] = newLevel;
+  
+  try {
+    const userRef = doc(db, "fichas", currentUID);
+    await updateDoc(userRef, { invocacoes: userData.invocacoes });
+    console.log(`✅ ${inv.name} → Afinidade ${newLevel}/${maxLevel}`);
+    render();
+    document.getElementById("confirmModal").classList.add("hidden");
+  } catch (error) {
+    console.error("❌ Erro ao atualizar afinidade:", error);
+    alert("Erro ao atualizar afinidade!");
+  }
 }
 
-// Botão Admin
-document.getElementById("btnAdmin")?.addEventListener("click", () => {
-  window.location.href = "admin.html";
+/* =========================================================
+   BOTÕES DE NAVEGAÇÃO
+========================================================= */
+function setupButtons() {
+  document.getElementById("btnPerfil")?.addEventListener("click", () => {
+    window.location.href = "perfil.html";
+  });
+  
+  document.getElementById("btnHabilidades")?.addEventListener("click", () => {
+    window.location.href = "arvore_habilidade.html";
+  });
+  
+  const btnAdmin = document.getElementById("btnAdmin");
+  if (btnAdmin && userData.admin) {
+    btnAdmin.style.display = "inline-block";
+    btnAdmin.addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+  }
+}
+
+/* =========================================================
+   INIT: CARREGA USUÁRIO E DADOS
+========================================================= */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    console.log("Usuário não autenticado");
+    return;
+  }
+  
+  currentUID = user.uid;
+  
+  try {
+    // Carregar dados do usuário
+    const userRef = doc(db, "fichas", currentUID);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      userData = userSnap.data();
+    }
+    
+    // Carregar invocacoes e regions
+    await loadInvocacoesAndRegions();
+    
+    // Atualizar header
+    document.getElementById("infoTopo").textContent = userData.nome || "Aventureiro";
+    
+    // Setup UI
+    const uniqueRegions = extractUniqueRegions();
+    setupRegionTabs(uniqueRegions);
+    setupButtons();
+    
+    console.log("✅ Invocações carregadas e renderizadas");
+  } catch (error) {
+    console.error("❌ Erro ao inicializar:", error);
+  }
 });

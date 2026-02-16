@@ -641,6 +641,33 @@
           <label for="new-inv-desc">Descrição</label>
           <textarea id="new-inv-desc" placeholder="Descrição..."></textarea>
         </div>
+
+        <div class="form-group">
+          <label for="new-inv-icon">Ícone/Imagem (URL)</label>
+          <input type="text" id="new-inv-icon" placeholder="ex: assets/icons/kuchiyose.png" />
+        </div>
+
+        <!-- SEÇÃO DE JUTSUS -->
+        <div style="border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; padding: 12px; background: rgba(74, 170, 255, 0.05); margin-bottom: 16px;">
+          <h4 style="color: #4af; margin-top: 0;">⚔️ Adicionar Jutsus</h4>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="new-jutsu-name" placeholder="Nome do Jutsu" />
+            <input type="number" id="new-jutsu-level" placeholder="Nível Desbloqueio" min="1" max="10" value="1" />
+            <input type="text" id="new-jutsu-element" placeholder="Elemento (fogo, água, etc)" />
+            <button id="btn-add-jutsu" class="btn-submit" style="width: auto;">+ Jutsu</button>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <label for="new-jutsu-desc" style="font-size: 0.9rem;">Descrição do Jutsu:</label>
+            <textarea id="new-jutsu-desc" placeholder="Descrição do jutsu..." style="min-height: 50px;"></textarea>
+          </div>
+
+          <div id="jutsus-list" style="background: rgba(10, 20, 50, 0.3); padding: 8px; border-radius: 4px; min-height: 80px; max-height: 150px; overflow-y: auto; margin-bottom: 8px;">
+            <em style="color: #888;">Nenhum jutsu adicionado ainda</em>
+          </div>
+        </div>
+
         <button id="btn-create-inv" class="btn-submit">➕ Criar Invocação</button>
         <div id="create-inv-message" class="success-message"></div>
         <div id="create-inv-error" class="error-message"></div>
@@ -681,6 +708,33 @@
             <label for="inv-desc">Descrição</label>
             <textarea id="inv-desc"></textarea>
           </div>
+
+          <div class="form-group">
+            <label for="inv-icon">Ícone/Imagem (URL)</label>
+            <input type="text" id="inv-icon" />
+          </div>
+
+          <!-- SEÇÃO DE JUTSUS PARA EDIÇÃO -->
+          <div style="border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; padding: 12px; background: rgba(74, 170, 255, 0.05); margin-bottom: 16px;">
+            <h4 style="color: #4af; margin-top: 0;">⚔️ Gerenciar Jutsus</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+              <input type="text" id="edit-jutsu-name" placeholder="Nome do Jutsu" />
+              <input type="number" id="edit-jutsu-level" placeholder="Nível Desbloqueio" min="1" max="10" value="1" />
+              <input type="text" id="edit-jutsu-element" placeholder="Elemento" />
+              <button id="btn-add-edit-jutsu" class="btn-submit" style="width: auto;">+ Jutsu</button>
+            </div>
+
+            <div style="margin-bottom: 8px;">
+              <label for="edit-jutsu-desc" style="font-size: 0.9rem;">Descrição do Jutsu:</label>
+              <textarea id="edit-jutsu-desc" placeholder="Descrição do jutsu..." style="min-height: 50px;"></textarea>
+            </div>
+
+            <div id="edit-jutsus-list" style="background: rgba(10, 20, 50, 0.3); padding: 8px; border-radius: 4px; min-height: 80px; max-height: 150px; overflow-y: auto; margin-bottom: 8px;">
+              <em style="color: #888;">Nenhum jutsu adicionado ainda</em>
+            </div>
+          </div>
+
           <button id="btn-save-inv" class="btn-submit" style="background:#0c8;">💾 Salvar Invocação</button>
         </div>
 
@@ -729,7 +783,9 @@
             <h4 style="color:#4af;">Famílias / Rankings</h4>
             <div style="margin-bottom:8px; display:flex; gap:8px;">
               <input id="new-family-key" placeholder="chave_familia" style="flex:1" />
-              <input id="new-family-name" placeholder="Nome da Família" style="flex:2" />
+              <input id="new-family-name" placeholder="Nome da Família" style="flex:1" />
+              <input id="new-family-description" placeholder="Descrição (tooltip)" style="flex:1.5" />
+              <input id="new-family-icon" placeholder="URL ícone" style="flex:1" />
               <button id="btn-add-family" class="btn-submit" style="width:auto;">+ Adicionar Família</button>
             </div>
 

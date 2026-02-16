@@ -19,6 +19,8 @@ let invocationsList = [];
 let selectedInv = null;
 let classificationsList = [];
 let regionsObj = {};
+let pendingJutsus = []; // Jutsus sendo adicionados à nova invocação
+let editingJutsus = []; // Jutsus sendo editados na invocação selecionada
 
 /* =========================================================
    AUTH CHECK
@@ -278,6 +280,31 @@ function loadInvocationsSelect() {
   document.getElementById("btn-create-inv")?.addEventListener("click", createNewInvocation);
   document.getElementById("btn-save-inv")?.addEventListener("click", saveInvocationChanges);
   document.getElementById("btn-create-skill")?.addEventListener("click", createNewSkill);
+  document.getElementById("btn-add-jutsu")?.addEventListener("click", addJutsuToList);
+  document.getElementById("btn-add-edit-jutsu")?.addEventListener("click", addJutsuToEditList);
+}
+
+// Global cascade functions for region/family/rank
+function fillFamilies(regionKey, familySel, rankSel) {
+  familySel.innerHTML = '<option value="">Família</option>';
+  rankSel.innerHTML = '<option value="">Ranking</option>';
+  if (!regionKey || !regionsObj[regionKey]) return;
+  const families = regionsObj[regionKey].families || {};
+  Object.keys(families).forEach(fk => {
+    const fmeta = families[fk];
+    const o = document.createElement('option'); o.value = fk; o.textContent = fmeta.name || fk; familySel.appendChild(o);
+  });
+}
+
+function fillRanks(regionKey, familyKey, rankSel) {
+  rankSel.innerHTML = '<option value="">Ranking</option>';
+  if (!regionKey || !familyKey) return;
+  const fam = regionsObj[regionKey]?.families?.[familyKey];
+  if (!fam) return;
+  const ranks = fam.rankings || {};
+  Object.keys(ranks).forEach(rk => {
+    const o = document.createElement('option'); o.value = rk; o.textContent = rk; rankSel.appendChild(o);
+  });
 }
 
 function populateInvocationHierarchyOptions() {
@@ -341,28 +368,6 @@ function populateInvocationHierarchyOptions() {
   const editFamily = document.getElementById('inv-family');
   const editRank = document.getElementById('inv-rank');
 
-  function fillFamilies(regionKey, familySel, rankSel) {
-    familySel.innerHTML = '<option value="">Família</option>';
-    rankSel.innerHTML = '<option value="">Ranking</option>';
-    if (!regionKey || !regionsObj[regionKey]) return;
-    const families = regionsObj[regionKey].families || {};
-    Object.keys(families).forEach(fk => {
-      const fmeta = families[fk];
-      const o = document.createElement('option'); o.value = fk; o.textContent = fmeta.name || fk; familySel.appendChild(o);
-    });
-  }
-
-  function fillRanks(regionKey, familyKey, rankSel) {
-    rankSel.innerHTML = '<option value="">Ranking</option>';
-    if (!regionKey || !familyKey) return;
-    const fam = regionsObj[regionKey]?.families?.[familyKey];
-    if (!fam) return;
-    const ranks = fam.rankings || {};
-    Object.keys(ranks).forEach(rk => {
-      const o = document.createElement('option'); o.value = rk; o.textContent = rk; rankSel.appendChild(o);
-    });
-  }
-
   if (newRegion && newFamily && newRank) {
     newRegion.addEventListener('change', (e) => fillFamilies(e.target.value, newFamily, newRank));
     newFamily.addEventListener('change', (e) => fillRanks(newRegion.value, e.target.value, newRank));
@@ -380,6 +385,33 @@ function loadInvocationEditor(idx) {
   document.getElementById("inv-classification").value = selectedInv.category || "";
   document.getElementById("inv-max").value = selectedInv.max || 1;
   document.getElementById("inv-desc").value = selectedInv.desc || "";
+  document.getElementById("inv-icon").value = selectedInv.icon || "";
+  
+  // Set region/family/rank and trigger cascades
+  const regionSel = document.getElementById("inv-region");
+  const familySel = document.getElementById("inv-family");
+  const rankSel = document.getElementById("inv-rank");
+  
+  const region = selectedInv.region || "";
+  const family = selectedInv.family || "";
+  const rank = selectedInv.rank || "";
+  
+  if (regionSel) {
+    regionSel.value = region;
+    if (familySel && rankSel) {
+      fillFamilies(region, familySel, rankSel);
+      if (family) {
+        familySel.value = family;
+        fillRanks(region, family, rankSel);
+        if (rank) rankSel.value = rank;
+      }
+    }
+  }
+
+  // Carregar jutsus da invocação
+  editingJutsus = selectedInv.jutsus ? JSON.parse(JSON.stringify(selectedInv.jutsus)) : [];
+  renderEditJutsusList();
+  
   document.getElementById("inv-editor").style.display = "block";
 }
 
@@ -391,8 +423,16 @@ async function saveInvocationChanges() {
 
     selectedInv.name = document.getElementById("inv-name").value.trim();
     selectedInv.category = document.getElementById("inv-classification").value.trim();
+    selectedInv.region = document.getElementById("inv-region")?.value?.trim() || null;
+    selectedInv.family = document.getElementById("inv-family")?.value?.trim() || null;
+    selectedInv.rank = document.getElementById("inv-rank")?.value?.trim() || null;
     selectedInv.max = parseInt(document.getElementById("inv-max").value) || 1;
     selectedInv.desc = document.getElementById("inv-desc").value;
+    const iconValue = document.getElementById("inv-icon")?.value?.trim();
+    if (iconValue) selectedInv.icon = iconValue;
+    else delete selectedInv.icon;
+    if (editingJutsus.length > 0) selectedInv.jutsus = [...editingJutsus];
+    else delete selectedInv.jutsus;
 
     // Salva de volta no documento invocacoes_v1
     const ref = doc(db, "game_data", "invocacoes_v1");
@@ -432,14 +472,140 @@ async function saveInvocationChanges() {
   }
 }
 
+/* =========================================================
+   GERENCIADOR DE JUTSUS
+   Adiciona e remove jutsus da invocação sendo criada
+========================================================= */
+function addJutsuToList() {
+  const name = document.getElementById("new-jutsu-name")?.value?.trim();
+  const level = parseInt(document.getElementById("new-jutsu-level")?.value) || 1;
+  const element = document.getElementById("new-jutsu-element")?.value?.trim();
+  const desc = document.getElementById("new-jutsu-desc")?.value?.trim() || "";
+
+  if (!name) {
+    alert("Nome do jutsu é obrigatório");
+    return;
+  }
+
+  const jutsu = { name, unlockLevel: level };
+  if (element) jutsu.element = element;
+  if (desc) jutsu.description = desc;
+
+  pendingJutsus.push(jutsu);
+  renderJutsusList();
+
+  // Limpar campos
+  document.getElementById("new-jutsu-name").value = "";
+  document.getElementById("new-jutsu-level").value = "1";
+  document.getElementById("new-jutsu-element").value = "";
+  document.getElementById("new-jutsu-desc").value = "";
+  document.getElementById("new-jutsu-name").focus();
+}
+
+function removeJutsuFromList(index) {
+  pendingJutsus.splice(index, 1);
+  renderJutsusList();
+}
+
+function renderJutsusList() {
+  const container = document.getElementById("jutsus-list");
+  if (!container) return;
+
+  if (pendingJutsus.length === 0) {
+    container.innerHTML = `<em style="color: #888;">Nenhum jutsu adicionado ainda</em>`;
+    return;
+  }
+
+  let html = `<div style="display: flex; flex-direction: column; gap: 6px;">`;
+  pendingJutsus.forEach((jutsu, idx) => {
+    html += `
+      <div style="background: rgba(15, 136, 136, 0.1); border-left: 3px solid #0f8; padding: 6px 8px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: #0f8;">${jutsu.name}</strong>
+          <div style="font-size: 0.8rem; color: #aaa;">Nível ${jutsu.unlockLevel}${jutsu.element ? ` • ${jutsu.element}` : ''}</div>
+          ${jutsu.description ? `<div style="font-size: 0.75rem; color: #888; margin-top: 2px;">${jutsu.description}</div>` : ''}
+        </div>
+        <button onclick="removeJutsuFromList(${idx})" class="btn-submit" style="width: auto; background: #f66; padding: 4px 8px;">✕</button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+/* =========================================================
+   GERENCIADOR DE JUTSUS (EDIÇÃO)
+   Função para editar jutsus de invocação já criada
+========================================================= */
+function addJutsuToEditList() {
+  const name = document.getElementById("edit-jutsu-name")?.value?.trim();
+  const level = parseInt(document.getElementById("edit-jutsu-level")?.value) || 1;
+  const element = document.getElementById("edit-jutsu-element")?.value?.trim();
+  const desc = document.getElementById("edit-jutsu-desc")?.value?.trim() || "";
+
+  if (!name) {
+    alert("Nome do jutsu é obrigatório");
+    return;
+  }
+
+  const jutsu = { name, unlockLevel: level };
+  if (element) jutsu.element = element;
+  if (desc) jutsu.description = desc;
+
+  editingJutsus.push(jutsu);
+  renderEditJutsusList();
+
+  // Limpar campos
+  document.getElementById("edit-jutsu-name").value = "";
+  document.getElementById("edit-jutsu-level").value = "1";
+  document.getElementById("edit-jutsu-element").value = "";
+  document.getElementById("edit-jutsu-desc").value = "";
+  document.getElementById("edit-jutsu-name").focus();
+}
+
+function removeJutsuFromEditList(index) {
+  editingJutsus.splice(index, 1);
+  renderEditJutsusList();
+}
+
+function renderEditJutsusList() {
+  const container = document.getElementById("edit-jutsus-list");
+  if (!container) return;
+
+  if (editingJutsus.length === 0) {
+    container.innerHTML = `<em style="color: #888;">Nenhum jutsu adicionado ainda</em>`;
+    return;
+  }
+
+  let html = `<div style="display: flex; flex-direction: column; gap: 6px;">`;
+  editingJutsus.forEach((jutsu, idx) => {
+    html += `
+      <div style="background: rgba(15, 136, 136, 0.1); border-left: 3px solid #0f8; padding: 6px 8px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: #0f8;">${jutsu.name}</strong>
+          <div style="font-size: 0.8rem; color: #aaa;">Nível ${jutsu.unlockLevel}${jutsu.element ? ` • ${jutsu.element}` : ''}</div>
+          ${jutsu.description ? `<div style="font-size: 0.75rem; color: #888; margin-top: 2px;">${jutsu.description}</div>` : ''}
+        </div>
+        <button onclick="removeJutsuFromEditList(${idx})" class="btn-submit" style="width: auto; background: #f66; padding: 4px 8px;">✕</button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
 async function createNewInvocation(e) {
   e?.preventDefault();
   try {
     const id = document.getElementById("new-inv-id").value.trim();
     const name = document.getElementById("new-inv-name").value.trim();
     const category = (document.getElementById("new-inv-classification")?.value || document.getElementById("new-inv-category")?.value || "").trim();
+    const region = document.getElementById("new-inv-region")?.value?.trim() || null;
+    const family = document.getElementById("new-inv-family")?.value?.trim() || null;
+    const rank = document.getElementById("new-inv-rank")?.value?.trim() || null;
     const max = parseInt(document.getElementById("new-inv-max").value) || 1;
     const desc = document.getElementById("new-inv-desc").value || "";
+    const icon = document.getElementById("new-inv-icon")?.value?.trim() || null;
 
     if (!id || !name) {
       document.getElementById("create-inv-error").textContent = "ID e Nome são obrigatórios";
@@ -449,7 +615,14 @@ async function createNewInvocation(e) {
     }
 
     // Inserir na lista local e salvar
-    invocationsList.push({ id, name, category, max, desc });
+    const newInv = { id, name, category, max, desc };
+    if (region) newInv.region = region;
+    if (family) newInv.family = family;
+    if (rank) newInv.rank = rank;
+    if (icon) newInv.icon = icon;
+    if (pendingJutsus.length > 0) newInv.jutsus = [...pendingJutsus];
+
+    invocationsList.push(newInv);
     const ref = doc(db, "game_data", "invocacoes_v1");
     await updateDoc(ref, { invocacoes: invocationsList }).catch(async () => {
       await setDoc(ref, { invocacoes: invocationsList }, { merge: true });
@@ -461,7 +634,7 @@ async function createNewInvocation(e) {
         type: 'invocation', action: 'create',
         itemId: id, itemName: name,
         adminId: currentUID, adminNick: currentAdminNick,
-        newData: { id, name, category, max, desc }, date: new Date()
+        newData: newInv, date: new Date()
       });
     } catch (logErr) { console.error('Falha ao registrar invocacao (create):', logErr); }
 
@@ -473,7 +646,18 @@ async function createNewInvocation(e) {
     document.getElementById("new-inv-id").value = "";
     document.getElementById("new-inv-name").value = "";
     if (document.getElementById("new-inv-classification")) document.getElementById("new-inv-classification").value = "";
+    if (document.getElementById("new-inv-region")) document.getElementById("new-inv-region").value = "";
+    if (document.getElementById("new-inv-family")) document.getElementById("new-inv-family").value = "";
+    if (document.getElementById("new-inv-rank")) document.getElementById("new-inv-rank").value = "";
     document.getElementById("new-inv-desc").value = "";
+    document.getElementById("new-inv-icon").value = "";
+    document.getElementById("new-inv-max").value = "1";
+    document.getElementById("new-jutsu-name").value = "";
+    document.getElementById("new-jutsu-level").value = "1";
+    document.getElementById("new-jutsu-element").value = "";
+    document.getElementById("new-jutsu-desc").value = "";
+    pendingJutsus = [];
+    renderJutsusList();
     await loadInvocationsForEditing();
   } catch (err) {
     console.error("Erro ao criar invocação:", err);
@@ -807,14 +991,20 @@ function setupRegionsEditor() {
     if (!regionKey) return alert('Selecione uma região primeiro');
     const famKey = document.getElementById('new-family-key').value.trim();
     const famName = document.getElementById('new-family-name').value.trim();
+    const famDesc = document.getElementById('new-family-description').value.trim();
+    const famIcon = document.getElementById('new-family-icon').value.trim();
     if (!famKey || !famName) return alert('Preencha chave e nome da família');
     const region = regionsObj[regionKey];
     region.families = region.families || {};
     if (region.families[famKey]) return alert('Família já existe');
     region.families[famKey] = { name: famName, rankings: {} };
+    if (famDesc) region.families[famKey].description = famDesc;
+    if (famIcon) region.families[famKey].icon = famIcon;
     renderRegionsList();
     document.getElementById('new-family-key').value = '';
     document.getElementById('new-family-name').value = '';
+    document.getElementById('new-family-description').value = '';
+    document.getElementById('new-family-icon').value = '';
     populateFamilySelect(regionKey);
   });
 

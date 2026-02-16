@@ -1,111 +1,263 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Invocações Naruto</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Árvore de Invocações</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .invocacao-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-top: 20px;
+            width: max-content;
+            padding: 10px 30px 20px;
+        }
+
+        .familia-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 160px;
+        }
+
+        .familia-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .familia-header:hover {
+            transform: scale(1.05);
+        }
+
+        .familia-icon {
+            width: 90px;
+            height: 90px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #4af;
+            transition: filter 0.2s, border-color 0.2s;
+        }
+
+        .familia-header:hover .familia-icon {
+            filter: drop-shadow(0 0 8px #4af);
+        }
+
+        .familia-nome {
+            color: #4af;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            max-width: 150px;
+        }
+
+        .familia-toggle {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid #4af;
+            background: rgba(0,0,0,0.7);
+            color: #4af;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .familia-toggle:hover {
+            background: #4af;
+            color: #000;
+        }
+
+        .animais-grid {
+            margin-top: 40px;
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .animal-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .animal-card:hover {
+            transform: scale(1.08);
+        }
+
+        .animal-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid #4af;
+            transition: filter 0.2s, border-color 0.2s;
+        }
+
+        .animal-card:hover .animal-icon {
+            filter: drop-shadow(0 0 6px #4af);
+        }
+
+        .animal-icon.bloqueado {
+            opacity: 0.5;
+            filter: grayscale(70%);
+            border-color: #f66;
+        }
+
+        .animal-card:hover .animal-icon.bloqueado {
+            filter: grayscale(70%) drop-shadow(0 0 6px #f66);
+        }
+
+        .animal-nome {
+            color: #eee;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 8px;
+            max-width: 120px;
+            min-height: 20px;
+        }
+
+        .afinidade-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .afinidade-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0f0, #4af);
+            transition: width 0.3s ease;
+        }
+
+        .region-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .region-btn {
+            padding: 8px 16px;
+            border: 2px solid #4af;
+            background: rgba(74, 170, 255, 0.1);
+            color: #4af;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .region-btn:hover {
+            background: rgba(74, 170, 255, 0.2);
+        }
+
+        .region-btn.active {
+            background: #4af;
+            color: #000;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 25, 0.98);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #4af;
+            font-size: 12px;
+            width: 200px;
+            text-align: left;
+            z-index: 999999999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease-in-out;
+            white-space: pre-line;
+            box-shadow: 0 0 10px #4af;
+            display: none;
+            line-height: 1.4;
+        }
+
+        .animal-card .tooltip {
+            bottom: 100%;
+            margin-bottom: 8px;
+        }
+
+        .animal-card:hover .tooltip {
+            opacity: 1;
+            display: block;
+            pointer-events: auto;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #4af transparent transparent transparent;
+        }
+    </style>
 </head>
 
 <body>
-	<header id="top-header">
+    <header id="top-header">
+        <div id="header-left">
+            <p><span id="playerName">---</span></p>
+        </div>
+        <div id="header-center">
+            <span id="infoTopo">Árvore de Invocações</span>
+        </div>
+        <div id="header-right">
+            <button class="header-btn" id="btnPerfil">Perfil</button>
+            <button class="header-btn" id="btnHabilidades">Habilidades</button>
+            <button class="header-btn" id="btnAdmin" style="display: none; background: #ff6b00;">Admin</button>
+        </div>
+    </header>
 
-		<!-- ESQUERDA: XP -->
-		<div id="header-left">
-			<p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
-		</div>
+    <h1>Árvore de Invocações</h1>
 
-		<!-- CENTRO: NOME -->
-		<div id="header-center">
-			<span id="infoTopo">---</span>
-		</div>
-		<!-- DIREITA: AÇÕES -->
-		<div id="header-right">
-			<button class="header-btn" id="btnPerfil">Perfil</button>
-			<button class="header-btn" id="btnArvore">Árvore de Habilidades</button>
-			<button class="header-btn" id="btnAdmin" style="display: none; background: #ff6b00;">Admin</button>
-		</div>
+    <div class="region-tabs" id="region-tabs"></div>
 
-	</header>
-	
-    <h1>Invocações</h1>
-	
-	<div id="levelUpPopup" class="level-up-popup"></div>
-	
-	<div id="xpBar" style="margin-top:12px; color:white;"></div>
-	<div id="levelInfo" style="margin-top:12px; color:white;"></div>
-	<div id="categoryBar" class="category-bar">
-	  <!-- Categorias de invocações serão adicionadas dinamicamente -->
-    </div>
     <div id="tree-viewport">
-  		<div id="org-chart"></div>
-	</div>
-		
-	<div id="confirmModal" class="modal hidden">
-	  <div class="modal-box">
-		<h3 id="modalTitle"></h3>
-		<p id="modalText"></p>
+        <div id="org-chart" class="invocacao-tree"></div>
+    </div>
 
-		<div class="modal-actions">
-		  <button id="btnConfirm">Confirmar</button>
-		  <button id="btnCancel">Cancelar</button>
-		</div>
-	  </div>
-	</div>
-	<!--<div id="tooltip-layer" class="tooltip-layer hidden"></div>-->
-	<script type="module" src="invocacoes.js"></script>
-	<script>
-		const layer = document.getElementById("tooltip-layer");
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-box">
+            <h3 id="modalTitle"></h3>
+            <p id="modalText"></p>
+            <div id="modalJutsus" style="margin:12px 0; max-height:120px; overflow-y:auto;"></div>
+            <div class="modal-actions">
+                <button id="btnConfirm">Confirmar</button>
+                <button id="btnCancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
-		function positionLayer(skillEl) {
-			const r = skillEl.getBoundingClientRect();
-			const w = layer.offsetWidth;
-			const h = layer.offsetHeight;
-
-			let left = r.left + r.width / 2 - w / 2;
-			let top = r.top - h - 12;
-
-			const pad = 8;
-			if (left < pad) left = pad;
-			if (left + w > window.innerWidth - pad)
-			left = window.innerWidth - w - pad;
-
-			if (top < pad) top = r.bottom + 12;
-
-			layer.style.left = left + "px";
-			layer.style.top = top + "px";
-		}
-
-		function showTooltip(skillEl) {
-			const tip = skillEl.querySelector(".tooltip");
-			if (!tip) return;
-
-			layer.innerHTML = tip.innerHTML;
-			layer.classList.remove("hidden");
-
-			// precisa estar visível antes de medir
-			requestAnimationFrame(() => positionLayer(skillEl));
-		}
-
-		function hideTooltip() {
-			layer.classList.add("hidden");
-			layer.innerHTML = "";
-		}
-
-		// Delegação → funciona com skills criadas dinamicamente
-		document.addEventListener("mouseover", e => {
-			const skill = e.target.closest(".skill");
-			if (skill) showTooltip(skill);
-		});
-
-		document.addEventListener("mouseout", e => {
-			if (e.target.closest(".skill")) hideTooltip();
-		});
-
-		document.addEventListener("scroll", hideTooltip, true);
-		window.addEventListener("resize", hideTooltip);
-
-	</script>
-	
+    <script type="module" src="invocacoes.js"></script>
 </body>
+
 </html>
