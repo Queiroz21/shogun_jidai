@@ -228,12 +228,19 @@ function makeAnimalCard(inv) {
   card.className = "animal-card";
   card.dataset.invId = inv.id;
   
-  // Verifica se usuário tem no ficha
-  const hasInvocation = userData.invocacoes && userData.invocacoes[inv.id];
-  const currentLevel = (userData.invocacoes && userData.invocacoes[inv.id]) ? userData.invocacoes[inv.id] : 0;
+  // Verifica se usuário tem a FAMÍLIA desbloqueada
+  const familiaInvocacao = userData.Familia_Invocação || {};
+  const familyUnlocked = inv.family && familiaInvocacao[inv.family] ? true : false;
   
-  // Ícone: desbloqueado vs bloqueado
-  const isLocked = !hasInvocation;
+  // Afinidade dentro da família (novo formato)
+  let currentLevel = 0;
+  if (familyUnlocked && familiaInvocacao[inv.family]) {
+    const animal = familiaInvocacao[inv.family].find(a => a.name === inv.name || a.id === inv.id);
+    currentLevel = animal ? (animal.afinidade || 0) : 0;
+  }
+  
+  // Ícone: desbloqueado vs bloqueado (baseado na família, não invocação individual)
+  const isLocked = !familyUnlocked && !userData.admin;
   const iconUrl = isLocked ? "assets/icons/kuchiyose_locked.png" : "assets/icons/kuchiyose.png";
   
   const icon = document.createElement("img");
@@ -359,25 +366,37 @@ function openConfirm(inv) {
    INVOCAR SUMMON (AUMENTA AFINIDADE)
 ========================================================= */
 async function invocarSummon(invId) {
-  if (!userData.invocacoes) userData.invocacoes = {};
-  
   const inv = invocacoes.find(i => i.id === invId);
   if (!inv) return alert("Invocação não encontrada");
   
-  const currentLevel = userData.invocacoes[invId] || 0;
-  const maxLevel = inv.max || 10;
+  // Inicializar estrutura se não existir
+  if (!userData.Familia_Invocação) userData.Familia_Invocação = {};
+  if (!userData.Familia_Invocação[inv.family]) userData.Familia_Invocação[inv.family] = [];
   
-  if (currentLevel >= maxLevel) {
-    return alert(`${inv.name} atingiu afinidade máxima!`);
+  // Encontrar animal na família
+  let animal = userData.Familia_Invocação[inv.family].find(a => a.name === inv.name || a.id === inv.id);
+  
+  if (!animal) {
+    // Primeiro invoke - criar animal
+    animal = {
+      id: inv.id,
+      name: inv.name,
+      afinidade: 1
+    };
+    userData.Familia_Invocação[inv.family].push(animal);
+  } else {
+    // Aumentar afinidade existente
+    const maxLevel = inv.max || 10;
+    if (animal.afinidade >= maxLevel) {
+      return alert(`${inv.name} atingiu afinidade máxima!`);
+    }
+    animal.afinidade = (animal.afinidade || 0) + 1;
   }
-  
-  const newLevel = currentLevel + 1;
-  userData.invocacoes[invId] = newLevel;
   
   try {
     const userRef = doc(db, "fichas", currentUID);
-    await updateDoc(userRef, { invocacoes: userData.invocacoes });
-    console.log(`✅ ${inv.name} → Afinidade ${newLevel}/${maxLevel}`);
+    await updateDoc(userRef, { Familia_Invocação: userData.Familia_Invocação });
+    console.log(`✅ ${inv.name} → Afinidade ${animal.afinidade}/${inv.max || 10}`);
     render();
     document.getElementById("confirmModal").classList.add("hidden");
   } catch (error) {

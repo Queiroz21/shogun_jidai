@@ -2641,11 +2641,32 @@ function setupAddInvocacaoPlayerForm() {
       const fichRef = doc(db, 'fichas', playerId);
       const snap = await getDoc(fichRef);
       const data = snap.exists() ? snap.data() : {};
-      const invs = data.invocacoes || [];
-      if (invs.find(i => (i || '') === invId || (i.id && i.id === invId))) return alert('Jogador já possui essa invocação');
-      invs.push(invId);
-      await updateDoc(fichRef, { invocacoes: invs });
-      document.getElementById('add-inv-player-message').textContent = '✅ Invocação adicionada.';
+      
+      // Encontrar a invocação para pegar a família
+      const invocation = invocationsList.find(i => i.id === invId || i.name === invId);
+      if (!invocation) return alert('Invocação não encontrada no banco');
+      
+      // Criar estrutura Familia_Invocação
+      let familiaInvocacao = data.Familia_Invocação || {};
+      const familia = invocation.family || 'Sem Família';
+      
+      if (!familiaInvocacao[familia]) {
+        familiaInvocacao[familia] = [];
+      }
+      
+      // Verificar se já existe
+      const exists = familiaInvocacao[familia].find(a => a.id === invId || a.name === invocation.name);
+      if (exists) return alert('Jogador já possui essa invocação');
+      
+      // Adicionar novo animal à família com afinidade inicial 1
+      familiaInvocacao[familia].push({
+        id: invId,
+        name: invocation.name,
+        afinidade: 1
+      });
+      
+      await updateDoc(fichRef, { Familia_Invocação: familiaInvocacao });
+      document.getElementById('add-inv-player-message').textContent = `✅ ${invocation.name} adicionado à família ${familia}.`;
       setTimeout(() => document.getElementById('add-inv-player-message').textContent = '', 3000);
       await loadPlayers();
     } catch (err) {
@@ -3180,25 +3201,33 @@ async function renderInvocacoesJogador(playerId) {
     }
     
     const playerData = playerSnap.data();
-    const invocacoes = playerData.invocacoes || [];
-    const invocacoesXp = playerData.invocacoesXp || {};
+    const familiaInvocacao = playerData.Familia_Invocação || {};
     
-    if (invocacoes.length === 0) {
+    if (Object.keys(familiaInvocacao).length === 0) {
       document.getElementById("inv-jogador-list").innerHTML = `<p style="color: #888;">Este jogador não possui invocações.</p>`;
       return;
     }
     
-    let html = `<div style="display: flex; flex-direction: column; gap: 10px;">`;
-    invocacoes.forEach(invName => {
-      const xp = invocacoesXp[invName] || 0;
-      html += `
-        <div style="background: rgba(255, 100, 200, 0.1); border: 1px solid #f8a; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <div style="flex: 1;">
-            <div style="color: #f8a; font-weight: bold; font-size: 0.95rem;">🐉 ${invName}</div>
-            <div style="color: #ccc; font-size: 0.85rem; margin-top: 4px;">XP: <strong>${xp}</strong></div>
-          </div>
-        </div>
-      `;
+    let html = `<div style="display: flex; flex-direction: column; gap: 16px;">`;
+    Object.entries(familiaInvocacao).forEach(([familia, animais]) => {
+      html += `<div style="background: rgba(74, 170, 255, 0.05); border: 1px solid rgba(74, 170, 255, 0.2); border-radius: 6px; padding: 12px;">`;
+      html += `<div style="color: #4af; font-weight: bold; margin-bottom: 8px;">🐾 ${familia}</div>`;
+      
+      if (Array.isArray(animais) && animais.length > 0) {
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
+        animais.forEach(animal => {
+          const afinidade = animal.afinidade || 0;
+          html += `<div style="background: rgba(255, 150, 0, 0.1); border: 1px solid #f80; border-radius: 4px; padding: 6px 12px; font-size: 0.9rem;">
+            <span style="color: #ff8; font-weight: bold;">${animal.name}</span> 
+            <span style="color: #faa;">Afinidade: ${afinidade}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<p style="color: #888; font-size: 0.9rem; margin: 0;">(nenhum animal)</p>`;
+      }
+      
+      html += `</div>`;
     });
     html += `</div>`;
     
