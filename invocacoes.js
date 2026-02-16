@@ -5,9 +5,12 @@
    Salva em: userData.invocacoes
 ========================================================= */
 
-import { auth, db } from "./oauth.js";
+import { auth, db, requireAuth } from "./oauth.js";
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ======== PROTEÇÃO: Verificar se usuário está logado ========
+requireAuth();
 
 /* =========================================================
    ESTADO GLOBAL
@@ -124,6 +127,14 @@ onAuthStateChanged(auth, async user => {
   console.log("userData após inicialização:", userData);
   console.log("invocacoes carregadas:", invocacoes);
 
+  // Mostra botão admin se usuário for admin
+  if (userData.admin) {
+    const btnAdmin = document.getElementById("btnAdmin");
+    if (btnAdmin) {
+      btnAdmin.style.display = "block";
+    }
+  }
+
   render();
 });
 
@@ -222,7 +233,14 @@ function renderInvocacoesByCategory() {
 function makeCard(inv) {
   const card = document.createElement("div");
   card.className = "skill invocacao-card";
-  card.onclick = () => openConfirm(inv);
+  // Somente permitir ação se a invocação estiver presente na ficha do jogador
+  const hasInFicha = userData.invocacoes && Object.prototype.hasOwnProperty.call(userData.invocacoes, inv.id);
+  if (hasInFicha) {
+    card.onclick = () => openConfirm(inv);
+  } else {
+    // evitar pointer cursor
+    card.style.cursor = 'default';
+  }
 
   const levelDisplay = inv.level ?? 0;
   const maxLevel = inv.max ?? 5;
@@ -235,8 +253,8 @@ function makeCard(inv) {
       <p><strong>Nível:</strong> ${levelDisplay}/${maxLevel}</p>
     </div>
     <div class="skill-desc">${inv.desc || "Sem descrição"}</div>
-    <button class="skill-btn">
-      ${levelDisplay >= maxLevel ? "Máx" : "Desbloquear"}
+    <button class="skill-btn" ${hasInFicha ? "" : "disabled"}>
+      ${levelDisplay >= maxLevel ? "Máx" : (hasInFicha ? "Desbloquear" : "Locked")}
     </button>
     ${inv.tooltip ? `<div class="tooltip">${inv.tooltip}</div>` : ""}
   `;
@@ -296,3 +314,8 @@ async function invocarSummon(id) {
 
   render();
 }
+
+// Botão Admin
+document.getElementById("btnAdmin")?.addEventListener("click", () => {
+  window.location.href = "admin.html";
+});

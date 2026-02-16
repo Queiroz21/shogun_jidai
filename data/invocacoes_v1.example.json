@@ -1,0 +1,73 @@
+{
+  "version": "v1",
+  "classifications": [
+    { "code": "S", "desc": "Sábia mutável - 1.20m-25.0m" },
+    { "code": "Sz", "desc": "Sábia especial, não possui mudança de forma - 2.0m-3.0m" },
+    { "code": "MM", "desc": "Classe dos megazords - 15.0m-22.0m" },
+    { "code": "M", "desc": "Maiores que humanos (dobro a até o triplo do tamanho) - 3.0-7.0m" },
+    { "code": "m", "desc": "Do tamanho de humanos - 1.20m-2.0m" },
+    { "code": "Ma", "desc": "Tamanho de animais comuns - 45cm-1.20m" },
+    { "code": "mm", "desc": "Menor do que animais comuns - 5-45cm" }
+  ],
+
+  "regions": {
+    "errante": { "name": "Errante", "families": {} },
+    "relampago": { "name": "Relâmpago", "families": {} },
+    "fogo": { "name": "Fogo", "families": {} },
+    "agua": { "name": "Água", "families": {} },
+    "vento": { "name": "Vento", "families": {} },
+    "terra": {
+      "name": "Terra",
+      "families": {
+        "tsuchigumo": {
+          "name": "Tsuchigumo",
+          "rankings": { "S": [], "A": [], "B": [], "C": [], "D": [] }
+        },
+        "tatsuo": {
+          "name": "Tatsuo",
+          "rankings": { "S": [], "A": [], "B": [], "C": [], "D": [] }
+        },
+        "garuda": {
+          "name": "Garuda",
+          "rankings": { "S": [], "A": [], "B": [], "C": [], "D": [] }
+        },
+        "morcego": {
+          "name": "Morcego",
+          "rankings": { "S": [], "A": [], "B": [], "C": [], "D": [] }
+        }
+      }
+    },
+    "demonios": { "name": "Demônios", "families": {} }
+  },
+
+  "invocations": [
+    {
+      "id": "cavalo_menor",
+      "name": "Cavalo Menor",
+      "classification": "M",
+      "region": "terra",
+      "family": "marsupianos",
+      "rank": "S",
+      "jutsus": [
+        { "name": "Pulo Rápido", "unlockLevel": 1 },
+        { "name": "Investida", "unlockLevel": 3 }
+      ],
+      "masters": { "main": [], "taught": [] },
+      "teachableSkills": []
+    },
+    {
+      "id": "kurama",
+      "name": "Kurama",
+      "classification": "S",
+      "region": "demonios",
+      "family": "kurama_family",
+      "rank": "S",
+      "jutsus": [
+        { "name": "Rasengan Selvagem", "unlockLevel": 1 },
+        { "name": "Cauda Explosiva", "unlockLevel": 5 }
+      ],
+      "masters": { "main": [], "taught": [] },
+      "teachableSkills": []
+    }
+  ]
+}

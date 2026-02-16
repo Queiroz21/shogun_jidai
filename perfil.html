@@ -356,7 +356,7 @@ transition: all 0.3s;
 
 .btn-save-attr {
 background: rgba(0, 200, 0, 0.6);
-color: #0f8;
+color: #000; /* texto preto para melhor destaque */
 border: 1px solid #0f8;
 }
 
@@ -490,7 +490,9 @@ height: auto;
 <span id="infoTopo">---</span>
 </div>
 <div id="header-right">
+<button class="header-btn" id="btnInvocacoes">Invocações</button>
 <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
+<button class="header-btn" id="btnAdmin" style="display: none; background: #ff6b00;">Admin</button>
 </div>
 </header>
 
@@ -582,6 +584,8 @@ height: auto;
 </table>
 <div class="attributes-actions">
 <button id="btnSaveAttributes" class="btn-save-attr">Salvar Atributos</button>
+<button id="btnCopyBuild" class="btn-save-attr" style="background: #ff9500; margin-left: 12px;">📋 Copiar Build</button>
+<button id="btnCopySkills" class="btn-save-attr" style="background: #00aa66; margin-left: 12px;">🎯 Copiar Skills</button>
 </div>
 <div class="attributes-chart-container">
 <svg id="radarChart" viewBox="-50 -50 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -623,7 +627,7 @@ height: auto;
 </div>
 
 <script type="module">
-import { auth, db } from "./oauth.js";
+import { auth, db, requireAuth } from "./oauth.js";
   import {
     collection,
     doc,
@@ -636,6 +640,9 @@ import { auth, db } from "./oauth.js";
     updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ======== PROTEÇÃO: Verificar se usuário está logado ========
+requireAuth();
 
 let currentUID = null;
 let userData = {};
@@ -765,7 +772,15 @@ skill.level = userData.skills[skill.id] ?? 0;
 
 renderPerfil();
 renderSkills();
-    loadLeaderboard();
+loadLeaderboard();
+
+// Mostra botão admin se usuário for admin
+if (userData.admin) {
+  const btnAdmin = document.getElementById("btnAdmin");
+  if (btnAdmin) {
+    btnAdmin.style.display = "block";
+  }
+}
 });
 
 function renderPerfil() {
@@ -837,23 +852,21 @@ updateAttributeDisplay(totalAtributos);
 
 // Event listeners para botões
 document.querySelectorAll(".attr-btn").forEach(btn => {
-btn.addEventListener("click", (e) => handleAttributeChange(e, totalAtributos));
+  btn.addEventListener("click", (e) => handleAttributeChange(e, totalAtributos));
 });
 
 // Event listeners para inputs diretos
-document.querySelectorAll(".attr-input").forEach(input => {
-input.addEventListener("change", () => {
-validateAttributeInput(input, totalAtributos);
-updateAttributeDisplay(totalAtributos);
-});
-input.addEventListener("input", () => {
-validateAttributeInput(input, totalAtributos);
-updateAttributeDisplay(totalAtributos);
-});
-});
+// Removido: validação em tempo real para permitir edição livre dos campos
+// Validação acontece apenas ao clicar em "Salvar Atributos"
 
 // Botões de salvar
 document.getElementById("btnSaveAttributes").addEventListener("click", saveAttributes);
+
+// Botão de copiar build
+document.getElementById("btnCopyBuild").addEventListener("click", copyBuild);
+
+// Botão de copiar skills
+document.getElementById("btnCopySkills").addEventListener("click", copySkills);
 
 // Inicializar gráfico radar
 initializeRadarChart();
@@ -1141,6 +1154,7 @@ updateRadarChart();
 
 async function saveAttributes() {
 // Valida total de atributos e salva no Firebase
+// Verifica: não pode reduzir abaixo do salvo, não pode exceder total
 // Atualiza userData.atributos e savedAttributeValues (bloqueia redução)
 // Mostra alerta de sucesso/erro
 // Usado em: Click handler do botão #btnSaveAttributes
@@ -1157,32 +1171,151 @@ fo: parseInt(document.getElementById("attr-fo").value) || 0
 const totalAtributos = 250 + (userData.nivel - 1) * 40;
 const totalUsed = Object.values(attrValues).reduce((a, b) => a + b, 0);
 
+// VALIDAÇÃO 1: Total não pode exceder limite
 if (totalUsed > totalAtributos) {
-alert("❌ A soma dos atributos não pode ser maior que " + totalAtributos);
-return;
+  alert(`❌ ERRO: A soma dos atributos (${totalUsed}) não pode ser maior que ${totalAtributos}\n\nReduza alguns atributos para continuar.`);
+  return;
+}
+
+// VALIDAÇÃO 2: Verificar redução de atributos salvos
+const errors = [];
+for (const attr in savedAttributeValues) {
+  const currentValue = attrValues[attr] || 0;
+  const savedValue = savedAttributeValues[attr] || 0;
+  
+  if (currentValue < savedValue) {
+    errors.push(`${attr.toUpperCase()}: ${currentValue} (antes era ${savedValue}) - NÃO PODE REDUZIR`);
+  }
+}
+
+if (errors.length > 0) {
+  alert(`❌ ERRO: Seus atributos não podem ser reduzidos!\n\nProblemas encontrados:\n• ${errors.join('\n• ')}\n\nAumente os atributos para continuar.`);
+  return;
 }
 
 try {
-await setDoc(doc(db, "fichas", currentUID), {
-atributos: attrValues
-}, { merge: true });
+  await setDoc(doc(db, "fichas", currentUID), {
+    atributos: attrValues
+  }, { merge: true });
 
-userData.atributos = attrValues;
-savedAttributeValues = { ...attrValues }; // Atualizar valores salvos para impedir redução
-alert("✅ Atributos salvos com sucesso!");
+  userData.atributos = attrValues;
+  savedAttributeValues = { ...attrValues }; // Atualizar valores salvos para impedir redução
+  alert("✅ Atributos salvos com sucesso!");
 } catch (error) {
-console.error("Erro ao salvar atributos:", error);
-console.error("UID:", currentUID);
-console.error("Dados tentando salvar:", { atributos: attrValues });
-alert("❌ Erro ao salvar atributos!\n\nDetalhes: " + error.message);
+  console.error("Erro ao salvar atributos:", error);
+  console.error("UID:", currentUID);
+  console.error("Dados tentando salvar:", { atributos: attrValues });
+  alert("❌ Erro ao salvar atributos!\n\nDetalhes: " + error.message);
 }
+}
+
+function copyBuild() {
+// Copia toda a build (atributos) para o clipboard
+// Formato legível: Nome: Valor
+// Usado em: Click handler do botão #btnCopyBuild
+const attrValues = {
+  hp: parseInt(document.getElementById("attr-hp").value) || 0,
+  sta: parseInt(document.getElementById("attr-sta").value) || 0,
+  ag: parseInt(document.getElementById("attr-ag").value) || 0,
+  ch: parseInt(document.getElementById("attr-ch").value) || 0,
+  vl: parseInt(document.getElementById("attr-vl").value) || 0,
+  pm: parseInt(document.getElementById("attr-pm").value) || 0,
+  fo: parseInt(document.getElementById("attr-fo").value) || 0
+};
+
+const buildText = `
+🎮 BUILD DE ATRIBUTOS - ${userData.nick}
+
+HP: ${attrValues.hp}
+STA: ${attrValues.sta}
+AG: ${attrValues.ag}
+CH: ${attrValues.ch}
+VL: ${attrValues.vl}
+PM: ${attrValues.pm}
+FO: ${attrValues.fo}
+
+📊 Total: ${Object.values(attrValues).reduce((a, b) => a + b, 0)} / ${250 + (userData.nivel - 1) * 40}
+`.trim();
+
+// Copiar para clipboard
+navigator.clipboard.writeText(buildText).then(() => {
+  alert("✅ Build copiada para o clipboard!");
+}).catch(() => {
+  // Fallback para navegadores antigos
+  const textarea = document.createElement("textarea");
+  textarea.value = buildText;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+  alert("✅ Build copiada para o clipboard!");
+});
+}
+
+function copySkills() {
+// Copia todas as skills que o usuário possui (nível > 0)
+// Formato: Nome da Skill com cada nível e sua descrição, incluindo level
+// Usado em: Click handler do botão #btnCopySkills
+let skillsText = `🎯 SKILLS ADQUIRIDAS - ${userData.nick}\n`;
+skillsText += `${'='.repeat(50)}\n\n`;
+
+let foundSkills = false;
+
+// Percorrer todas as skills
+allSkills.forEach(skill => {
+  const level = skill.level ?? 0;
+  
+  // Apenas skills com nível > 0
+  if (level > 0) {
+    foundSkills = true;
+    skillsText += `📌 ${skill.name} (lvl: ${level})\n`;
+    
+    // Se tem descrição com formato "lvl N →", extrair os dados
+    if (skill.desc && skill.desc.includes("lvl 1 →")) {
+      const lines = skill.desc.split('\n').map(l => l.trim()).filter(l => l);
+      lines.forEach(line => {
+        const match = line.match(/^lvl\s+(\d+)\s*→\s*(.+)$/i);
+        if (match) {
+          const lvlNum = parseInt(match[1]);
+          const desc = match[2].trim();
+          
+          // Se o usuário tem esse nível, incluir
+          if (lvlNum <= level) {
+            skillsText += `   ${lvlNum} - ${desc}\n`;
+          }
+        }
+      });
+    } else if (skill.desc) {
+      // Se não tem formato especial, incluir descrição genérica
+      skillsText += `   Descrição: ${skill.desc}\n`;
+    }
+    
+    skillsText += `\n`;
+  }
+});
+
+if (!foundSkills) {
+  skillsText += "Nenhuma skill adquirida ainda.\n";
+}
+
+skillsText += `${'='.repeat(50)}`;
+
+// Copiar para clipboard
+navigator.clipboard.writeText(skillsText).then(() => {
+  alert("✅ Skills copiadas para o clipboard!");
+}).catch(() => {
+  // Fallback para navegadores antigos
+  const textarea = document.createElement("textarea");
+  textarea.value = skillsText;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+  alert("✅ Skills copiadas para o clipboard!");
+});
 }
 
 function resetAttributes() {
-// BETA: Reseta todos os atributos para 0
-// Pede confirmação antes de executar
-// Usado em: Click handler do botão #btnResetAttributes (se existir)
-if (!confirm("Tem certeza que deseja resetar todos os atributos?")) return;
 
 document.getElementById("attr-hp").value = 0;
 document.getElementById("attr-sta").value = 0;
@@ -1344,8 +1477,17 @@ renderSkills();
 document.getElementById("btnHabilidades")?.addEventListener("click", () => {
 window.location.href = "arvore_habilidade.html";
 });
+
+// Botão Invocações
+document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
+window.location.href = "invocacoes.html";
+});
+
+// Botão Admin
+document.getElementById("btnAdmin")?.addEventListener("click", () => {
+  window.location.href = "admin.html";
+});
 </script>
 
 </body>
-</html>
 </html>

@@ -1,11 +1,14 @@
 // app.js — FINAL CORRIGIDO (XP + LEVEL UP + POPUP)
 
-import { auth, db } from "./oauth.js";
+import { auth, db, requireAuth } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ======== PROTEÇÃO: Verificar se usuário está logado ========
+requireAuth();
 
 let currentUID = null;
 let skillsState = {};
@@ -126,6 +129,14 @@ onAuthStateChanged(auth, async user => {
   userData.skills ??= {};
   
   console.log("userData após inicialização:", userData);
+
+  // Mostra botão admin se usuário for admin
+  if (userData.admin) {
+    const btnAdmin = document.getElementById("btnAdmin");
+    if (btnAdmin) {
+      btnAdmin.style.display = "block";
+    }
+  }
 
   skillsState = { ...userData.skills };
   skills = await loadSkills();
@@ -588,6 +599,7 @@ function makeCard(skill) {
 
   el.onclick = () => {
     if (!unlocked) return;
+    if (skill.max === 0) return; // Impede clique em skills guia
     openConfirm(skill);
   };
 
@@ -882,6 +894,8 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('.carousel-btn');
   if (!btn) return;
 
+  e.stopPropagation(); // Impede que clique no carrossel ative a compra da skill
+
   const carousel = btn.closest('.tooltip-carousel');
   if (!carousel) return;
 
@@ -1029,6 +1043,10 @@ document.getElementById("btnPerfil")?.addEventListener("click", () => {
 
 document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
   window.open("invocacoes.html", "_self");
+});
+
+document.getElementById("btnAdmin")?.addEventListener("click", () => {
+  window.open("admin.html", "_self");
 });
 
 async function loadLeaderboard() {

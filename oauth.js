@@ -7,7 +7,8 @@ import {
   createUserWithEmailAndPassword,
   setPersistence,
   browserSessionPersistence,
-  signOut
+  signOut,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore,
@@ -58,6 +59,21 @@ function resetTimer() {
 );
 
 resetTimer();
+
+/* =========================================================
+   AUTENTICAÇÃO OBRIGATÓRIA
+   Todas as páginas de jogo devem chamar requireAuth()
+   Redireciona pra login se não estiver autenticado
+========================================================= */
+export function requireAuth() {
+  // Verifica se usuário está logado
+  // Se não estiver, redireciona pra index.html (login)
+  onAuthStateChanged(auth, user => {
+    if (!user && !window.location.pathname.includes("index.html") && !window.location.pathname.includes("cadastro.html")) {
+      window.location.href = "index.html";
+    }
+  });
+}
 
 /* =========================================================
    LOAD CLÃS (CADASTRO)

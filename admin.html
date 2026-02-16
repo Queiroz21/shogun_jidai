@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo - Shogun Jidai</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+      color: #eee;
+    }
+
+    /* Abas */
+    .tabs-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid rgba(74, 170, 255, 0.2);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 12px 24px;
+      border: none;
+      background: rgba(20, 40, 90, 0.4);
+      color: #aaa;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+
+    .tab-btn:hover {
+      color: #4af;
+      background: rgba(60, 120, 255, 0.3);
+    }
+
+    .tab-btn.active {
+      color: #4af;
+      border-bottom-color: #4af;
+      background: rgba(74, 170, 255, 0.1);
+    }
+
+    /* Conteúdo das abas */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Form de XP */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #4af;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(74, 170, 255, 0.3);
+      border-radius: 6px;
+      background: rgba(10, 20, 50, 0.5);
+      color: #eee;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: all 0.3s;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #4af;
+      box-shadow: 0 0 8px rgba(74, 170, 255, 0.3);
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-container {
+      background: rgba(5, 10, 25, 0.92);
+      border: 1px solid #4af;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      box-shadow: 0 0 16px rgba(80, 180, 255, 0.3);
+    }
+
+    .char-count {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .char-count.warning {
+      color: #f66;
+    }
+
+    .btn-submit {
+      padding: 12px 32px;
+      background: #4af;
+      border: none;
+      border-radius: 6px;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+      width: 100%;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(74, 170, 255, 0.4);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .success-message {
+      background: rgba(0, 200, 100, 0.2);
+      border: 1px solid #0c8;
+      color: #0f8;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    /* Section card for clearer separation */
+    .section-card {
+      background: linear-gradient(180deg, rgba(5,10,25,0.96), rgba(8,16,40,0.92));
+      border: 1px solid rgba(74,170,255,0.06);
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+      margin-bottom: 12px;
+    }
+
+    .section-header {
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
+    }
+
+    .classification-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(74,170,255,0.04); margin:6px; }
+    .classification-chip strong { color:#4af; }
+    .classification-desc { display:block; color:#aaa; font-size:0.9rem; margin-top:6px; }
+
+    .success-message.show {
+      display: block;
+      animation: slideDown 0.3s;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .error-message {
+      background: rgba(200, 0, 0, 0.2);
+      border: 1px solid #f66;
+      color: #f88;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: slideDown 0.3s;
+    }
+
+    /* Players Grid */
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .player-card {
+      background: rgba(5, 10, 25, 0.92);
+      border: 1px solid #4af;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 16px rgba(80, 180, 255, 0.3);
+    }
+
+    .player-card h3 {
+      margin: 0 0 12px;
+      color: #4af;
+      font-size: 1.2rem;
+    }
+
+    .player-card p {
+      margin: 8px 0;
+      color: #aaa;
+      font-size: 0.95rem;
+    }
+
+    .player-card strong {
+      color: #eee;
+    }
+
+    .loading {
+      text-align: center;
+      color: #888;
+      font-size: 1.1rem;
+      padding: 40px;
+    }
+
+    .no-access {
+      text-align: center;
+      color: #f66;
+      font-size: 1.2rem;
+      padding: 60px 20px;
+      background: rgba(200, 0, 0, 0.1);
+      border: 1px solid #f66;
+      border-radius: 12px;
+      margin-top: 40px;
+    }
+    .suggestions { background: rgba(10,20,40,0.6); border: 1px solid rgba(74,170,255,0.08); margin-top:6px; border-radius:6px; max-height:160px; overflow:auto; }
+    .suggestion-item { padding:8px 10px; cursor:pointer; color:#ddd; }
+    .suggestion-item:hover { background: rgba(74,170,255,0.06); color:#4af; }
+  </style>
+</head>
+<body>
+  <!-- Header Padrão -->
+  <header id="top-header">
+    <div id="header-left">
+      <p id="adminInfo" style="color: #4af;"></p>
+    </div>
+    <div id="header-center">
+      <h2 style="margin: 0; font-size: 1.5rem;">⚙️ Painel Administrativo</h2>
+    </div>
+    <div id="header-right">
+      <button class="header-btn" id="btnPerfil">Perfil</button>
+      <button class="header-btn" id="btnInvocacoes">Invocações</button>
+      <button class="header-btn" id="btnArvore">Árvore</button>
+      <button class="header-btn" id="btnVoltar">← Voltar</button>
+    </div>
+  </header>
+
+  <div class="admin-container">
+
+    <!-- Abas -->
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="xp">Adicionar XP</button>
+      <button class="tab-btn" data-tab="players">Gerenciar Jogadores</button>
+      <button class="tab-btn" data-tab="skills">Editar Skills</button>
+      <button class="tab-btn" data-tab="create-skill">Criar Habilidade</button>
+      <button class="tab-btn" data-tab="create-invocation">Criar Invocação</button>
+      <button class="tab-btn" data-tab="edit-invocation">Editar Invocações</button>
+      <button class="tab-btn" data-tab="regions">Regiões</button>
+      <button class="tab-btn" data-tab="invocacoes-jogador">Invocações do Jogador</button>
+      <button class="tab-btn" data-tab="skills-jogador">Skills do Jogador</button>
+      <button class="tab-btn" data-tab="add-inv-player">Adicionar Invocação ao Jogador</button>
+      <button class="tab-btn" data-tab="add-doujutsu">Adicionar Doujutsu</button>
+      <button class="tab-btn" data-tab="logs">Histórico</button>
+    </div>
+
+    <!-- Conteúdo Aba 1: Adicionar XP -->
+    <div id="xp-tab" class="tab-content active">
+      <div class="form-container">
+        <h2 style="margin-top: 0; color: #4af;">Adicionar XP ao Jogador</h2>
+
+        <div id="xp-message" class="success-message"></div>
+        <div id="xp-error" class="error-message"></div>
+
+        <form id="xp-form">
+          <div class="form-group">
+            <label for="xp-player">Jogador (Nick + Clã) *</label>
+            <select id="xp-player" required>
+              <option value="">Selecione um jogador...</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label for="xp-amount">Quantidade de XP *</label>
+              <input type="number" id="xp-amount" min="1" max="50000" placeholder="Ex: 100" required />
+            </div>
+
+            <div class="form-group">
+              <label for="xp-ryos">Ryos (Dinheiro)</label>
+              <input type="number" id="xp-ryos" min="0" max="999999" placeholder="Ex: 500" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="xp-comment">Comentário (obrigatório - mínimo 15 caracteres) *</label>
+            <textarea id="xp-comment" placeholder="Motivo da adição de XP..." maxlength="500"></textarea>
+            <div id="xp-char-count" class="char-count">0/15</div>
+          </div>
+
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="xp-used-invocation" />
+              <span>Usou Invocação?</span>
+            </label>
+          </div>
+
+          <div id="invocation-selector" style="display: none;">
+            <div class="form-group">
+              <label for="xp-invocation">Quais invocações foram usadas? (pode selecionar múltiplas)</label>
+              <select id="xp-invocation" multiple>
+                <option value="">Carregando...</option>
+              </select>
+            </div>
+
+            <!-- Região/Família removidas por solicitação -->
+          </div>
+
+          <div id="tree-bonus-section" style="display: none; margin-top: 12px;">
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="xp-add-tree-bonus" />
+                <span>Adicionar Bônus em Árvore?</span>
+              </label>
+            </div>
+
+            <div id="tree-bonus-selector" style="display: none; margin-top: 12px;">
+              <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label for="xp-tree">Árvore de Habilidades:</label>
+                  <select id="xp-tree">
+                    <option value="">-- Selecione --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="xp-tree-points">Pontos Bônus:</label>
+                  <input type="number" id="xp-tree-points" placeholder="0" min="0" max="100" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">Adicionar XP</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Adicionar Invocação ao Jogador -->
+    <div id="add-inv-player-tab" class="tab-content">
+      <div class="form-container">
+        <h2 style="color: #4af; margin-top: 0">Adicionar Invocação ao Jogador</h2>
+        <div id="add-inv-player-message" class="success-message"></div>
+        <form id="add-inv-player-form">
+          <div class="form-group">
+            <label for="inv-player-select">Jogador</label>
+            <select id="inv-player-select"><option value="">Carregando...</option></select>
+          </div>
+          <div class="form-group">
+            <label for="inv-select-to-add">Invocação</label>
+            <select id="inv-select-to-add"><option value="">Carregando...</option></select>
+          </div>
+          <div style="display:flex; gap:8px;"><button type="submit" class="btn-submit">Adicionar Invocação</button></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Adicionar Doujutsu -->
+    <div id="add-doujutsu-tab" class="tab-content">
+      <div class="form-container">
+        <h2 style="color: #4af; margin-top: 0">Adicionar Doujutsu ao Jogador</h2>
+        <div id="add-doujutsu-message" class="success-message"></div>
+        <form id="add-doujutsu-form">
+          <div class="form-group">
+            <label for="dj-player-select">Jogador</label>
+            <select id="dj-player-select"><option value="">Carregando...</option></select>
+          </div>
+          <div class="form-group">
+            <label for="dj-skill-select">Doujutsu</label>
+            <select id="dj-skill-select"><option value="">Carregando...</option></select>
+          </div>
+          <div style="display:flex; gap:8px;"><button type="submit" class="btn-submit">Adicionar Doujutsu</button></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba 2: Gerenciar Jogadores -->
+    <div id="players-tab" class="tab-content">
+      <h2 style="color: #4af;">Lista de Jogadores</h2>
+      <div id="players-container" class="players-grid">
+        <div class="loading">Carregando jogadores...</div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba 3: Editar Skills -->
+    <div id="skills-tab" class="tab-content">
+      <h2 style="color: #4af;">Editar Habilidades (Skills)</h2>
+
+      <div id="skills-error" class="error-message"></div>
+      <div id="skills-message" class="success-message"></div>
+
+      <!-- FILTROS DUPLOS: Categoria → Guia da Categoria -->
+      <div class="form-container" style="max-width: 800px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label for="skill-category">📂 Tipo de Habilidade</label>
+            <select id="skill-category" style="width: 100%;">
+              <option value="">Selecione um tipo...</option>
+              <option value="fisico">Físico</option>
+              <option value="chakra">Chakra</option>
+              <option value="mental">Mental</option>
+              <option value="KKG">Kekkei Genkai</option>
+              <option value="doujutsu">Doujutsu</option>
+              <option value="jinchuuriki">Jinchuuriki</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="skill-tree">🌳 Árvore Guia</label>
+            <select id="skill-tree" style="width: 100%;">
+              <option value="">Selecione uma árvore...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMBOBOX DUPLA: Skills Prontas vs Em Manutenção -->
+      <div class="form-container" style="max-width: 1200px; margin-bottom: 20px;">
+        <!-- Comparação removida por solicitação -->
+        
+        <!-- Selectors -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <!-- Coluna Esquerda: Skills Prontas -->
+          <div>
+            <label style="display: block; margin-bottom: 8px; color: #0f8; font-weight: bold;">✅ Skills Prontas (Máx: 5)</label>
+            <select id="skills-ready" style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(15, 136, 136, 0.3); border-radius: 6px; color: #eee;">
+              <option value="">Selecione uma skill pronta...</option>
+            </select>
+          </div>
+          
+          <!-- Coluna Direita: Skills em Manutenção -->
+          <div>
+            <label style="display: block; margin-bottom: 8px; color: #f8a; font-weight: bold;">🔧 Skills em Manutenção</label>
+            <select id="skills-maintenance" style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(248, 170, 170, 0.3); border-radius: 6px; color: #eee;">
+              <option value="">Selecione uma skill em manutenção...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Visualizador de Descrições Lado a Lado -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <!-- Descrição da Skill Pronta -->
+          <div style="background: rgba(15, 136, 136, 0.1); border: 1px solid rgba(15, 136, 136, 0.3); border-radius: 6px; padding: 12px;">
+            <h4 style="color: #0f8; margin-top: 0; margin-bottom: 12px;">📄 Padrão (Pronta)</h4>
+            <div id="ready-desc" style="font-size: 0.85rem; color: #ccc; line-height: 1.6; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: rgba(10, 20, 50, 0.3); padding: 8px; border-radius: 4px; min-height: 100px;">
+              <em style="color: #888;">Selecione uma skill pronta para ver o padrão</em>
+            </div>
+          </div>
+
+          <!-- Descrição da Skill em Manutenção -->
+          <div style="background: rgba(248, 170, 170, 0.1); border: 1px solid rgba(248, 170, 170, 0.3); border-radius: 6px; padding: 12px;">
+            <h4 style="color: #f8a; margin-top: 0; margin-bottom: 12px;">📄 Atual (Manutenção)</h4>
+            <div id="maintenance-desc" style="font-size: 0.85rem; color: #ccc; line-height: 1.6; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: rgba(10, 20, 50, 0.3); padding: 8px; border-radius: 4px; min-height: 100px;">
+              <em style="color: #888;">Selecione uma skill em manutenção para ver sua descrição</em>
+            </div>
+          </div>
+        </div>
+
+        <p style="color: #888; font-size: 0.9rem; margin-top: 12px; text-align: center;">💡 Compare o padrão com o atual para padronizar descrições | Clique em uma skill para editá-la abaixo</p>
+      </div>
+
+      <div class="form-container" style="max-width: 800px;">
+        <div class="form-group">
+          <label for="skill-select">🎯 Selecionar Habilidade para Editar</label>
+          <select id="skill-select">
+            <option value="">Carregando habilidades...</option>
+          </select>
+        </div>
+
+        <div id="skill-editor" style="display: none;">
+          <div class="form-group">
+            <label for="skill-name">Nome <span style="color: #f88;">*</span></label>
+            <input type="text" id="skill-name" placeholder="Nome da habilidade" style="color: #4af; font-weight: bold;">
+          </div>
+
+          <div class="form-group">
+            <label for="skill-parent">Habilidade Pai (Parent)</label>
+            <input type="text" id="skill-parent" readonly style="opacity: 0.8; color: #4af; font-weight: bold;">
+          </div>
+
+          <div class="form-group">
+            <label for="skill-desc">Descrição</label>
+            <textarea id="skill-desc" placeholder="Edite a descrição da skill aqui..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>📋 Requisitos</label>
+            <div id="requirements-list" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto;">
+              <!-- Preenchido dinamicamente -->
+            </div>
+            
+            <div style="border-top: 1px solid rgba(74, 170, 255, 0.2); padding-top: 12px;">
+              <label><strong>Adicionar Novo Requisito:</strong></label>
+              
+              <!-- Tipo de Requisito -->
+              <div style="margin-bottom: 8px;">
+                <label for="req-type" style="font-size: 0.9rem; color: #aaa;">Tipo:</label>
+                <select id="req-type" style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; color: #eee;">
+                  <option value="skill">🔗 Skill (escolha uma)</option>
+                  <option value="clan">🏯 Clã (nome do clã)</option>
+                  <option value="playerLevel">👤 Nível do Personagem (número)</option>
+                </select>
+              </div>
+              
+              <!-- Campo para Skill (select dinâmico) -->
+              <div style="margin-bottom: 8px;">
+                <label for="req-value-skill" style="font-size: 0.9rem; color: #aaa; display: none;" id="label-skill">Escolha a Skill Requisito:</label>
+                <select id="req-value-skill" style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; color: #eee; display: none;">
+                  <option value="">-- Selecione uma skill --</option>
+                </select>
+              </div>
+              
+              <!-- Campo para Clã e outros (texto) -->
+              <div style="margin-bottom: 8px;">
+                <label for="req-value" style="font-size: 0.9rem; color: #aaa; display: none;" id="label-text">Nome do Clã:</label>
+                <input type="text" id="req-value" placeholder="Ex: Uchiha, Senju, etc..." style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; color: #eee; display: none;">
+              </div>
+              
+              <!-- Campo de Nível/Valor -->
+              <div style="margin-bottom: 8px;">
+                <label for="req-level" style="font-size: 0.9rem; color: #aaa; display: none;" id="label-level">Nível Mínimo:</label>
+                <input type="number" id="req-level" placeholder="Ex: 10" min="1" max="100" style="width: 100%; padding: 8px; background: rgba(10, 20, 50, 0.5); border: 1px solid rgba(74, 170, 255, 0.3); border-radius: 6px; color: #eee; display: none;">
+              </div>
+              
+              <button id="btn-add-req" class="btn-submit" style="width: 100%;">+ Adicionar Requisito</button>
+            </div>
+          </div>
+
+          <button id="btn-save-skill" class="btn-submit" style="background: #0c8;">💾 Salvar Mudanças</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Criar Habilidade -->
+    <div id="create-skill-tab" class="tab-content">
+      <h2 style="color: #4af;">Criar Nova Habilidade</h2>
+      <div class="form-container" style="max-width: 800px;">
+        <div class="form-group">
+          <label for="new-skill-id">ID (identificador único)</label>
+          <input type="text" id="new-skill-id" placeholder="ex: fogo_dança" />
+        </div>
+        <div class="form-group">
+          <label for="new-skill-name">Nome</label>
+          <input type="text" id="new-skill-name" placeholder="Nome da habilidade" />
+        </div>
+        <div class="form-group">
+          <label for="new-skill-parent">Categoria / Parent</label>
+          <input type="text" id="new-skill-parent" placeholder="ex: chakra" autocomplete="off" />
+          <div id="parent-suggestions" class="suggestions" style="display:none;"></div>
+        </div>
+        <div class="form-group">
+          <label for="new-skill-max">Max Level</label>
+          <input type="number" id="new-skill-max" min="0" max="10" value="1" />
+        </div>
+        <div class="form-group">
+          <label for="new-skill-desc">Descrição</label>
+          <textarea id="new-skill-desc" placeholder="Descrição da habilidade..."></textarea>
+        </div>
+        <button id="btn-create-skill" class="btn-submit">➕ Criar Habilidade</button>
+        <div id="create-skill-message" class="success-message"></div>
+        <div id="create-skill-error" class="error-message"></div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Criar Invocação -->
+    <div id="create-invocation-tab" class="tab-content">
+      <h2 style="color: #4af;">Criar Nova Invocação</h2>
+      <div class="form-container" style="max-width: 800px;">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+          <button id="btn-upload-example" class="btn-submit" style="width:auto; background:#4af;">📤 Salvar Exemplo no Firestore</button>
+          <div style="color:#888; font-size:0.9rem;">(Carrega `data/invocacoes_v1.example.json` e grava em `game_data/invocacoes_v1`)</div>
+        </div>
+        <div class="form-group">
+          <label for="new-inv-id">ID (único)</label>
+          <input type="text" id="new-inv-id" placeholder="ex: kurama" />
+        </div>
+        <div class="form-group">
+          <label for="new-inv-name">Nome</label>
+          <input type="text" id="new-inv-name" placeholder="Nome da invocação" />
+        </div>
+        <div class="form-group">
+          <label for="new-inv-classification">Classificação</label>
+          <select id="new-inv-classification"><option value="">Carregando...</option></select>
+        </div>
+
+        <div class="form-group">
+          <label>Região → Família → Ranking</label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+            <select id="new-inv-region"><option value="">Região</option></select>
+            <select id="new-inv-family"><option value="">Família</option></select>
+            <select id="new-inv-rank"><option value="">Ranking</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="new-inv-max">Max Level</label>
+          <input type="number" id="new-inv-max" min="1" max="10" value="1" />
+        </div>
+        <div class="form-group">
+          <label for="new-inv-desc">Descrição</label>
+          <textarea id="new-inv-desc" placeholder="Descrição..."></textarea>
+        </div>
+        <button id="btn-create-inv" class="btn-submit">➕ Criar Invocação</button>
+        <div id="create-inv-message" class="success-message"></div>
+        <div id="create-inv-error" class="error-message"></div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Editar Invocações -->
+    <div id="edit-invocation-tab" class="tab-content">
+      <h2 style="color: #4af;">Editar Invocações</h2>
+      <div class="form-container" style="max-width: 1000px;">
+        <div class="form-group">
+          <label for="inv-select">Selecionar Invocação</label>
+          <select id="inv-select"><option>Carregando...</option></select>
+        </div>
+
+        <div id="inv-editor" style="display:none;">
+          <div class="form-group">
+            <label for="inv-name">Nome</label>
+            <input type="text" id="inv-name" />
+          </div>
+          <div class="form-group">
+            <label for="inv-classification">Classificação</label>
+            <select id="inv-classification"></select>
+          </div>
+          <div class="form-group">
+            <label>Região → Família → Ranking</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+              <select id="inv-region"></select>
+              <select id="inv-family"></select>
+              <select id="inv-rank"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inv-max">Max Level</label>
+            <input type="number" id="inv-max" min="1" max="10" />
+          </div>
+          <div class="form-group">
+            <label for="inv-desc">Descrição</label>
+            <textarea id="inv-desc"></textarea>
+          </div>
+          <button id="btn-save-inv" class="btn-submit" style="background:#0c8;">💾 Salvar Invocação</button>
+        </div>
+
+        <div id="inv-edit-message" class="success-message"></div>
+        <div id="inv-edit-error" class="error-message"></div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba: Regiões / Famílias / Rankings -->
+    <div id="regions-tab" class="tab-content">
+      <h2 style="color: #4af;">Gerenciar Regiões / Famílias / Rankings</h2>
+      <div class="form-container" style="max-width: 1000px;">
+        <div class="section-card">
+          <div class="section-header">
+            <div style="display:flex; gap:12px; align-items:center;">
+              <input id="new-region-key" placeholder="chave_regiao (ex: fogo)" style="flex:1; width:220px;" />
+              <input id="new-region-name" placeholder="Nome da Região (ex: Fogo)" style="flex:2; width:360px;" />
+              <button id="btn-add-region" class="btn-submit" style="width:auto;">+ Adicionar Região</button>
+            </div>
+            <div style="text-align:right; color:#888; font-size:0.9rem;">Regiões do mundo / famílias / rankings</div>
+          </div>
+
+          <!-- Classificações (Gerenciamento) -->
+          <div style="margin-top:6px; border-top:1px solid rgba(74,170,255,0.04); padding-top:12px;">
+            <div class="section-header"><h4 style="color:#4af; margin:6px 0;">Classificações</h4></div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+              <input id="new-classification-id" placeholder="ID (ex: demons)" style="flex:0.8" />
+              <input id="new-classification-name" placeholder="Nome (ex: Demônios)" style="flex:1" />
+              <input id="new-classification-desc" placeholder="Descrição (ex: tamanho, força típica)" style="flex:2" />
+              <button id="btn-add-classification" class="btn-submit" style="width:auto;">+ Adicionar</button>
+            </div>
+            <div id="classifications-list" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;"></div>
+            <div style="margin-bottom:8px;">
+              <button id="btn-save-classifications" class="btn-submit" style="width:auto;">💾 Salvar Classificações</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <h4 style="color:#4af;">Regiões</h4>
+            <div id="regions-list" style="max-height: 400px; overflow-y:auto; background: rgba(10,20,50,0.4); padding:8px; border-radius:6px;"></div>
+          </div>
+
+          <div>
+            <h4 style="color:#4af;">Famílias / Rankings</h4>
+            <div style="margin-bottom:8px; display:flex; gap:8px;">
+              <input id="new-family-key" placeholder="chave_familia" style="flex:1" />
+              <input id="new-family-name" placeholder="Nome da Família" style="flex:2" />
+              <button id="btn-add-family" class="btn-submit" style="width:auto;">+ Adicionar Família</button>
+            </div>
+
+            <div style="margin-bottom:8px; display:flex; gap:8px;">
+              <select id="family-select" style="flex:1;"></select>
+              <input id="new-ranking-key" placeholder="Ranking (ex: S)" style="width:120px;" />
+              <button id="btn-add-ranking" class="btn-submit" style="width:auto;">+ Ranking</button>
+            </div>
+
+            <div id="family-details" style="background: rgba(10,20,50,0.3); padding:8px; border-radius:6px; max-height:260px; overflow:auto;">
+              <em style="color:#888;">Selecione uma família para ver rankings</em>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button id="btn-save-regions" class="btn-submit">💾 Salvar Regiões no Firestore</button>
+          <div id="regions-message" class="success-message" style="display:none;">Salvo</div>
+          <div id="regions-error" class="error-message" style="display:none;">Erro</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo Aba 4: Histórico -->
+    <div id="logs-tab" class="tab-content">
+      <h2 style="color: #4af;">Histórico de Alterações de XP</h2>
+      <div id="logs-container">
+        <div class="loading">Carregando histórico...</div>
+      </div>
+    </div>
+
+    <!-- Aba: Invocações do Jogador -->
+    <div id="invocacoes-jogador-tab" class="tab-content">
+      <h2 style="color: #a8f;">Invocações do Jogador</h2>
+      <div class="section-card">
+        <div class="section-header"><h3 style="margin: 0; color: #a8f;">Selecione um Jogador</h3></div>
+        <div class="form-group">
+          <label for="inv-jogador-select">Jogador:</label>
+          <select id="inv-jogador-select">
+            <option value="">-- Selecione --</option>
+          </select>
+        </div>
+        <div id="inv-jogador-list" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Aba: Skills do Jogador -->
+    <div id="skills-jogador-tab" class="tab-content">
+      <h2 style="color: #4af;">Skills do Jogador</h2>
+      <div class="section-card">
+        <div class="section-header"><h3 style="margin: 0; color: #4af;">Selecione um Jogador</h3></div>
+        <div class="form-group">
+          <label for="skills-jogador-select">Jogador:</label>
+          <select id="skills-jogador-select">
+            <option value="">-- Selecione --</option>
+          </select>
+        </div>
+        <div id="skills-jogador-list" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
