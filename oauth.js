@@ -214,7 +214,12 @@ if (document.getElementById("btnCriar")) {
       window.location.href = "arvore_habilidade.html";
     } catch (e) {
       console.error("Erro ao criar conta:", e);
-      alert("Erro ao criar conta: " + e.message);
+      if (e.code === 'auth/email-already-in-use') {
+        // email já vinculado a outra conta; não mostrar alerta genérico
+        alert("❌ Este email já está em uso. Faça login ou escolha outro email.");
+      } else {
+        alert("Erro ao criar conta: " + e.message);
+      }
     }
   };
 }
