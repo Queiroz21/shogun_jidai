@@ -51,18 +51,23 @@ onAuthStateChanged(auth, async user => {
 
   currentAdmin = true;
 
-  // Mostra informações do admin
-  const adminInfo = document.getElementById("adminInfo");
-  if (adminInfo) {
-    adminInfo.textContent = `👤 ${userData.nick} | Nível: ${userData.nivel}`;
+  // Atualizar header com info do admin
+  const playerXpElement = document.getElementById("playerOnlyXp");
+  const playerPontosElement = document.getElementById("playerOnlyPontos");
+  
+  if (playerXpElement) {
+    const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
+    playerXpElement.textContent = `XP: ${userData.xp || 0} / ${nextLevelXP}`;
+  }
+  if (playerPontosElement) {
+    playerPontosElement.textContent = `Pontos: ${userData.pontos || 0}`;
   }
 
-  // Botão de voltar
-  document.getElementById("btnVoltar")?.addEventListener("click", () => {
-    window.location.href = "arvore_habilidade.html";
-  });
+  // Carregar fichas disponíveis (múltiplas contas)
+  await carregarFichasDisponiveisAdmin();
 
-  // Botão de logout (para atualizar credenciais se necessário)
+  // Inicializa a página
+  initAdmin();
   const btnLogout = document.createElement("button");
   btnLogout.className = "header-btn";
   btnLogout.textContent = "Sair";
@@ -81,6 +86,67 @@ onAuthStateChanged(auth, async user => {
   // Inicializa a página
   initAdmin();
 });
+
+/* =========================================================
+   MÚLTIPLAS FICHAS - CARREGAR E TROCAR (Admin)
+========================================================= */
+async function carregarFichasDisponiveisAdmin() {
+  try {
+    const selectFicha = document.getElementById("selectFicha");
+    if (!selectFicha) return;
+
+    // Buscar linked accounts do UID autenticado
+    const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
+    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+
+    // Carregar dados de todas as fichas
+    const fichasCarregadas = [];
+    for (const uid of fichasUIDs) {
+      const fichSnap = await getDoc(doc(db, "fichas", uid));
+      if (fichSnap.exists()) {
+        fichasCarregadas.push({
+          uid,
+          nick: fichSnap.data().nick,
+          cla: fichSnap.data().cla,
+          nivel: fichSnap.data().nivel || 1,
+          isPrimary: fichSnap.data().isPrimary ?? true
+        });
+      }
+    }
+
+    // Ordenar: primary primeiro, depois by nick
+    fichasCarregadas.sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return b.isPrimary - a.isPrimary;
+      return a.nick.localeCompare(b.nick);
+    });
+
+    // Preencher select (aparece apenas se tem múltiplas fichas)
+    const selectedFichaUID = localStorage.getItem("selectedFichaUID") || currentUID;
+    selectFicha.innerHTML = fichasCarregadas.map(f => 
+      `<option value="${f.uid}" ${f.uid === selectedFichaUID ? 'selected' : ''}>${f.nick} - ${f.cla} (Lv ${f.nivel}) ${f.isPrimary ? '⭐' : ''}</option>`
+    ).join("");
+
+    // Se só tem 1 ficha, esconder select
+    if (fichasCarregadas.length <= 1) {
+      selectFicha.style.display = "none";
+    }
+
+    // Listener para trocar de ficha
+    selectFicha.removeEventListener("change", trocaFichaSemReloadAdmin);
+    selectFicha.addEventListener("change", trocaFichaSemReloadAdmin);
+  } catch (err) {
+    console.error("Erro ao carregar fichas:", err);
+  }
+}
+
+function trocaFichaSemReloadAdmin(e) {
+  const novoUID = e.target.value;
+  if (!novoUID) return;
+
+  localStorage.setItem("selectedFichaUID", novoUID);
+  window.location.reload();
+}
+
 
 /* =========================================================
    INICIALIZAÇÃO DO PAINEL
@@ -2061,7 +2127,9 @@ function setupTabs() {
 
       // Adiciona active ao clicado
       btn.classList.add("active");
-      document.getElementById(`${tabName}-tab`).classList.add("active");
+      // Compatibilidade: alguns conteúdos usam id="nome-tab" e outros id="nome"
+      const tabEl = document.getElementById(`${tabName}-tab`) || document.getElementById(tabName);
+      if (tabEl) tabEl.classList.add("active");
     });
   });
 }
@@ -2522,13 +2590,51 @@ function setupXPForm() {
     }
   });
 
+  // Listeners para checkboxes de items
+  const conseguiuItemCheckbox = document.getElementById("xp-conseguiu-item");
+  const gastouItemCheckbox = document.getElementById("xp-gastou-item");
+  const itemAddSection = document.getElementById("item-add-section");
+  const itemRemoveSection = document.getElementById("item-remove-section");
+
+  if (conseguiuItemCheckbox) {
+    conseguiuItemCheckbox.addEventListener("change", async (e) => {
+      if (e.target.checked) {
+        itemAddSection.style.display = "block";
+        await carregarItensLojaAdmin();
+      } else {
+        itemAddSection.style.display = "none";
+      }
+    });
+  }
+
+  if (gastouItemCheckbox) {
+    gastouItemCheckbox.addEventListener("change", async (e) => {
+      const playerId = document.getElementById("xp-player").value;
+      if (e.target.checked) {
+        itemRemoveSection.style.display = "block";
+        if (playerId) {
+          await carregarInventarioJogadorAdmin(playerId);
+        }
+      } else {
+        itemRemoveSection.style.display = "none";
+      }
+    });
+  }
+
+  // Atualizar inventário quando mudado jogador
+  document.getElementById("xp-player").addEventListener("change", async (e) => {
+    if (gastouItemCheckbox && gastouItemCheckbox.checked) {
+      await carregarInventarioJogadorAdmin(e.target.value);
+    }
+  });
+
   // Submissão do formulário
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const playerId = document.getElementById("xp-player").value;
     const xpAmount = parseInt(document.getElementById("xp-amount").value);
-    const ryos = parseInt(document.getElementById("xp-ryos").value) || 0;
+    const ryous = parseInt(document.getElementById("xp-ryous").value) || 0;
     const comment = document.getElementById("xp-comment").value;
     const usedInvocation = document.getElementById("xp-used-invocation").checked;
     
@@ -2573,8 +2679,32 @@ function setupXPForm() {
       return;
     }
 
+    // Coleta items adicionados
+    let itemsAdicionados = [];
+    const itemsList = document.getElementById("xp-items-list");
+    if (itemsList) {
+      const items = itemsList.querySelectorAll("[data-item-id]");
+      items.forEach(item => {
+        const itemId = item.getAttribute("data-item-id");
+        const qty = parseInt(item.getAttribute("data-qty")) || 1;
+        if (itemId) itemsAdicionados.push({ itemId, quantidade: qty });
+      });
+    }
+
+    // Coleta items removidos
+    let itemsRemovidos = [];
+    const itemsRemoveList = document.getElementById("xp-items-remove-list");
+    if (itemsRemoveList) {
+      const items = itemsRemoveList.querySelectorAll("[data-item-remove-id]");
+      items.forEach(item => {
+        const itemId = item.getAttribute("data-item-remove-id");
+        const qty = parseInt(item.getAttribute("data-qty")) || 1;
+        if (itemId) itemsRemovidos.push({ itemId, quantidade: qty });
+      });
+    }
+
     // Processa
-    await addXPToPlayer(playerId, xpAmount, ryos, comment, usedInvocation, invocationsUsed, invocationRegion, invocationFamily, treeBonus);
+    await addXPToPlayer(playerId, xpAmount, ryous, comment, usedInvocation, invocationsUsed, invocationRegion, invocationFamily, treeBonus, itemsAdicionados, itemsRemovidos);
   });
 }
 
@@ -2739,7 +2869,7 @@ function setupAddDoujutsuForm() {
 /* =========================================================
    ADICIONA XP AO JOGADOR
 ========================================================= */
-async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, invocationsUsed = [], invocationRegion = null, invocationFamily = null, treeBonus = null) {
+async function addXPToPlayer(playerId, amount, ryous, comment, usedInvocation, invocationsUsed = [], invocationRegion = null, invocationFamily = null, treeBonus = null, itemsAdicionados = [], itemsRemovidos = []) {
   try {
     // Primeiro tenta procurar em /players
     let playerRef = doc(db, "players", playerId);
@@ -2762,10 +2892,12 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
     }
 
     const newXP = (playerData.xp || 0) + amount;
+    const newRyous = (playerData.ryous || 0) + ryous;
 
-    // Atualiza XP do jogador na coleção correta
+    // Atualiza XP e Ryous do jogador na coleção correta
     await updateDoc(playerRef, {
-      xp: newXP
+      xp: newXP,
+      ryous: newRyous
     });
 
     // Carregar dados do admin para obter o nick
@@ -2779,13 +2911,13 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
       console.error("Aviso: não foi possível carregar nick do admin:", err);
     }
 
-    // Registra no histórico
+    // Registra no histórico (inclui items adicionados/removidos quando aplicável)
     await addDoc(collection(db, "xp_logs"), {
       playerId: playerId,
       playerNick: playerData.nick || playerData.nome || playerId,
       playerClan: playerData.cla || playerData.clan || "Nenhum",
       xpAmount: amount,
-      ryos: ryos,
+      ryous: ryous,
       newXPTotal: newXP,
       adminId: currentUID,
       adminNick: adminNick,
@@ -2795,6 +2927,8 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
       invocationsCount: invocationsUsed.length,
       invocationRegion: invocationRegion || null,
       treeBonus: treeBonus || null,
+      itemsAdded: itemsAdicionados || [],
+      itemsRemoved: itemsRemovidos || [],
       dateAdded: new Date(),
       date: new Date(),
       source: isFromFichas ? "fichas" : "players"
@@ -2860,7 +2994,50 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
         console.warn("Aviso: erro ao atualizar XP das invocações:", err);
       }
     }
+    
+    // Processar items adicionados (adicionar ao inventário do jogador)
+    try {
+      if (itemsAdicionados && itemsAdicionados.length > 0) {
+        const lojaRef = doc(db, 'game_data', 'loja_v1');
+        const lojaSnap = await getDoc(lojaRef);
+        const lojaItems = (lojaSnap.exists() && lojaSnap.data().itens) ? lojaSnap.data().itens : [];
+        for (const it of itemsAdicionados) {
+          const def = lojaItems.find(i => (i.id === it.itemId) || (i.nome === it.itemId) || (i.name === it.itemId));
+          await addDoc(collection(db, 'player_inventory', playerId, 'items'), {
+            nome: def?.nome || def?.name || it.itemId,
+            descricao: def?.descricao || def?.desc || '',
+            icone: def?.icone || '',
+            preco: def?.preco || def?.price || 0,
+            ranking: def?.ranking || def?.rank || 'E',
+            quantidade: it.quantidade || 1,
+            adquiridoEm: serverTimestamp()
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar items ao inventário:', err);
+    }
 
+    // Processar items removidos (remover ou decrementar quantidade)
+    try {
+      if (itemsRemovidos && itemsRemovidos.length > 0) {
+        for (const rem of itemsRemovidos) {
+          const itemRef = doc(db, 'player_inventory', playerId, 'items', rem.itemId);
+          const snap = await getDoc(itemRef);
+          if (!snap.exists()) continue;
+          const data = snap.data() || {};
+          const currentQty = data.quantidade || 1;
+          const removeQty = rem.quantidade || 1;
+          if (currentQty > removeQty) {
+            await updateDoc(itemRef, { quantidade: currentQty - removeQty });
+          } else {
+            await updateDoc(itemRef, { vendido: true, vendidoEm: serverTimestamp() });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao remover items do inventário:', err);
+    }
     // Feedback
     showXPSuccess(`✅ ${amount} XP adicionado a ${playerData.nick || playerData.nome || playerId} com sucesso!`);
 
@@ -2879,6 +3056,94 @@ async function addXPToPlayer(playerId, amount, ryos, comment, usedInvocation, in
     showXPError("Erro ao adicionar XP. Tente novamente.");
   }
 }
+
+// =========================================================
+// Helpers para items no admin
+// =========================================================
+async function carregarItensLojaAdmin() {
+  try {
+    const sel = document.getElementById('xp-item-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Carregando items...</option>';
+    const lojaRef = doc(db, 'game_data', 'loja_v1');
+    const lojaSnap = await getDoc(lojaRef);
+    const itens = (lojaSnap.exists() && lojaSnap.data().itens) ? lojaSnap.data().itens : [];
+    sel.innerHTML = '<option value="">-- Selecione um item --</option>';
+    itens.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.id || it.nome || it.name;
+      const rank = it.ranking || it.rank || 'E';
+      opt.textContent = `${it.nome || it.name} [${rank}] (${it.preco || 0} Ryous)`;
+      sel.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Erro carregar itens da loja (admin):', err);
+  }
+}
+
+async function carregarInventarioJogadorAdmin(playerId) {
+  try {
+    const sel = document.getElementById('xp-item-remove-select');
+    const container = document.getElementById('xp-items-remove-list');
+    if (!sel || !container) return;
+    sel.innerHTML = '<option value="">Carregando inventário...</option>';
+    container.innerHTML = '';
+    const invRef = collection(db, 'player_inventory', playerId, 'items');
+    const invSnap = await getDocs(invRef);
+    const items = [];
+    invSnap.forEach(d => items.push({ id: d.id, ...d.data() }));
+    if (items.length === 0) {
+      sel.innerHTML = '<option value="">Nenhum item no inventário</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">-- Selecione um item --</option>';
+    items.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.id;
+      const rank = it.ranking || it.rank || 'E';
+      opt.textContent = `${it.nome || it.name} [${rank}] (x${it.quantidade || 1})`;
+      sel.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Erro ao carregar inventário admin:', err);
+  }
+}
+
+// Funções chamadas pelos botões + adicionar/remoção do formulário
+window.adicionarItemAoFormXP = function() {
+  const sel = document.getElementById('xp-item-select');
+  const qty = parseInt(document.getElementById('xp-item-qty').value) || 1;
+  const list = document.getElementById('xp-items-list');
+  if (!sel || !list) return;
+  if (!sel.value) return alert('Selecione um item para adicionar');
+  const id = sel.value;
+  const text = sel.options[sel.selectedIndex].text;
+  const div = document.createElement('div');
+  div.setAttribute('data-item-id', id);
+  div.setAttribute('data-qty', qty);
+  div.style.padding = '6px';
+  div.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+  div.textContent = `${text} x${qty}`;
+  list.appendChild(div);
+};
+
+window.removerItemDoFormXP = function() {
+  const sel = document.getElementById('xp-item-remove-select');
+  const qty = parseInt(document.getElementById('xp-item-remove-qty').value) || 1;
+  const list = document.getElementById('xp-items-remove-list');
+  if (!sel || !list) return;
+  if (!sel.value) return alert('Selecione um item para remover');
+  const id = sel.value;
+  const text = sel.options[sel.selectedIndex].text;
+  const div = document.createElement('div');
+  div.setAttribute('data-item-remove-id', id);
+  div.setAttribute('data-qty', qty);
+  div.style.padding = '6px';
+  div.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+  div.textContent = `${text} x${qty}`;
+  list.appendChild(div);
+};
+
 
 /* =========================================================
    MOSTRA MENSAGEM DE SUCESSO
@@ -3030,11 +3295,11 @@ async function renderLogs() {
       const adminNick = log.adminNick || log.adminId || "Admin?";
 
       if (log.type === 'xp') {
-        // XP Log - com detalhes de Ryos e invocação
+        // XP Log - com detalhes de Ryous e invocação
         const xpAmount = log.xpAmount || 0;
         const playerName = log.playerNick || log.playerId || "Jogador?";
         const comment = log.xpComment || "(sem comentário)";
-        const ryos = log.ryos || 0;
+        const ryous = log.ryous || 0;
         
         // Formata invocações usadas
         let invocationsDisplay = '';
@@ -3051,7 +3316,7 @@ async function renderLogs() {
               <div style="flex: 1;">
                 <div style="color: #0f8; font-weight: bold; font-size: 0.95rem;">+${xpAmount} XP → ${playerName}</div>
                 <div style="color: #ccc; font-size: 0.85rem; margin-top: 4px;">
-                  💰 Ryos: ${ryos > 0 ? '+' + ryos : '0'} | 🐉 Invocação: ${invocationsDisplay}
+                  💰 Ryous: ${ryous > 0 ? '+' + ryous : '0'} | 🐉 Invocação: ${invocationsDisplay}
                 </div>
                 <div style="color: #aaa; font-size: 0.85rem; margin-top: 6px; line-height: 1.4;">
                   💬 <em>"${comment}"</em>
@@ -3402,14 +3667,238 @@ document.getElementById("btnPerfil")?.addEventListener("click", () => {
   window.location.href = "perfil.html";
 });
 
+document.getElementById("btnLoja")?.addEventListener("click", () => {
+  window.location.href = "loja.html";
+});
+
 document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
   window.location.href = "invocacoes.html";
 });
 
-document.getElementById("btnArvore")?.addEventListener("click", () => {
+document.getElementById("btnHabilidades")?.addEventListener("click", () => {
   window.location.href = "arvore_habilidade.html";
 });
+/* =========================================================
+   LOJA - CRIAR / EDITAR ITEMS
+========================================================= */
 
-document.getElementById("btnVoltar")?.addEventListener("click", () => {
-  window.location.href = "arvore_habilidade.html";
+let lojaItens = [];
+let itemLojaEditar = null;
+
+// Carregar items da loja quando carrega a página
+async function carregarItensLoja() {
+  try {
+    const lojaRef = doc(db, "game_data", "loja_v1");
+    const lojaSnap = await getDoc(lojaRef);
+    if (lojaSnap.exists()) {
+      lojaItens = lojaSnap.data().itens || [];
+    } else {
+      lojaItens = [];
+    }
+  } catch (err) {
+    console.error("Erro ao carregar itens da loja:", err);
+  }
+}
+
+// Renderizar lista de items para editar
+async function renderizarItensLoja() {
+  const container = document.getElementById("item-loja-list");
+  if (!container) return;
+
+  await carregarItensLoja();
+
+  if (lojaItens.length === 0) {
+    container.innerHTML = '<p style="color: #888;">Nenhum item cadastrado ainda.</p>';
+    return;
+  }
+
+  container.innerHTML = lojaItens.map((item, idx) => `
+    <div style="background: rgba(74, 170, 255, 0.1); padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid #4af;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: #4af;">${item.nome}</strong>
+          <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
+            💰 ${item.preco} Ryous | 📍 ${item.regiao || 'Geral'}
+          </div>
+          <div style="font-size: 12px; color: #aaa; margin-top: 2px;">
+            ${item.descricao || '(sem descrição)'}
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="abrirEditarItemLoja(${idx})" style="padding: 6px 12px; background: #4af; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✏️ Editar</button>
+          <button onclick="deletarItemLoja(${idx})" style="padding: 6px 12px; background: #ff6b6b; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer;">🗑️ Deletar</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// Abrir edição de item
+window.abrirEditarItemLoja = function(idx) {
+  itemLojaEditar = idx;
+  const item = lojaItens[idx];
+
+  const editor = document.createElement("div");
+  editor.id = "item-loja-editor";
+  editor.style.cssText = "background: rgba(10, 20, 50, 0.9); border: 2px solid #4af; border-radius: 8px; padding: 20px; margin-top: 20px;";
+  editor.innerHTML = `
+    <div style="color: #4af; font-weight: bold; margin-bottom: 15px;">Editando: ${item.nome}</div>
+    <div class="form-group">
+      <label for="edit-item-nome">Nome *</label>
+      <input type="text" id="edit-item-nome" value="${item.nome}" required>
+    </div>
+    <div class="form-group">
+      <label for="edit-item-descricao">Descrição</label>
+      <textarea id="edit-item-descricao" rows="3">${item.descricao || ''}</textarea>
+    </div>
+    <div class="form-group">
+      <label for="edit-item-icone">URL do Ícone</label>
+      <input type="url" id="edit-item-icone" value="${item.icone || ''}">
+    </div>
+    <div class="form-group">
+      <label for="edit-item-preco">Preço (Ryous) *</label>
+      <input type="number" id="edit-item-preco" min="1" value="${item.preco}" required>
+    </div>
+    <div class="form-group">
+      <label for="edit-item-regiao">Região</label>
+      <select id="edit-item-regiao">
+        <option value="Geral" ${item.regiao === 'Geral' ? 'selected' : ''}>Geral</option>
+        <option value="Fogo" ${item.regiao === 'Fogo' ? 'selected' : ''}>Fogo</option>
+        <option value="Água" ${item.regiao === 'Água' ? 'selected' : ''}>Água</option>
+        <option value="Vento" ${item.regiao === 'Vento' ? 'selected' : ''}>Vento</option>
+        <option value="Terra" ${item.regiao === 'Terra' ? 'selected' : ''}>Terra</option>
+        <option value="Raio" ${item.regiao === 'Raio' ? 'selected' : ''}>Raio</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <button onclick="salvarEdicaoItemLoja()" style="flex: 1; padding: 10px; background: #0f8; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✓ Salvar</button>
+      <button onclick="fecharEditorItemLoja()" style="flex: 1; padding: 10px; background: #666; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer;">✕ Cancelar</button>
+    </div>
+  `;
+
+  const existingEditor = document.getElementById("item-loja-editor");
+  if (existingEditor) existingEditor.remove();
+  document.getElementById("item-loja-list").parentElement.appendChild(editor);
+};
+
+// Salvar edição de item
+window.salvarEdicaoItemLoja = async function() {
+  const nome = document.getElementById("edit-item-nome").value.trim();
+  const descricao = document.getElementById("edit-item-descricao").value.trim();
+  const icone = document.getElementById("edit-item-icone").value.trim();
+  const preco = Number(document.getElementById("edit-item-preco").value);
+  const regiao = document.getElementById("edit-item-regiao").value;
+
+  if (!nome || preco <= 0) {
+    alert("❌ Nome e preço são obrigatórios!");
+    return;
+  }
+
+  lojaItens[itemLojaEditar] = { id: lojaItens[itemLojaEditar].id, nome, descricao, icone, preco, regiao };
+
+  try {
+    await updateDoc(doc(db, "game_data", "loja_v1"), { itens: lojaItens });
+    alert("✅ Item atualizado com sucesso!");
+    fecharEditorItemLoja();
+    renderizarItensLoja();
+  } catch (err) {
+    console.error("Erro ao salvar:", err);
+    alert("❌ Erro ao salvar!");
+  }
+};
+
+// Fechar editor
+window.fecharEditorItemLoja = function() {
+  const editor = document.getElementById("item-loja-editor");
+  if (editor) editor.remove();
+  itemLojaEditar = null;
+};
+
+// Deletar item
+window.deletarItemLoja = async function(idx) {
+  if (!confirm("Tem certeza que quer deletar este item?")) return;
+
+  lojaItens.splice(idx, 1);
+
+  try {
+    await updateDoc(doc(db, "game_data", "loja_v1"), { itens: lojaItens });
+    alert("✅ Item deletado com sucesso!");
+    renderizarItensLoja();
+  } catch (err) {
+    console.error("Erro ao deletar:", err);
+    alert("❌ Erro ao deletar!");
+  }
+};
+
+// Formulário para criar novo item
+const createItemForm = document.getElementById("create-item-loja-form");
+if (createItemForm) {
+  createItemForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nome = document.getElementById("item-nome").value.trim();
+    const descricao = document.getElementById("item-descricao").value.trim();
+    const icone = document.getElementById("item-icone").value.trim();
+    const preco = Number(document.getElementById("item-preco").value);
+    const regiao = document.getElementById("item-regiao").value;
+
+    if (!nome || preco <= 0) {
+      alert("❌ Nome e preço são obrigatórios!");
+      return;
+    }
+
+    try {
+      const newItem = {
+        id: Date.now().toString(), // ID único baseado em timestamp
+        nome,
+        descricao,
+        icone,
+        preco,
+        regiao,
+        criadoEm: new Date()
+      };
+
+      lojaItens.push(newItem);
+
+      // Criar ou atualizar documento loja_v1
+      const lojaRef = doc(db, "game_data", "loja_v1");
+      await setDoc(lojaRef, { itens: lojaItens }, { merge: true });
+
+      // Feedback
+      const msgEl = document.getElementById("item-create-message");
+      msgEl.style.backgroundColor = "rgba(0, 255, 100, 0.2)";
+      msgEl.style.borderLeft = "3px solid #0f8";
+      msgEl.style.color = "#0f8";
+      msgEl.textContent = "✅ Item criado com sucesso!";
+      msgEl.style.display = "block";
+
+      setTimeout(() => {
+        msgEl.style.display = "none";
+        createItemForm.reset();
+      }, 3000);
+
+      // Atualizar lista de edição
+      renderizarItensLoja();
+    } catch (err) {
+      console.error("Erro ao criar item:", err);
+      alert("❌ Erro ao criar item!");
+    }
+  });
+}
+
+// Inicializar carregamento de items quando aba é selecionada
+document.addEventListener("DOMContentLoaded", () => {
+  // Hook para quando a aba de editar items for clicada
+  const editLojaTab = document.querySelector('[data-tab="edit-item-loja"]');
+  if (editLojaTab) {
+    const observer = new MutationObserver(() => {
+      if (editLojaTab.classList.contains("active")) {
+        renderizarItensLoja();
+      }
+    });
+    observer.observe(editLojaTab, { attributes: true });
+  }
+
+  // Carregar items quando página carrega (para ter dados prontos)
+  carregarItensLoja();
 });

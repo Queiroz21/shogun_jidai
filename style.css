@@ -686,6 +686,10 @@ font-weight: bold;
 min-width: 0;
 overflow: hidden;
 text-overflow: ellipsis;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 10px;
 }
 
 

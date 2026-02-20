@@ -487,12 +487,14 @@ height: auto;
 <p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
 </div>
 <div id="header-center">
-<span id="infoTopo">---</span>
+<select id="selectFicha" style="margin-right: 15px; padding: 8px; background: #222; color: #fff; border: 2px solid #ff6b00; border-radius: 5px; font-weight: bold;"></select>
 </div>
 <div id="header-right">
+<button class="header-btn" id="btnLoja">⚙️ Loja</button>
 <button class="header-btn" id="btnInvocacoes">Invocações</button>
 <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
 <button class="header-btn" id="btnAdmin" style="display: none; background: #ff6b00;">Admin</button>
+<button class="header-btn" id="btnLogout">🚪 Sair</button>
 </div>
 </header>
 
@@ -512,6 +514,7 @@ height: auto;
 <div class="ficha-row"><span class="ficha-label">Nível:</span><strong id="perfil-nivel">—</strong></div>
 <div class="ficha-row"><span class="ficha-label">XP Atual:</span><strong id="perfil-xp">—</strong></div>
 <div class="ficha-row"><span class="ficha-label">Pontos disponíveis:</span><strong id="perfil-pontos">—</strong></div>
+<div class="ficha-row"><span class="ficha-label">Ryous:</span><strong id="perfil-ryous">0</strong></div>
 <div class="ficha-row"><span class="ficha-label">Pontos totais de Atributo:</span><strong id="perfil-atributos-totais">—</strong></div>
 </div>
 </div>
@@ -754,7 +757,12 @@ return;
 }
 
 currentUID = user.uid;
-const userSnap = await getDoc(doc(db, "fichas", currentUID));
+
+// Verificar se há ficha selecionada em localStorage (para múltiplas fichas)
+const selectedFichaUID = localStorage.getItem("selectedFichaUID");
+const fichaACarregar = selectedFichaUID || currentUID;
+
+const userSnap = await getDoc(doc(db, "fichas", fichaACarregar));
 userData = userSnap.data() ?? {};
 
 userData.nick   ??= "Sem Nome";
@@ -770,12 +778,17 @@ allSkills.forEach(skill => {
 skill.level = userData.skills[skill.id] ?? 0;
 });
 
+// Carregar fichas disponíveis e popular dropdown
+await carregarFichasDisponiveis();
+
 renderPerfil();
 renderSkills();
 loadLeaderboard();
 
-// Mostra botão admin se usuário for admin
-if (userData.admin) {
+// Mostra botão admin se usuário for admin (só da conta principal)
+const principalSnap = await getDoc(doc(db, "fichas", currentUID));
+const principalData = principalSnap.data() ?? {};
+if (principalData.admin) {
   const btnAdmin = document.getElementById("btnAdmin");
   if (btnAdmin) {
     btnAdmin.style.display = "block";
@@ -783,13 +796,65 @@ if (userData.admin) {
 }
 });
 
+// Função para carregar fichas disponíveis do jogador
+async function carregarFichasDisponiveis() {
+  try {
+    const selectFicha = document.getElementById("selectFicha");
+    if (!selectFicha) return;
+
+    // Buscar linked accounts do UID autenticado (não da ficha selecionada)
+    const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
+    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+
+    // Carregar dados de todas as fichas
+    const fichasCarregadas = [];
+    for (const uid of fichasUIDs) {
+      const fichSnap = await getDoc(doc(db, "fichas", uid));
+      if (fichSnap.exists()) {
+        fichasCarregadas.push({
+          uid,
+          nick: fichSnap.data().nick,
+          cla: fichSnap.data().cla,
+          nivel: fichSnap.data().nivel || 1,
+          isPrimary: fichSnap.data().isPrimary ?? true
+        });
+      }
+    }
+
+    // Ordenar: primary primeiro, depois by nick
+    fichasCarregadas.sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return b.isPrimary - a.isPrimary;
+      return a.nick.localeCompare(b.nick);
+    });
+
+    // Preencher select
+    const selectedFichaUID = localStorage.getItem("selectedFichaUID") || currentUID;
+    selectFicha.innerHTML = fichasCarregadas.map(f => 
+      `<option value="${f.uid}" ${f.uid === selectedFichaUID ? 'selected' : ''}>${f.nick} - ${f.cla} (Lv ${f.nivel}) ${f.isPrimary ? '⭐' : ''}</option>`
+    ).join("");
+
+    // Listener para trocar de ficha
+    selectFicha.removeEventListener("change", trocaFichaSemReload);
+    selectFicha.addEventListener("change", trocaFichaSemReload);
+  } catch (err) {
+    console.error("Erro ao carregar fichas:", err);
+  }
+}
+
+// Função para trocar de ficha sem reload (mais suave)
+async function trocaFichaSemReload(e) {
+  const novoUID = e.target.value;
+  if (!novoUID || novoUID === new URL(window.location).searchParams.get("uid")) return;
+
+  localStorage.setItem("selectedFichaUID", novoUID);
+  window.location.reload();
+}
+
 function renderPerfil() {
 // Renderiza info principal do perfil (nick, clã, nível, XP)
 // Atualiza displays de header e panel esquerdo
 // Chama initializeAttributes() pra montar sistema de atributos
 // Usado em: onAuthStateChanged auth listener
-document.getElementById("infoTopo").textContent = 
-`${userData.nick} | Clã: ${userData.cla}`;
 
 const nextLevelXP = 100 * userData.nivel * (userData.nivel + 1) / 2;
 document.getElementById("playerOnlyXp").textContent = 
@@ -803,6 +868,7 @@ document.getElementById("perfil-cla").textContent    = userData.cla;
 document.getElementById("perfil-nivel").textContent  = userData.nivel;
 document.getElementById("perfil-xp").textContent     = userData.xp;
 document.getElementById("perfil-pontos").textContent = userData.pontos;
+document.getElementById("perfil-ryous").textContent  = userData.ryous || 0;
 document.getElementById("perfil-atributos-totais").textContent = 250 + (userData.nivel-1)*40 ;
 
 initializeAttributes();
@@ -1476,6 +1542,11 @@ renderSkills();
 // Botão voltar
 document.getElementById("btnHabilidades")?.addEventListener("click", () => {
 window.location.href = "arvore_habilidade.html";
+});
+
+// Botão Loja
+document.getElementById("btnLoja")?.addEventListener("click", () => {
+  window.location.href = "loja.html";
 });
 
 // Botão Invocações

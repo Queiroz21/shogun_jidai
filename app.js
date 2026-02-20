@@ -4,7 +4,7 @@ import { auth, db, requireAuth } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from
+import { onAuthStateChanged, signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ======== PROTEÇÃO: Verificar se usuário está logado ========
@@ -97,7 +97,7 @@ async function loadSkills() {
   const loaded = rawSkills;
 
   loaded.forEach(s => {
-    s.level = skillsState[s.id] ?? 0;
+    s.level = Number(skillsState[s.id]) || 0;
     s.requires = s.requires ?? [];
     // ✅ NÃO forçar max = 5 (mantém max 0 nas skills-guia)
     s.max = s.max ?? 0;
@@ -118,7 +118,12 @@ onAuthStateChanged(auth, async user => {
   }
 
   currentUID = user.uid;
-  const snap = await getDoc(doc(db, "fichas", currentUID));
+
+  // Verificar se há ficha selecionada em localStorage (para múltiplas fichas)
+  const selectedFichaUID = localStorage.getItem("selectedFichaUID");
+  const fichaACarregar = selectedFichaUID || currentUID;
+
+  const snap = await getDoc(doc(db, "fichas", fichaACarregar));
   userData = snap.data() ?? {};
 
   userData.nick ??= "Sem Nome";
@@ -128,22 +133,102 @@ onAuthStateChanged(auth, async user => {
   userData.pontos ??= 0;
   userData.skills ??= {};
   
+  // Garantir que os níveis salvos sejam números (evita [object Object])
+  const cleanedSkills = Object.fromEntries(
+    Object.entries(userData.skills).map(([k,v]) => [k, Number(v) || 0])
+  );
+  // se a limpeza mudou algo, envia de volta ao Firestore para corrigir a ficha
+  if (JSON.stringify(cleanedSkills) !== JSON.stringify(userData.skills)) {
+    await updateDoc(doc(db, "fichas", fichaACarregar), { skills: cleanedSkills });
+  }
+  userData.skills = cleanedSkills;
+
   console.log("userData após inicialização:", userData);
 
-  // Mostra botão admin se usuário for admin
-  if (userData.admin) {
+  // Carregar fichas disponíveis e popular dropdown
+  await carregarFichasDisponiveis();
+
+  // Mostra botão admin se usuário for admin (só da conta principal)
+  const principalSnap = await getDoc(doc(db, "fichas", currentUID));
+  const principalData = principalSnap.data() ?? {};
+  if (principalData.admin) {
     const btnAdmin = document.getElementById("btnAdmin");
     if (btnAdmin) {
       btnAdmin.style.display = "block";
     }
   }
 
-  skillsState = { ...userData.skills };
+  // sanear skillsState também
+  skillsState = Object.fromEntries(
+    Object.entries(userData.skills).map(([k,v]) => [k, Number(v) || 0])
+  );
   skills = await loadSkills();
 
   await checkLevelUp();
   render();
 });
+
+/* =========================================================
+   MÚLTIPLAS FICHAS - CARREGAR E TROCAR
+========================================================= */
+async function carregarFichasDisponiveis() {
+  try {
+    const selectFicha = document.getElementById("selectFicha");
+    if (!selectFicha) return;
+
+    // Buscar linked accounts do UID autenticado
+    const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
+    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+
+    // Carregar dados de todas as fichas
+    const fichasCarregadas = [];
+    for (const uid of fichasUIDs) {
+      const fichSnap = await getDoc(doc(db, "fichas", uid));
+      if (fichSnap.exists()) {
+        fichasCarregadas.push({
+          uid,
+          nick: fichSnap.data().nick,
+          cla: fichSnap.data().cla,
+          nivel: fichSnap.data().nivel || 1,
+          isPrimary: fichSnap.data().isPrimary ?? true
+        });
+      }
+    }
+
+    // Ordenar: primary primeiro, depois by nick
+    fichasCarregadas.sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return b.isPrimary - a.isPrimary;
+      return a.nick.localeCompare(b.nick);
+    });
+
+    // Preencher select (aparece apenas se tem múltiplas fichas)
+    const selectedFichaUID = localStorage.getItem("selectedFichaUID") || currentUID;
+    selectFicha.innerHTML = fichasCarregadas.map(f => 
+      `<option value="${f.uid}" ${f.uid === selectedFichaUID ? 'selected' : ''}>${f.nick} - ${f.cla} (Lv ${f.nivel}) ${f.isPrimary ? '⭐' : ''}</option>`
+    ).join("");
+
+    // Se só tem 1 ficha, desabilitar mas manter o combo visível
+    if (fichasCarregadas.length <= 1) {
+      selectFicha.disabled = true;
+    } else {
+      selectFicha.disabled = false;
+    }
+
+    // Listener para trocar de ficha
+    selectFicha.removeEventListener("change", trocaFichaSemReload);
+    selectFicha.addEventListener("change", trocaFichaSemReload);
+  } catch (err) {
+    console.error("Erro ao carregar fichas:", err);
+  }
+}
+
+function trocaFichaSemReload(e) {
+  const novoUID = e.target.value;
+  if (!novoUID) return;
+
+  localStorage.setItem("selectedFichaUID", novoUID);
+  window.location.reload();
+}
 
 /* =========================================================
    LEVEL UP — XP REAL + POPUP
@@ -634,12 +719,7 @@ function buildBranch(parent) {
 function render() {
 
   // ===== TOPO =====
-  const infoTopo = document.getElementById("infoTopo");
-  if (infoTopo) {
-    infoTopo.textContent =
-      `${userData.nick} | Clã: ${userData.cla}`;
-  }
-
+  // não usamos mais infoTopo; o header já mostra XP/Pontos e select
   const points = document.getElementById("points");
   if (points) {
     points.textContent =
@@ -1041,12 +1121,21 @@ document.getElementById("btnPerfil")?.addEventListener("click", () => {
   window.open("perfil.html", "_self");
 });
 
+document.getElementById("btnLoja")?.addEventListener("click", () => {
+  window.open("loja.html", "_self");
+});
+
 document.getElementById("btnInvocacoes")?.addEventListener("click", () => {
   window.open("invocacoes.html", "_self");
 });
 
 document.getElementById("btnAdmin")?.addEventListener("click", () => {
   window.open("admin.html", "_self");
+});
+
+document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
 });
 
 async function loadLeaderboard() {

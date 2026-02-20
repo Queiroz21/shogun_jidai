@@ -4,7 +4,7 @@ import { auth, db, requireAuth } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from
+import { onAuthStateChanged, signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // Proteção: Verificar se usuário está logado
@@ -424,6 +424,10 @@ function setupButtons() {
   document.getElementById("btnPerfil")?.addEventListener("click", () => {
     window.location.href = "perfil.html";
   });
+
+  document.getElementById("btnLoja")?.addEventListener("click", () => {
+    window.location.href = "loja.html";
+  });
   
   document.getElementById("btnHabilidades")?.addEventListener("click", () => {
     window.location.href = "arvore_habilidade.html";
@@ -436,6 +440,8 @@ function setupButtons() {
       window.location.href = "admin.html";
     });
   }
+  const btnLogout = document.getElementById("btnLogout");
+  if (btnLogout) btnLogout.addEventListener("click", async () => { await signOut(auth); window.location.href = 'index.html'; });
 }
 
 /* =========================================================
@@ -448,21 +454,47 @@ onAuthStateChanged(auth, async (user) => {
   }
   
   currentUID = user.uid;
+
+  // Verificar se há ficha selecionada em localStorage (para múltiplas fichas)
+  const selectedFichaUID = localStorage.getItem("selectedFichaUID");
+  const fichaACarregar = selectedFichaUID || currentUID;
   
   try {
-    // Carregar dados do usuário
-    const userRef = doc(db, "fichas", currentUID);
+    // Carregar dados da ficha selecionada
+    const userRef = doc(db, "fichas", fichaACarregar);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
       userData = userSnap.data();
     }
+
+    // Carregar fichas disponíveis e popular dropdown
+    await carregarFichasDisponiveisInvocacoes();
+
+    // Mostra botão admin se usuário for admin (só da conta principal)
+    const principalSnap = await getDoc(doc(db, "fichas", currentUID));
+    const principalData = principalSnap.data() ?? {};
+    if (principalData.admin) {
+      const btnAdmin = document.getElementById("btnAdmin");
+      if (btnAdmin) {
+        btnAdmin.style.display = "block";
+      }
+    }
     
     // Carregar invocacoes e regions
     await loadInvocacoesAndRegions();
     
-    // Atualizar header
-    document.getElementById("infoTopo").textContent = userData.nome || "Aventureiro";
+    // Atualizar header – XP e pontos (não existe mais #infoTopo)
+    const playerOnlyXp = document.getElementById("playerOnlyXp");
+    if (playerOnlyXp) {
+      // usar mesma fórmula de xpToReachLevel da árvore
+      const xpNext = 100 * userData.nivel * (userData.nivel + 1) / 2;
+      playerOnlyXp.textContent = `XP: ${userData.xp} / ${xpNext}`;
+    }
+    const playerOnlyPontos = document.getElementById("playerOnlyPontos");
+    if (playerOnlyPontos) {
+      playerOnlyPontos.textContent = `Pontos: ${userData.pontos || 0}`;
+    }
     
     // Setup UI
     const uniqueRegions = extractUniqueRegions();
@@ -474,3 +506,66 @@ onAuthStateChanged(auth, async (user) => {
     console.error("❌ Erro ao inicializar:", error);
   }
 });
+
+/* =========================================================
+   MÚLTIPLAS FICHAS - CARREGAR E TROCAR (Invocações)
+========================================================= */
+async function carregarFichasDisponiveisInvocacoes() {
+  try {
+    const selectFicha = document.getElementById("selectFicha");
+    if (!selectFicha) return;
+
+    // Buscar linked accounts do UID autenticado
+    const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
+    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+
+    // Carregar dados de todas as fichas
+    const fichasCarregadas = [];
+    for (const uid of fichasUIDs) {
+      const fichSnap = await getDoc(doc(db, "fichas", uid));
+      if (fichSnap.exists()) {
+        fichasCarregadas.push({
+          uid,
+          nick: fichSnap.data().nick,
+          cla: fichSnap.data().cla,
+          nivel: fichSnap.data().nivel || 1,
+          isPrimary: fichSnap.data().isPrimary ?? true
+        });
+      }
+    }
+
+    // Ordenar: primary primeiro, depois by nick
+    fichasCarregadas.sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return b.isPrimary - a.isPrimary;
+      return a.nick.localeCompare(b.nick);
+    });
+
+    // Preencher select (aparece apenas se tem múltiplas fichas)
+    const selectedFichaUID = localStorage.getItem("selectedFichaUID") || currentUID;
+    selectFicha.innerHTML = fichasCarregadas.map(f => 
+      `<option value="${f.uid}" ${f.uid === selectedFichaUID ? 'selected' : ''}>${f.nick} - ${f.cla} (Lv ${f.nivel}) ${f.isPrimary ? '⭐' : ''}</option>`
+    ).join("");
+
+    // Se só tem 1 ficha, desabilitar mas manter o combo visível
+    if (fichasCarregadas.length <= 1) {
+      selectFicha.disabled = true;
+    } else {
+      selectFicha.disabled = false;
+    }
+
+    // Listener para trocar de ficha
+    selectFicha.removeEventListener("change", trocaFichaSemReloadInvocacoes);
+    selectFicha.addEventListener("change", trocaFichaSemReloadInvocacoes);
+  } catch (err) {
+    console.error("Erro ao carregar fichas:", err);
+  }
+}
+
+function trocaFichaSemReloadInvocacoes(e) {
+  const novoUID = e.target.value;
+  if (!novoUID) return;
+
+  localStorage.setItem("selectedFichaUID", novoUID);
+  window.location.reload();
+}
+

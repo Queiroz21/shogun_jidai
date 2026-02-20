@@ -261,7 +261,7 @@
     "name": "Passos de Duelista",
     "parent": "guarda_basica",
     "max": 5,
-    "icon": "fisica",
+    "icon": "fisico",
     "requires": [
       {
         "id": "guarda_basica",

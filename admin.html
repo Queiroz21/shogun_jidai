@@ -266,16 +266,16 @@
   <!-- Header Padrão -->
   <header id="top-header">
     <div id="header-left">
-      <p id="adminInfo" style="color: #4af;"></p>
+      <p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
     </div>
     <div id="header-center">
-      <h2 style="margin: 0; font-size: 1.5rem;">⚙️ Painel Administrativo</h2>
+      <select id="selectFicha" style="margin-right: 15px; padding: 8px; background: #222; color: #fff; border: 2px solid #ff6b00; border-radius: 5px; font-weight: bold;"></select>
     </div>
     <div id="header-right">
       <button class="header-btn" id="btnPerfil">Perfil</button>
+      <button class="header-btn" id="btnLoja">⚙️ Loja</button>
       <button class="header-btn" id="btnInvocacoes">Invocações</button>
-      <button class="header-btn" id="btnArvore">Árvore</button>
-      <button class="header-btn" id="btnVoltar">← Voltar</button>
+      <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
     </div>
   </header>
 
@@ -294,6 +294,8 @@
       <button class="tab-btn" data-tab="skills-jogador">Skills do Jogador</button>
       <button class="tab-btn" data-tab="add-inv-player">Adicionar Invocação ao Jogador</button>
       <button class="tab-btn" data-tab="add-doujutsu">Adicionar Doujutsu</button>
+      <button class="tab-btn" data-tab="create-item-loja">Criar Item Loja</button>
+      <button class="tab-btn" data-tab="edit-item-loja">Editar Items Loja</button>
       <button class="tab-btn" data-tab="logs">Histórico</button>
     </div>
 
@@ -320,8 +322,8 @@
             </div>
 
             <div class="form-group">
-              <label for="xp-ryos">Ryos (Dinheiro)</label>
-              <input type="number" id="xp-ryos" min="0" max="999999" placeholder="Ex: 500" />
+              <label for="xp-ryous">Ryous (Dinheiro)</label>
+              <input type="number" id="xp-ryous" min="0" max="999999" placeholder="Ex: 500" />
             </div>
           </div>
 
@@ -373,7 +375,57 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-submit">Adicionar XP</button>
+          <!-- Seção de Items -->
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(74, 170, 255, 0.2);">
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="xp-conseguiu-item" />
+                <span>Conseguiu Item? ➕</span>
+              </label>
+            </div>
+
+            <div id="item-add-section" style="display: none; margin-top: 12px; padding: 12px; background: rgba(0, 200, 100, 0.1); border: 1px solid rgba(0, 200, 100, 0.3); border-radius: 6px;">
+              <div class="form-group">
+                <label for="xp-item-select">Selecione o Item:</label>
+                <select id="xp-item-select">
+                  <option value="">Carregando items...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="xp-item-qty">Quantidade:</label>
+                <input type="number" id="xp-item-qty" min="1" max="999" value="1" />
+              </div>
+              <button type="button" class="btn-submit" onclick="adicionarItemAoFormXP()">+ Adicionar Item</button>
+              <div id="xp-items-list" style="margin-top: 12px; max-height: 150px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
+          <!-- Seção de Items para Vender/Craftear -->
+          <div style="margin-top: 12px;">
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="xp-gastou-item" />
+                <span>Gastou Item? (Craft/Venda) ➖</span>
+              </label>
+            </div>
+
+            <div id="item-remove-section" style="display: none; margin-top: 12px; padding: 12px; background: rgba(200, 0, 0, 0.1); border: 1px solid rgba(200, 0, 0, 0.3); border-radius: 6px;">
+              <div class="form-group">
+                <label for="xp-item-remove-select">Selecione o Item do Inventário:</label>
+                <select id="xp-item-remove-select">
+                  <option value="">Nenhum item no inventário</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="xp-item-remove-qty">Quantidade a Remover:</label>
+                <input type="number" id="xp-item-remove-qty" min="1" max="999" value="1" />
+              </div>
+              <button type="button" class="btn-submit" onclick="removerItemDoFormXP()">- Remover Item</button>
+              <div id="xp-items-remove-list" style="margin-top: 12px; max-height: 150px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit" style="margin-top: 20px;">Adicionar XP</button>
         </form>
       </div>
     </div>
@@ -844,6 +896,52 @@
           </select>
         </div>
         <div id="skills-jogador-list" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- TAB: CRIAR ITEM LOJA -->
+    <div id="create-item-loja" class="tab-content">
+      <div class="section-card">
+        <div class="section-header"><h3 style="margin: 0; color: #4af;">➕ Criar Novo Item Loja</h3></div>
+        <form id="create-item-loja-form">
+          <div class="form-group">
+            <label for="item-nome">Nome do Item *</label>
+            <input type="text" id="item-nome" placeholder="Ex: Poção de Vida" required>
+          </div>
+          <div class="form-group">
+            <label for="item-descricao">Descrição</label>
+            <textarea id="item-descricao" placeholder="Descrição do item (opcional)" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="item-icone">URL do Ícone (opcional)</label>
+            <input type="url" id="item-icone" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label for="item-preco">Preço (Ryous) *</label>
+            <input type="number" id="item-preco" min="1" placeholder="100" required>
+          </div>
+          <div class="form-group">
+            <label for="item-regiao">Região</label>
+            <select id="item-regiao">
+              <option value="Geral">Geral</option>
+              <option value="Fogo">Fogo</option>
+              <option value="Água">Água</option>
+              <option value="Vento">Vento</option>
+              <option value="Terra">Terra</option>
+              <option value="Raio">Raio</option>
+            </select>
+          </div>
+          <button type="submit" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #4af, #0f8); border: none; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer; width: 100%;">✓ Criar Item</button>
+        </form>
+        <div id="item-create-message" style="margin-top: 15px; padding: 12px; border-radius: 6px; display: none;"></div>
+      </div>
+    </div>
+
+    <!-- TAB: EDITAR ITEMS LOJA -->
+    <div id="edit-item-loja" class="tab-content">
+      <div class="section-card">
+        <div class="section-header"><h3 style="margin: 0; color: #4af;">✏️ Editar Items Loja</h3></div>
+        <div id="item-loja-list" style="margin-top: 16px;"></div>
       </div>
     </div>
   </div>

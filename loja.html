@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loja - Shogun Jidai</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .loja-container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .loja-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      border-bottom: 2px solid rgba(74, 170, 255, 0.3);
+      padding-bottom: 15px;
+    }
+
+    .loja-header h1 {
+      color: #4af;
+      font-size: 28px;
+    }
+
+    .loja-ryous {
+      color: #ffd700;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .loja-section {
+      margin-bottom: 40px;
+    }
+
+    .loja-section h2 {
+      color: #4af;
+      margin-bottom: 15px;
+      font-size: 20px;
+      border-left: 3px solid #4af;
+      padding-left: 10px;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
+
+    .item-card {
+      background: rgba(10, 20, 50, 0.6);
+      border: 2px solid rgba(74, 170, 255, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .item-card:hover {
+      border-color: #4af;
+      box-shadow: 0 0 15px rgba(74, 170, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .item-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 10px;
+      background: rgba(74, 170, 255, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .item-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .item-name {
+      color: #fff;
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .item-price {
+      color: #ffd700;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .item-btn {
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #4af, #0f8);
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .item-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .item-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(10, 20, 50, 0.95);
+      border: 2px solid rgba(74, 170, 255, 0.5);
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 400px;
+      width: 90%;
+      color: #fff;
+    }
+
+    .modal-header {
+      color: #4af;
+      font-size: 20px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(74, 170, 255, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .modal-item-info {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    .modal-item-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 10px;
+      background: rgba(74, 170, 255, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-item-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .modal-description {
+      color: #aaa;
+      font-size: 13px;
+      margin: 10px 0;
+      line-height: 1.4;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-confirm {
+      background: linear-gradient(135deg, #4af, #0f8);
+      color: #fff;
+    }
+
+    .btn-confirm:hover {
+      box-shadow: 0 0 15px rgba(74, 170, 255, 0.5);
+    }
+
+    .btn-cancel {
+      background: rgba(255, 100, 100, 0.2);
+      border: 1px solid rgba(255, 100, 100, 0.5);
+      color: #ff6b6b;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(255, 100, 100, 0.3);
+    }
+
+    .empty-state {
+      color: #888;
+      text-align: center;
+      padding: 40px 20px;
+      font-style: italic;
+    }
+
+    .sorteio-info {
+      background: rgba(74, 170, 255, 0.1);
+      border-left: 3px solid #4af;
+      padding: 12px;
+      margin-bottom: 20px;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .relogio {
+      color: #ffd700;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<header id="top-header">
+  <div id="header-left">
+    <p><span id="playerOnlyXp">XP: -- / --</span> - <span id="playerOnlyPontos">Pontos: --</span></p>
+  </div>
+  <div id="header-center">
+    <select id="selectFicha" style="margin-right: 15px; padding: 8px; background: #222; color: #fff; border: 2px solid #ff6b00; border-radius: 5px; font-weight: bold;"></select>
+  </div>
+  <div id="header-right">
+    <button class="header-btn" id="btnPerfil">Perfil</button>
+    <button class="header-btn" id="btnInvocacoes">Invocações</button>
+    <button class="header-btn" id="btnHabilidades">Árvore de Habilidades</button>
+    <button class="header-btn" id="btnAdmin" style="display: none; background: #ff6b00;">Admin</button>
+    <button class="header-btn" id="btnLogout">🚪 Sair</button>
+  </div>
+</header>
+
+<div class="loja-container">
+  <div class="loja-header">
+    <div>
+      <h1>⚙️ Loja</h1>
+      <div id="sorteioInfo" class="sorteio-info">
+        Próximo sorteio: <span id="nextSorteio" class="relogio">—</span>
+      </div>
+    </div>
+    <div class="loja-ryous">
+      💰 Ryous: <span id="playerRyous">0</span>
+    </div>
+  </div>
+
+  <!-- LOJA GERAL (com itens geral ou sorteados) -->
+  <div class="loja-section">
+    <h2>📦 Loja Geral</h2>
+    <div id="lojaGeralItens" class="items-grid">
+      <div class="empty-state">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ITEMS DO PLAYER (para vender) -->
+  <div class="loja-section">
+    <h2>🎁 Meus Itens (Vender)</h2>
+    <div id="meuInventario" class="items-grid">
+      <div class="empty-state">Você não tem itens para vender</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE COMPRA -->
+<div id="modalCompra" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">Comprar Item</div>
+    <div class="modal-item-info">
+      <div class="modal-item-icon">
+        <img id="modalItemImg" src="" alt="">
+      </div>
+      <div id="modalItemName" style="font-weight: bold; color: #4af; margin: 5px 0;"></div>
+      <div class="modal-description" id="modalItemDesc"></div>
+      <div id="modalItemPrice" style="font-size: 18px; color: #ffd700; font-weight: bold; margin: 10px 0;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="confirmarCompra()">✓ Comprar</button>
+      <button class="btn-cancel" onclick="fecharModal('modalCompra')">✕ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA VENDER ITEM -->
+<div id="modalVenda" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">Vender Item</div>
+    <div class="modal-item-info">
+      <div class="modal-item-icon">
+        <img id="modalVendItemImg" src="" alt="">
+      </div>
+      <div id="modalVendItemName" style="font-weight: bold; color: #4af; margin: 5px 0;"></div>
+      <div class="modal-description" id="modalVendItemDesc"></div>
+      <div>
+        <label style="color: #aaa; font-size: 12px;">Preço (Ryous):</label>
+        <input type="number" id="precoVenda" min="1" style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(10, 20, 50, 0.5); border: 1px solid #4af; border-radius: 4px; color: #fff;" placeholder="Digite o preço">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="confirmarVenda()">✓ Vender</button>
+      <button class="btn-cancel" onclick="fecharModal('modalVenda')">✕ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="loja.js"></script>
+
+</body>
+</html>
