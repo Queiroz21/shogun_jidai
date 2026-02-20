@@ -304,6 +304,7 @@ function atualizarDisplay() {
           ${item.icone ? `<img src="${item.icone}" alt="${item.nome}">` : "📦"}
         </div>
         <div class="item-name">${item.nome}</div>
+        <div class="item-type" style="font-size:12px;color:#4af;margin:2px 0 4px 0;">🏷️ ${item.type || '—'}</div>
         <div class="item-price">${item.preco} 💰</div>
         <button class="item-btn" onclick="abrirModalCompra('${item.id}')">Comprar</button>
       </div>
@@ -331,6 +332,7 @@ function atualizarDisplay() {
           ${item.icone ? `<img src="${item.icone}" alt="${item.nome}">` : "📦"}
         </div>
         <div class="item-name">${item.nome} ${rankHtml}</div>
+        <div class="item-type" style="font-size:12px;color:#4af;margin:2px 0 4px 0;">🏷️ ${item.type || '—'}</div>
         <button class="item-btn" onclick="abrirModalVenda('${item.id}')">Vender</button>
       </div>
     `}).join("");

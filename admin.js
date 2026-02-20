@@ -3272,10 +3272,17 @@ async function renderLogs() {
     const skillLogs = [];
     skillLogSnap.forEach(docSnap => skillLogs.push(docSnap.data()));
 
+    // Carrega loja_logs (itens criados/alterados) para exibir no histórico
+    const lojaLogsQuery = query(collection(db, "loja_logs"), orderBy("date", "desc"));
+    const lojaLogSnap = await getDocs(lojaLogsQuery);
+    const lojaLogs = [];
+    lojaLogSnap.forEach(docSnap => lojaLogs.push(docSnap.data()));
+
     // Combina XP logs com skill logs, ordena por data
     const allLogs = [
       ...xpLogs.map(l => ({ type: 'xp', ...l })),
-      ...skillLogs.map(l => ({ type: l.type || 'skill', ...l }))
+      ...skillLogs.map(l => ({ type: l.type || 'skill', ...l })),
+      ...lojaLogs.map(l => ({ type: l.type || 'item', ...l }))
     ].sort((a, b) => {
       const dateA = (a.date || a.dateAdded)?.toDate?.() || new Date(a.date || a.dateAdded);
       const dateB = (b.date || b.dateAdded)?.toDate?.() || new Date(b.date || b.dateAdded);
@@ -3395,7 +3402,41 @@ async function renderLogs() {
             </div>
           </div>
         `;
-      } else if (log.type === 'regions') {
+        } else if (log.type === 'item' || log.type === 'loja') {
+          // Loja item create/edit
+          const action = log.action === 'create' ? 'Criado' : (log.action === 'edit' ? 'Atualizado' : 'Modificado');
+          const itemName = log.itemName || (log.newData && log.newData.nome) || 'Item?';
+          let details = '';
+          if (log.action === 'create') {
+            const price = log.newData?.preco ?? log.price ?? '';
+            const tipo = log.newData?.type ?? log.type ?? '';
+            details = `🛒 <strong>${itemName}</strong> criado — Preço: ${price} • Tipo: ${tipo}`;
+          } else if (log.action === 'edit') {
+            const oldD = log.oldData || {};
+            const newD = log.newData || {};
+            const changed = Object.keys(newD).filter(k => JSON.stringify(oldD[k]) !== JSON.stringify(newD[k]));
+            if (changed.length === 0) changed.push(' (sem mudanças detectadas)');
+            details = `✏️ <strong>${itemName}</strong> atualizado — Campos: ${changed.join(', ')}`;
+          } else {
+            details = `📝 Ação: ${log.action || 'unknown'} em <strong>${itemName}</strong>`;
+          }
+
+          html += `
+            <div style="background: rgba(200,150,50,0.06); border-left: 4px solid #fa8; padding: 12px; border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <div style="color: #fa8; font-weight: bold; font-size: 0.95rem;">Item ${action}</div>
+                  <div style="color: #ddd; font-size: 0.9rem; margin-top: 4px;">${details}</div>
+                  <div style="color: #aaa; font-size: 0.85rem; margin-top: 6px; line-height: 1.4;">${log.note || ''}</div>
+                </div>
+                <div style="text-align: right; color: #888; font-size: 0.8rem; white-space: nowrap; margin-left: 12px;">
+                  <div>👤 ${adminNick}</div>
+                  <div>${dateStr}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (log.type === 'regions') {
         // Regions Save - com detalhes de quantas regiões/famílias/rankings
         const regionsData = log.newData || {};
         const regionCount = Object.keys(regionsData).length;
@@ -3691,12 +3732,25 @@ async function carregarItensLoja() {
     const lojaRef = doc(db, "game_data", "loja_v1");
     const lojaSnap = await getDoc(lojaRef);
     if (lojaSnap.exists()) {
-      lojaItens = lojaSnap.data().itens || [];
+      const data = lojaSnap.data();
+      let raw = data.itens;
+      if (Array.isArray(raw)) {
+        lojaItens = raw;
+      } else if (raw && typeof raw === 'object') {
+        // legacy format may have been an object/map instead of array
+        lojaItens = Object.values(raw);
+        console.warn('⚠️ itens da loja eram um objeto; convertendo para array', raw);
+      } else {
+        lojaItens = [];
+      }
+      console.log('✅ Itens carregados do Firestore:', lojaItens.length, lojaItens);
     } else {
       lojaItens = [];
+      console.log('⚠️ Documento loja_v1 não existe');
     }
   } catch (err) {
     console.error("Erro ao carregar itens da loja:", err);
+    // se falhar, mantemos variável anterior para evitar sobrescrever com vazio
   }
 }
 
@@ -3705,42 +3759,72 @@ async function renderizarItensLoja() {
   const container = document.getElementById("item-loja-list");
   if (!container) return;
 
+  console.log('🔁 renderizarItensLoja chamado');
   await carregarItensLoja();
+  console.log('🔁 após carregarItensLoja, lojaItens.length =', lojaItens.length);
 
   if (lojaItens.length === 0) {
     container.innerHTML = '<p style="color: #888;">Nenhum item cadastrado ainda.</p>';
     return;
   }
 
-  container.innerHTML = lojaItens.map((item, idx) => `
-    <div style="background: rgba(74, 170, 255, 0.1); padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid #4af;">
+  container.innerHTML = '';
+  lojaItens.forEach((item, idx) => {
+    // Cria o bloco do item
+    const itemBlock = document.createElement('div');
+    itemBlock.className = 'item-block-admin';
+    itemBlock.style.background = 'rgba(74, 170, 255, 0.1)';
+    itemBlock.style.padding = '12px';
+    itemBlock.style.marginBottom = '10px';
+    itemBlock.style.borderRadius = '6px';
+    itemBlock.style.borderLeft = '3px solid #4af';
+    itemBlock.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
           <strong style="color: #4af;">${item.nome}</strong>
           <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
-            💰 ${item.preco} Ryous | 📍 ${item.regiao || 'Geral'}
+            💰 ${item.preco} Ryous | 📍 ${item.regiao || 'Geral'} | 🏷️ ${item.type || '—'}
           </div>
           <div style="font-size: 12px; color: #aaa; margin-top: 2px;">
             ${item.descricao || '(sem descrição)'}
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button onclick="abrirEditarItemLoja(${idx})" style="padding: 6px 12px; background: #4af; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✏️ Editar</button>
+          <button class="btn-editar-item-loja" data-idx="${idx}" style="padding: 6px 12px; background: #4af; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✏️ Editar</button>
           <button onclick="deletarItemLoja(${idx})" style="padding: 6px 12px; background: #ff6b6b; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer;">🗑️ Deletar</button>
         </div>
       </div>
-    </div>
-  `).join("");
+    `;
+    
+    container.appendChild(itemBlock);
+  });
+  // Adiciona listeners para os botões de editar
+  container.querySelectorAll('.btn-editar-item-loja').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const idx = parseInt(this.getAttribute('data-idx'));
+      // O bloco do item é o parentNode do botão
+      abrirEditarItemLoja(idx, this.closest('.item-block-admin'));
+    });
+  });
 }
 
 // Abrir edição de item
-window.abrirEditarItemLoja = function(idx) {
+window.abrirEditarItemLoja = function(idx, afterElem) {
+  console.log('abrirEditarItemLoja called', { idx, afterElem });
+  // Remove editor antigo
+  const existingEditor = document.getElementById("item-loja-editor");
+  if (existingEditor) existingEditor.remove();
   itemLojaEditar = idx;
   const item = lojaItens[idx];
-
+  console.log('item for edit:', item);
+  if (!item) {
+    console.error('Item para editar não encontrado (índice):', idx);
+    alert('Erro: item não encontrado para edição');
+    return;
+  }
   const editor = document.createElement("div");
   editor.id = "item-loja-editor";
-  editor.style.cssText = "background: rgba(10, 20, 50, 0.9); border: 2px solid #4af; border-radius: 8px; padding: 20px; margin-top: 20px;";
+  editor.style.cssText = "background: rgba(10, 20, 50, 0.9); border: 2px solid #4af; border-radius: 8px; padding: 20px; margin-top: 10px; margin-bottom: 10px;";
   editor.innerHTML = `
     <div style="color: #4af; font-weight: bold; margin-bottom: 15px;">Editando: ${item.nome}</div>
     <div class="form-group">
@@ -3760,6 +3844,19 @@ window.abrirEditarItemLoja = function(idx) {
       <input type="number" id="edit-item-preco" min="1" value="${item.preco}" required>
     </div>
     <div class="form-group">
+      <label for="edit-item-type">Tipo/Categoria</label>
+      <select id="edit-item-type" required>
+        <option value="">Selecione o tipo</option>
+        <option value="Caça" ${item.type === 'Caça' ? 'selected' : ''}>Caça</option>
+        <option value="Recursos" ${item.type === 'Recursos' ? 'selected' : ''}>Recursos</option>
+        <option value="Bento" ${item.type === 'Bento' ? 'selected' : ''}>Bento</option>
+        <option value="Poção" ${item.type === 'Poção' ? 'selected' : ''}>Poção</option>
+        <option value="Armas" ${item.type === 'Armas' ? 'selected' : ''}>Armas</option>
+        <option value="Armaduras" ${item.type === 'Armaduras' ? 'selected' : ''}>Armaduras</option>
+        <option value="Pergaminhos" ${item.type === 'Pergaminhos' ? 'selected' : ''}>Pergaminhos</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label for="edit-item-regiao">Região</label>
       <select id="edit-item-regiao">
         <option value="Geral" ${item.regiao === 'Geral' ? 'selected' : ''}>Geral</option>
@@ -3771,14 +3868,19 @@ window.abrirEditarItemLoja = function(idx) {
       </select>
     </div>
     <div style="display: flex; gap: 10px; margin-top: 15px;">
-      <button onclick="salvarEdicaoItemLoja()" style="flex: 1; padding: 10px; background: #0f8; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✓ Salvar</button>
-      <button onclick="fecharEditorItemLoja()" style="flex: 1; padding: 10px; background: #666; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer;">✕ Cancelar</button>
+      <button type="button" onclick="salvarEdicaoItemLoja()" style="flex: 1; padding: 10px; background: #0f8; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">✓ Salvar</button>
+      <button type="button" onclick="fecharEditorItemLoja()" style="flex: 1; padding: 10px; background: #666; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer;">✕ Cancelar</button>
     </div>
   `;
-
-  const existingEditor = document.getElementById("item-loja-editor");
-  if (existingEditor) existingEditor.remove();
-  document.getElementById("item-loja-list").parentElement.appendChild(editor);
+  // Insere o editor logo após o item clicado
+  if (afterElem && afterElem.parentNode) {
+    console.log('Inserindo editor após afterElem', { afterElem, afterElemParent: afterElem.parentNode, nextSibling: afterElem.nextSibling });
+    afterElem.parentNode.insertBefore(editor, afterElem.nextSibling);
+  } else {
+    console.log('Inserindo editor no container');
+    document.getElementById("item-loja-list").appendChild(editor);
+  }
+  console.log('Editor inserido no DOM:', { editor, visible: editor.offsetHeight > 0 });
 };
 
 // Salvar edição de item
@@ -3788,16 +3890,33 @@ window.salvarEdicaoItemLoja = async function() {
   const icone = document.getElementById("edit-item-icone").value.trim();
   const preco = Number(document.getElementById("edit-item-preco").value);
   const regiao = document.getElementById("edit-item-regiao").value;
+  const type = document.getElementById("edit-item-type").value;
 
-  if (!nome || preco <= 0) {
-    alert("❌ Nome e preço são obrigatórios!");
+  if (!nome || preco <= 0 || !type) {
+    alert("❌ Nome, preço e tipo são obrigatórios!");
     return;
   }
 
-  lojaItens[itemLojaEditar] = { id: lojaItens[itemLojaEditar].id, nome, descricao, icone, preco, regiao };
+  const oldItem = { ...lojaItens[itemLojaEditar] };
+  lojaItens[itemLojaEditar] = { id: lojaItens[itemLojaEditar].id, nome, descricao, icone, preco, regiao, type };
 
   try {
     await updateDoc(doc(db, "game_data", "loja_v1"), { itens: lojaItens });
+    // Registrar log de edição
+    try {
+      await addDoc(collection(db, 'loja_logs'), {
+        type: 'item', action: 'edit',
+        itemId: lojaItens[itemLojaEditar].id,
+        itemName: nome,
+        adminId: currentUID,
+        adminNick: currentAdminNick,
+        oldData: oldItem,
+        newData: lojaItens[itemLojaEditar],
+        date: new Date()
+      });
+    } catch (logErr) {
+      console.error('❌ Falha ao registrar log de edição de item:', logErr);
+    }
     alert("✅ Item atualizado com sucesso!");
     fecharEditorItemLoja();
     renderizarItensLoja();
@@ -3836,14 +3955,18 @@ if (createItemForm) {
   createItemForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    // ensure we have the latest list before mutating; avoids wiping older items
+    await carregarItensLoja();
+
     const nome = document.getElementById("item-nome").value.trim();
     const descricao = document.getElementById("item-descricao").value.trim();
     const icone = document.getElementById("item-icone").value.trim();
     const preco = Number(document.getElementById("item-preco").value);
     const regiao = document.getElementById("item-regiao").value;
+    const type = document.getElementById("item-type").value;
 
-    if (!nome || preco <= 0) {
-      alert("❌ Nome e preço são obrigatórios!");
+    if (!nome || preco <= 0 || !type) {
+      alert("❌ Nome, preço e tipo são obrigatórios!");
       return;
     }
 
@@ -3855,6 +3978,7 @@ if (createItemForm) {
         icone,
         preco,
         regiao,
+        type,
         criadoEm: new Date()
       };
 
@@ -3863,6 +3987,21 @@ if (createItemForm) {
       // Criar ou atualizar documento loja_v1
       const lojaRef = doc(db, "game_data", "loja_v1");
       await setDoc(lojaRef, { itens: lojaItens }, { merge: true });
+
+      // Registrar log de criação
+      try {
+        await addDoc(collection(db, 'loja_logs'), {
+          type: 'item', action: 'create',
+          itemId: newItem.id,
+          itemName: nome,
+          adminId: currentUID,
+          adminNick: currentAdminNick,
+          newData: newItem,
+          date: new Date()
+        });
+      } catch (logErr) {
+        console.error('❌ Falha ao registrar log de criação de item:', logErr);
+      }
 
       // Feedback
       const msgEl = document.getElementById("item-create-message");
@@ -3886,19 +4025,18 @@ if (createItemForm) {
   });
 }
 
-// Inicializar carregamento de items quando aba é selecionada
-document.addEventListener("DOMContentLoaded", () => {
-  // Hook para quando a aba de editar items for clicada
+// Inicializar funções relacionadas à loja imediatamente (script está no final do body)
+// garantir que 
+// 1. `lojaItens` esteja preenchido antes de qualquer criação ou edição
+// 2. listener para a aba de editar seja sempre registrado
+// Não confiamos mais em DOMContentLoaded porque o script é carregado após o evento.
+{
   const editLojaTab = document.querySelector('[data-tab="edit-item-loja"]');
   if (editLojaTab) {
-    const observer = new MutationObserver(() => {
-      if (editLojaTab.classList.contains("active")) {
-        renderizarItensLoja();
-      }
+    editLojaTab.addEventListener('click', () => {
+      renderizarItensLoja();
     });
-    observer.observe(editLojaTab, { attributes: true });
   }
-
-  // Carregar items quando página carrega (para ter dados prontos)
+  // Carrega dados assim que possível para popular `lojaItens`.
   carregarItensLoja();
-});
+}
