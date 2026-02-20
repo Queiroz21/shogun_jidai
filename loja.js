@@ -3,7 +3,7 @@
 import { auth, db, requireAuth } from "./oauth.js";
 import {
   doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp,
-  query, where, deleteDoc
+  query, where, deleteDoc, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -516,75 +516,82 @@ window.confirmarCompra = async function() {
         adquiridoEm: serverTimestamp()
       });
     } else {
-      // compra de anúncio parceiro
+      // compra de anúncio parceiro – tudo em transação para evitar débitos não revertidos
       const listing = itemSelecionado;
-      
-      // desconta comprador
-      const novoRyous = ryousAtuais - preco;
-      await updateDoc(doc(db, "fichas", fichaACarregar), { ryous: novoRyous });
-      userData.ryous = novoRyous;
-
-      // credita vendedor
+      const buyerRef = doc(db, "fichas", fichaACarregar);
       const sellerRef = doc(db, "fichas", listing.sellerId);
-      const sellerSnap = await getDoc(sellerRef);
-      const sellerData = sellerSnap.exists() ? sellerSnap.data() : {};
-      const novoRyousSeller = (sellerData.ryous || 0) + preco;
-      await updateDoc(sellerRef, { ryous: novoRyousSeller });
+      const listingRef = doc(db, "market_listings", listing.id);
 
-      // pega o primeiro inventoryItemId disponível
-      const inventoryItemIds = listing.inventoryItemIds || [];
-      if (inventoryItemIds.length > 0) {
-        const itemIdToRemove = inventoryItemIds[0];
-        
-        // marca item no inventário do vendedor como vendido
-        await updateDoc(doc(db, "player_inventory", listing.sellerId, "items", itemIdToRemove), {
-          vendido: true,
-          vendidoEm: serverTimestamp(),
-          soldTo: fichaACarregar
+      await runTransaction(db, async (tx) => {
+        // ler ficha do comprador e verificar saldo
+        const buyerSnap = await tx.get(buyerRef);
+        if (!buyerSnap.exists()) throw new Error('Sua ficha não existe');
+        const currRyous = buyerSnap.data().ryous || 0;
+        if (currRyous < preco) throw new Error('Saldo insuficiente');
+        const novoRyous = currRyous - preco;
+
+        // ler ficha do vendedor para creditar
+        const sellerSnap = await tx.get(sellerRef);
+        const sellerData = sellerSnap.exists() ? sellerSnap.data() : {};
+        const novoRyousSeller = (sellerData.ryous || 0) + preco;
+
+        // marca item no inventário do vendedor como vendido (se permitido)
+        const inventoryItemIds = listing.inventoryItemIds || [];
+        let firstItemRef = null;
+        if (inventoryItemIds.length > 0) {
+          firstItemRef = doc(db, "player_inventory", listing.sellerId, "items", inventoryItemIds[0]);
+          tx.update(firstItemRef, {
+            vendido: true,
+            vendidoEm: serverTimestamp(),
+            soldTo: fichaACarregar
+          });
+        }
+
+        // atualizar fichas e listing
+        tx.update(buyerRef, { ryous: novoRyous });
+        tx.update(sellerRef, { ryous: novoRyousSeller });
+
+        if (listing.quantidade > 1) {
+          const newIds = inventoryItemIds.slice(1);
+          tx.update(listingRef, {
+            quantidade: listing.quantidade - 1,
+            inventoryItemIds: newIds,
+            status: newIds.length === 0 ? 'sold' : 'active'
+          });
+        } else {
+          tx.update(listingRef, {
+            status: 'sold',
+            buyerId: fichaACarregar,
+            soldDate: serverTimestamp(),
+            salePrice: preco
+          });
+        }
+
+        // adicionar item ao inventário do comprador dentro da transação
+        const newItemRef = doc(collection(db, "player_inventory", fichaACarregar, "items"));
+        tx.set(newItemRef, {
+          nome: listing.itemName,
+          descricao: listing.descricao || "",
+          icone: listing.icone || "",
+          preco: listing.marketPrice || 0,
+          ranking: listing.ranking || '',
+          regiao: listing.regiao || "Geral",
+          adquiridoEm: serverTimestamp()
         });
-      }
 
-      // adiciona item ao inventário do comprador
-      await addDoc(collection(db, "player_inventory", fichaACarregar, "items"), {
-        nome: listing.itemName,
-        descricao: listing.descricao || "",
-        icone: listing.icone || "",
-        preco: listing.marketPrice || 0,
-        ranking: listing.ranking || '',
-        regiao: listing.regiao || "Geral",
-        adquiridoEm: serverTimestamp()
-      });
-
-      // atualizar listing - decrementar quantidade ou marcar como sold
-      if (listing.quantidade > 1) {
-        // remove o item vendido do array
-        const novoInventoryItemIds = inventoryItemIds.slice(1);
-        await updateDoc(doc(db, "market_listings", listing.id), {
-          quantidade: listing.quantidade - 1,
-          inventoryItemIds: novoInventoryItemIds,
-          status: novoInventoryItemIds.length === 0 ? 'sold' : 'active'
-        });
-      } else {
-        // último item - marca como vendido
-        await updateDoc(doc(db, "market_listings", listing.id), {
-          status: 'sold',
+        // registrar log de mercado
+        const logRef = doc(collection(db, "market_logs"));
+        tx.set(logRef, {
+          sellerId: listing.sellerId,
           buyerId: fichaACarregar,
-          soldDate: serverTimestamp(),
-          salePrice: preco
+          itemName: listing.itemName,
+          price: preco,
+          marketPrice: listing.marketPrice,
+          description: listing.descricao || '',
+          sellerNick: listing.sellerNick || '',
+          buyerNick: userData.nick || userData.nome || '',
+          date: serverTimestamp()
         });
-      }
-
-      // registrar log de mercado
-      await addDoc(collection(db, "market_logs"), {
-        sellerId: listing.sellerId,
-        buyerId: fichaACarregar,
-        itemName: listing.itemName,
-        price: preco,
-        marketPrice: listing.marketPrice,
-        description: listing.descricao || '',
-        sellerNick: listing.sellerNick || '',
-        buyerNick: userData.nick || userData.nome || '',
-        date: serverTimestamp()
       });
 
       alert(`✅ Você comprou "${listing.itemName}" de ${listing.sellerNick || listing.sellerId} por ${preco} Ryous!`);
@@ -607,7 +614,15 @@ window.confirmarCompra = async function() {
     alert(`✅ Item "${itemSelecionado.nome}" comprado com sucesso!`);
   } catch (err) {
     console.error("Erro ao comprar:", err);
-    alert("❌ Erro ao comprar item!");
+    // recarregar caso algo tenha sido parcialmente modificado
+    await carregarDados();
+    atualizarDisplay();
+
+    if (err.code === 'permission-denied') {
+      alert("❌ Permissão negada durante a compra. Nenhum Ryous foi debitado.");
+    } else {
+      alert("❌ Erro ao comprar item: " + (err.message || err.code || ""));
+    }
   }
 };
 
