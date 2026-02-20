@@ -618,10 +618,18 @@ window.confirmarCompra = async function() {
     await carregarDados();
     atualizarDisplay();
 
+    // detectar bloqueio de requisição pelo cliente (extensão/adblock)
+    const msg = (err.message || "").toString();
+    if (msg.includes('ERR_BLOCKED_BY_CLIENT')) {
+      alert("❌ Requisição bloqueada pelo navegador (ex: adblock ou extensão).
+Por favor, desative extensões de bloqueio ou tente em outra janela/sem extensões e tente de novo.");
+      return;
+    }
+
     if (err.code === 'permission-denied') {
       alert("❌ Permissão negada durante a compra. Nenhum Ryous foi debitado.");
     } else {
-      alert("❌ Erro ao comprar item: " + (err.message || err.code || ""));
+      alert("❌ Erro ao comprar item: " + msg);
     }
   }
 };
