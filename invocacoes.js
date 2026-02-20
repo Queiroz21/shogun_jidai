@@ -517,7 +517,11 @@ async function carregarFichasDisponiveisInvocacoes() {
 
     // Buscar linked accounts do UID autenticado
     const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
-    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+    let fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+    // remover eventuais ids repetidos
+    if (Array.isArray(fichasUIDs)) {
+      fichasUIDs = Array.from(new Set(fichasUIDs));
+    }
 
     // Carregar dados de todas as fichas
     const fichasCarregadas = [];

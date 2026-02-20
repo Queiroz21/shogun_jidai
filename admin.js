@@ -82,9 +82,6 @@ onAuthStateChanged(auth, async user => {
     }
   });
   document.getElementById("header-right")?.appendChild(btnLogout);
-
-  // Inicializa a página
-  initAdmin();
 });
 
 /* =========================================================
@@ -2119,6 +2116,22 @@ function showSkillsError(message) {
    GERENCIAMENTO DE ABAS
 ========================================================= */
 function setupTabs() {
+  // eliminar botões duplicados (mesmo data-tab) caso tenham sido inseridos duas vezes
+  const container = document.querySelector('.tabs-container');
+  if (container) {
+    const seen = new Set();
+    Array.from(container.children).forEach(child => {
+      if (child.matches('.tab-btn')) {
+        const key = child.dataset.tab || child.textContent.trim();
+        if (seen.has(key)) {
+          container.removeChild(child);
+        } else {
+          seen.add(key);
+        }
+      }
+    });
+  }
+
   const tabBtns = document.querySelectorAll(".tab-btn");
 
   tabBtns.forEach(btn => {
