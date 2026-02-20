@@ -400,22 +400,41 @@ function atualizarDisplay() {
 
   // filtra inventário para excluir items vendidos ou já listados
   const availableItems = (userData.inventario || []).filter(it => !it.vendido && !it.forSale);
-  console.log(`🎁 Renderizando ${availableItems.length} itens do inventário`);
   
-  if (availableItems.length === 0) {
+  // agrupa items com mesmo nome e soma quantidade
+  const groupedItems = {};
+  availableItems.forEach(item => {
+    const key = item.nome;
+    if (!groupedItems[key]) {
+      groupedItems[key] = {
+        ...item,
+        quantidade: 1,
+        allIds: [item.id]
+      };
+    } else {
+      groupedItems[key].quantidade++;
+      groupedItems[key].allIds.push(item.id);
+    }
+  });
+  
+  console.log(`🎁 Renderizando ${Object.keys(groupedItems).length} tipos de itens do inventário`);
+  
+  if (Object.keys(groupedItems).length === 0) {
     inventDiv.innerHTML = '<div class="empty-state">Você não tem itens para vender</div>';
   } else {
-    inventDiv.innerHTML = availableItems.map(item => {
+    inventDiv.innerHTML = Object.values(groupedItems).map(item => {
       const rank = item.ranking || item.rank || '';
       const rankHtml = rank ? `<div class="item-rank">[${rank}]</div>` : '';
+      const qtyDisplay = item.quantidade > 1 ? `<div style="position:absolute;top:6px;right:6px;background:#f0f;color:#fff;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">×${item.quantidade}</div>` : '';
       return `
-      <div class="item-card">
+      <div class="item-card" style="position:relative;">
+        ${qtyDisplay}
         <div class="item-icon">
           ${item.icone ? `<img src="${item.icone}" alt="${item.nome}">` : "📦"}
         </div>
         <div class="item-name">${item.nome} ${rankHtml}</div>
         <div class="item-type" style="font-size:12px;color:#4af;margin:2px 0 4px 0;">🏷️ ${item.type || '—'}</div>
-        <button class="item-btn" onclick="abrirModalVenda('${item.id}')">Vender</button>
+        <button class="item-btn" onclick="abrirModalVenda('${item.allIds[0]}', ${item.quantidade})">Vender</button>
       </div>
     `}).join("");
   }
@@ -458,6 +477,12 @@ window.confirmarCompra = async function() {
 
   if (ryousAtuais < preco) {
     alert("❌ Você não tem Ryous suficientes!");
+    return;
+  }
+
+  // validar que não está comprando seu próprio item
+  if (isListing && itemSelecionado.sellerId === fichaACarregar) {
+    alert("❌ Você não pode comprar seu próprio anúncio!");
     return;
   }
 
@@ -557,16 +582,25 @@ window.confirmarCompra = async function() {
 /* =========================================================
    ABRIR MODAL VENDA
 ========================================================= */
-window.abrirModalVenda = function(itemId) {
+window.abrirModalVenda = function(itemId, maxQuantidade = 1) {
   itemSelecionadoParaVenda = userData.inventario.find(i => i.id === itemId && !i.vendido);
   if (!itemSelecionadoParaVenda) return;
 
-  document.getElementById("modalVendItemImg").src = itemSelecionadoParaVenda.icone || "assets/icons/kuchiyose.png";
-  document.getElementById("modalVendItemName").textContent = itemSelecionadoParaVenda.nome;
-  document.getElementById("modalVendItemDesc").textContent = itemSelecionadoParaVenda.descricao || "Sem descrição";
-  document.getElementById("precoVenda").value = Math.floor(itemSelecionadoParaVenda.preco * 0.7); // 70% do preço original
-  document.getElementById("valorMercado").value = itemSelecionadoParaVenda.preco || '';
-  document.getElementById("descricaoVenda").value = '';
+  document.getElementById('modalVendItemImg').src = itemSelecionadoParaVenda.icone || 'assets/icons/kuchiyose.png';
+  document.getElementById('modalVendItemName').textContent = itemSelecionadoParaVenda.nome;
+  document.getElementById('modalVendItemDesc').textContent = itemSelecionadoParaVenda.descricao || 'Sem descrição';
+  document.getElementById('precoVenda').value = Math.floor(itemSelecionadoParaVenda.preco * 0.7);
+  document.getElementById('valorMercado').value = itemSelecionadoParaVenda.preco || '';
+  document.getElementById('descricaoVenda').value = '';
+  
+  // configurar selector de quantidade
+  const qtyInput = document.getElementById('qtyVenda');
+  if (qtyInput) {
+    qtyInput.max = maxQuantidade;
+    qtyInput.value = 1;
+    const qtyLabel = document.getElementById('qtyVendaLabel');
+    if (qtyLabel) qtyLabel.textContent = `Quantidade (até ${maxQuantidade})`;
+  }
 
   document.getElementById("modalVenda").classList.add("show");
 };
@@ -577,46 +611,60 @@ window.abrirModalVenda = function(itemId) {
 window.confirmarVenda = async function() {
   if (!itemSelecionadoParaVenda) return;
 
-  const precoVenda = Number(document.getElementById("precoVenda").value);
-  const descricao = document.getElementById("descricaoVenda").value || '';
+  const precoVenda = Number(document.getElementById('precoVenda').value);
+  const descricao = document.getElementById('descricaoVenda').value || '';
+  const quantidade = Math.max(1, Math.floor(Number(document.getElementById('qtyVenda').value) || 1));
 
   if (precoVenda <= 0) {
-    alert("❌ Digite um preço válido!");
+    alert('❌ Digite um preço válido!');
     return;
   }
 
   try {
-    // criar anúncio no mercado
-    const listingRef = await addDoc(collection(db, "market_listings"), {
-      sellerId: fichaACarregar,
-      sellerNick: userData.nick || userData.nome || '',
-      itemId: itemSelecionadoParaVenda.id,
-      itemName: itemSelecionadoParaVenda.nome,
-      icone: itemSelecionadoParaVenda.icone || '',
-      ranking: itemSelecionadoParaVenda.ranking || itemSelecionadoParaVenda.rank || '',
-      type: itemSelecionadoParaVenda.type || '',
-      marketPrice: itemSelecionadoParaVenda.preco || 0,
-      precoVenda: precoVenda,
-      descricao: descricao,
-      status: 'active',
-      sellerItemId: itemSelecionadoParaVenda.id,
-      dateListed: serverTimestamp()
-    });
+    // encontrar todos os items com esse nome para listar
+    const itemsAVender = (userData.inventario || []).filter(it => 
+      it.nome === itemSelecionadoParaVenda.nome && !it.vendido && !it.forSale
+    ).slice(0, quantidade);
 
-    // marcar item do inventário como listado
-    await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", itemSelecionadoParaVenda.id), {
-      listingId: listingRef.id,
-      forSale: true
-    });
+    if (itemsAVender.length === 0) {
+      alert('❌ Nenhum item disponível!');
+      return;
+    }
 
-    fecharModal("modalVenda");
+    // criar um anúncio para cada item
+    for (const item of itemsAVender) {
+      const listingRef = await addDoc(collection(db, 'market_listings'), {
+        sellerId: fichaACarregar,
+        sellerNick: userData.nick || userData.nome || '',
+        itemId: item.id,
+        itemName: item.nome,
+        icone: item.icone || '',
+        ranking: item.ranking || item.rank || '',
+        type: item.type || '',
+        marketPrice: item.preco || 0,
+        precoVenda: precoVenda,
+        descricao: descricao,
+        status: 'active',
+        sellerItemId: item.id,
+        dateListed: serverTimestamp()
+      });
+
+      // marcar item como listado
+      await updateDoc(doc(db, 'player_inventory', fichaACarregar, 'items', item.id), {
+        listingId: listingRef.id,
+        forSale: true
+      });
+    }
+
+    fecharModal('modalVenda');
     await carregarDados();
     atualizarDisplay();
 
-    alert(`✅ Item "${itemSelecionadoParaVenda.nome}" listado para venda!`);
+    const msgItem = itemsAVender.length === 1 ? 'Item' : `${itemsAVender.length} itens`;
+    alert(`✅ ${msgItem} "${itemSelecionadoParaVenda.nome}" listado para venda!`);
   } catch (err) {
-    console.error("Erro ao listar item:", err);
-    alert("❌ Erro ao listar item!");
+    console.error('Erro ao listar item:', err);
+    alert('❌ Erro ao listar item!');
   }
 };
 

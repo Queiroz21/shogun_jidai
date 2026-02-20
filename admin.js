@@ -3261,6 +3261,11 @@ function renderXPLogs() {
         <td style="padding: 12px;">${log.playerNick} - ${log.playerClan}</td>
         <td style="padding: 12px; text-align: center; color: #0f8;">+${log.xpAmount || log.xpAdded || 0}</td>
         <td style="padding: 12px; font-size: 0.9rem; color: #aaa;">${commentText}</td>
+        <td style="padding: 12px; font-size: 0.9rem; color: #4af;">${adminNick}</td>
+        <td style="padding: 12px; font-size: 0.9rem; color: #888;">${dateStr}</td>
+      </tr>
+    `;
+  });
 
   html += "</tbody></table>";
   container.innerHTML = html;
