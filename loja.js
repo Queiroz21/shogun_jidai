@@ -2,7 +2,8 @@
 
 import { auth, db, requireAuth } from "./oauth.js";
 import {
-  doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp
+  doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp,
+  query, where, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -16,6 +17,10 @@ let itensDisponiveis = [];
 let itensDoJogo = [];
 let itemSelecionado = null;
 let itemSelecionadoParaVenda = null;
+
+// mercado peer-to-peer
+let marketListings = [];
+let myListings = [];
 
 // FLAG: modo random (true = sorteio semanal, false = tudo disponível)
 const MODO_RANDOM = true; // ← MUDE PARA FALSE PARA MOSTRAR TUDO
@@ -162,6 +167,9 @@ async function carregarDados() {
     // Carregar inventário do jogador
     await carregarInventarioJogador();
 
+    // Carregar anúncios de mercado (p2p)
+    await carregarMarketListings();
+
     // Determinar quais itens mostrar (sorteio ou tudo)
     await atualizarItensDisponiveis();
     console.log(`🛍️ ${itensDisponiveis.length} itens disponíveis para exibição`);
@@ -264,6 +272,74 @@ function iniciarTimer() {
 }
 
 /* =========================================================
+   helpers de mercado peer-to-peer
+========================================================= */
+
+async function carregarMarketListings() {
+  try {
+    const q = query(collection(db, "market_listings"), where("status", "==", "active"));
+    const snap = await getDocs(q);
+    marketListings = [];
+    snap.forEach(d => marketListings.push({ id: d.id, ...d.data() }));
+    // ordena por mais recente
+    marketListings.sort((a,b) => (b.dateListed?.toDate?.() || new Date()) - (a.dateListed?.toDate?.() || new Date()));
+    myListings = marketListings.filter(l => l.sellerId === fichaACarregar);
+  } catch (err) {
+    console.error("Erro ao carregar listings:", err);
+    marketListings = [];
+    myListings = [];
+  }
+}
+
+function renderMarketListings() {
+  const container = document.getElementById("mercadoItens");
+  if (!container) return;
+  if (marketListings.length === 0) {
+    container.innerHTML = '<div class="empty-state">Nenhum anúncio no momento</div>';
+    return;
+  }
+  container.innerHTML = marketListings.map(l => {
+    const sellerName = l.sellerNick || l.sellerId;
+    return `
+      <div class="item-card">
+        <div class="item-icon">
+          ${l.icone ? `<img src="${l.icone}" alt="${l.itemName}">` : "📦"}
+        </div>
+        <div class="item-name">${l.itemName}</div>
+        <div class="item-type" style="font-size:12px;color:#4af;margin:2px 0 4px 0;">🏷️ ${l.type || '—'}</div>
+        <div class="item-price">${l.precoVenda} 💰</div>
+        <div class="item-desc" style="font-size:12px;color:#aaa;">${l.descricao || ''}</div>
+        <div class="item-market" style="font-size:11px;color:#888;">Valor de mercado: ${l.marketPrice || 0} 💰</div>
+        <div class="item-seller" style="font-size:11px;color:#ccc;">Vendedor: ${sellerName}</div>
+        <button class="item-btn" onclick="abrirModalCompra('${l.id}','listing')">Comprar</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderMyListings() {
+  const container = document.getElementById("meusAnuncios");
+  if (!container) return;
+  if (myListings.length === 0) {
+    container.innerHTML = '<div class="empty-state">Você não publicou nenhum anúncio</div>';
+    return;
+  }
+  container.innerHTML = myListings.map(l => {
+    return `
+      <div class="item-card">
+        <div class="item-icon">
+          ${l.icone ? `<img src="${l.icone}" alt="${l.itemName}">` : "📦"}
+        </div>
+        <div class="item-name">${l.itemName}</div>
+        <div class="item-price">${l.precoVenda} 💰</div>
+        <div class="item-desc" style="font-size:12px;color:#aaa;">${l.descricao || ''}</div>
+        <button class="item-btn" onclick="retirarListing('${l.id}')">Retirar</button>
+      </div>
+    `;
+  }).join("");
+}
+
+/* =========================================================
    ATUALIZAR DISPLAY (UI)
 ========================================================= */
 function atualizarDisplay() {
@@ -311,6 +387,10 @@ function atualizarDisplay() {
     `).join("");
   }
 
+  // também renderiza marketplace e meus anúncios
+  renderMarketListings();
+  renderMyListings();
+
   // Renderizar inventário do player
   const inventDiv = document.getElementById("meuInventario");
   if (!inventDiv) {
@@ -318,12 +398,14 @@ function atualizarDisplay() {
     return;
   }
 
-  console.log(`🎁 Renderizando ${userData.inventario ? userData.inventario.length : 0} itens do inventário`);
+  // filtra inventário para excluir items vendidos ou já listados
+  const availableItems = (userData.inventario || []).filter(it => !it.vendido && !it.forSale);
+  console.log(`🎁 Renderizando ${availableItems.length} itens do inventário`);
   
-  if (!userData.inventario || userData.inventario.length === 0) {
+  if (availableItems.length === 0) {
     inventDiv.innerHTML = '<div class="empty-state">Você não tem itens para vender</div>';
   } else {
-    inventDiv.innerHTML = userData.inventario.map(item => {
+    inventDiv.innerHTML = availableItems.map(item => {
       const rank = item.ranking || item.rank || '';
       const rankHtml = rank ? `<div class="item-rank">[${rank}]</div>` : '';
       return `
@@ -342,14 +424,22 @@ function atualizarDisplay() {
 /* =========================================================
    ABRIR MODAL COMPRA
 ========================================================= */
-window.abrirModalCompra = function(itemId) {
-  itemSelecionado = itensDisponiveis.find(i => i.id === itemId);
-  if (!itemSelecionado) return;
-
-  document.getElementById("modalItemImg").src = itemSelecionado.icone || "assets/icons/kuchiyose.png";
-  document.getElementById("modalItemName").textContent = itemSelecionado.nome;
-  document.getElementById("modalItemDesc").textContent = itemSelecionado.descricao || "Sem descrição";
-  document.getElementById("modalItemPrice").textContent = itemSelecionado.preco + " 💰";
+window.abrirModalCompra = function(itemId, type = 'store') {
+  if (type === 'listing') {
+    itemSelecionado = marketListings.find(l => l.id === itemId);
+    if (!itemSelecionado) return;
+    document.getElementById("modalItemImg").src = itemSelecionado.icone || "assets/icons/kuchiyose.png";
+    document.getElementById("modalItemName").textContent = itemSelecionado.itemName;
+    document.getElementById("modalItemDesc").textContent = itemSelecionado.descricao || "Sem descrição";
+    document.getElementById("modalItemPrice").textContent = itemSelecionado.precoVenda + " 💰";
+  } else {
+    itemSelecionado = itensDisponiveis.find(i => i.id === itemId);
+    if (!itemSelecionado) return;
+    document.getElementById("modalItemImg").src = itemSelecionado.icone || "assets/icons/kuchiyose.png";
+    document.getElementById("modalItemName").textContent = itemSelecionado.nome;
+    document.getElementById("modalItemDesc").textContent = itemSelecionado.descricao || "Sem descrição";
+    document.getElementById("modalItemPrice").textContent = itemSelecionado.preco + " 💰";
+  }
 
   document.getElementById("modalCompra").classList.add("show");
 };
@@ -360,8 +450,11 @@ window.abrirModalCompra = function(itemId) {
 window.confirmarCompra = async function() {
   if (!itemSelecionado) return;
 
-  const preco = itemSelecionado.preco;
   const ryousAtuais = userData.ryous || 0;
+
+  // determine se é um listing de jogador ou item da loja
+  const isListing = !!itemSelecionado.sellerId;
+  const preco = isListing ? itemSelecionado.precoVenda : itemSelecionado.preco;
 
   if (ryousAtuais < preco) {
     alert("❌ Você não tem Ryous suficientes!");
@@ -369,18 +462,84 @@ window.confirmarCompra = async function() {
   }
 
   try {
-    // Adicionar item ao inventário do player
-    await addDoc(collection(db, "player_inventory", fichaACarregar, "items"), {
-      nome: itemSelecionado.nome,
-      descricao: itemSelecionado.descricao || "",
-      icone: itemSelecionado.icone || "",
-      preco: itemSelecionado.preco,
-      ranking: itemSelecionado.ranking || itemSelecionado.rank || 'E',
-      regiao: itemSelecionado.regiao || "Geral",
-      adquiridoEm: serverTimestamp()
-    });
+    if (!isListing) {
+      // compra normal da loja
+      await addDoc(collection(db, "player_inventory", fichaACarregar, "items"), {
+        nome: itemSelecionado.nome,
+        descricao: itemSelecionado.descricao || "",
+        icone: itemSelecionado.icone || "",
+        preco: itemSelecionado.preco,
+        ranking: itemSelecionado.ranking || itemSelecionado.rank || 'E',
+        regiao: itemSelecionado.regiao || "Geral",
+        adquiridoEm: serverTimestamp()
+      });
+    } else {
+      // compra de anúncio parceiro
+      const listing = itemSelecionado;
+      // desconta comprador
+      const novoRyous = ryousAtuais - preco;
+      await updateDoc(doc(db, "fichas", fichaACarregar), { ryous: novoRyous });
+      userData.ryous = novoRyous;
 
-    // Descontar Ryous
+      // credita vendedor
+      const sellerRef = doc(db, "fichas", listing.sellerId);
+      const sellerSnap = await getDoc(sellerRef);
+      const sellerData = sellerSnap.exists() ? sellerSnap.data() : {};
+      const novoRyousSeller = (sellerData.ryous || 0) + preco;
+      await updateDoc(sellerRef, { ryous: novoRyousSeller });
+
+      // marca item no inventário do vendedor como vendido
+      if (listing.sellerItemId) {
+        await updateDoc(doc(db, "player_inventory", listing.sellerId, "items", listing.sellerItemId), {
+          vendido: true,
+          vendidoEm: serverTimestamp(),
+          soldTo: fichaACarregar
+        });
+      }
+
+      // adiciona item ao inventário do comprador
+      await addDoc(collection(db, "player_inventory", fichaACarregar, "items"), {
+        nome: listing.itemName,
+        descricao: listing.descricao || "",
+        icone: listing.icone || "",
+        preco: listing.marketPrice || 0,
+        ranking: listing.ranking || '',
+        regiao: listing.regiao || "Geral",
+        adquiridoEm: serverTimestamp()
+      });
+
+      // atualiza listing como vendido
+      await updateDoc(doc(db, "market_listings", listing.id), {
+        status: 'sold',
+        buyerId: fichaACarregar,
+        soldDate: serverTimestamp(),
+        salePrice: preco
+      });
+
+      // registrar log de mercado
+      await addDoc(collection(db, "market_logs"), {
+        sellerId: listing.sellerId,
+        buyerId: fichaACarregar,
+        itemId: listing.itemId,
+        itemName: listing.itemName,
+        price: preco,
+        marketPrice: listing.marketPrice,
+        description: listing.descricao || '',
+        sellerNick: listing.sellerNick || '',
+        buyerNick: userData.nick || userData.nome || '',
+        date: serverTimestamp()
+      });
+
+      alert(`✅ Você comprou "${listing.itemName}" de ${listing.sellerNick || listing.sellerId} por ${preco} Ryous!`);
+
+      // recarrega inventário/market
+      await carregarDados();
+      atualizarDisplay();
+      fecharModal("modalCompra");
+      return;
+    }
+
+    // Descontar Ryous para compra normal
     const novoRyous = ryousAtuais - preco;
     await updateDoc(doc(db, "fichas", fichaACarregar), { ryous: novoRyous });
 
@@ -399,13 +558,15 @@ window.confirmarCompra = async function() {
    ABRIR MODAL VENDA
 ========================================================= */
 window.abrirModalVenda = function(itemId) {
-  itemSelecionadoParaVenda = userData.inventario.find(i => i.id === itemId);
+  itemSelecionadoParaVenda = userData.inventario.find(i => i.id === itemId && !i.vendido);
   if (!itemSelecionadoParaVenda) return;
 
   document.getElementById("modalVendItemImg").src = itemSelecionadoParaVenda.icone || "assets/icons/kuchiyose.png";
   document.getElementById("modalVendItemName").textContent = itemSelecionadoParaVenda.nome;
   document.getElementById("modalVendItemDesc").textContent = itemSelecionadoParaVenda.descricao || "Sem descrição";
   document.getElementById("precoVenda").value = Math.floor(itemSelecionadoParaVenda.preco * 0.7); // 70% do preço original
+  document.getElementById("valorMercado").value = itemSelecionadoParaVenda.preco || '';
+  document.getElementById("descricaoVenda").value = '';
 
   document.getElementById("modalVenda").classList.add("show");
 };
@@ -417,6 +578,7 @@ window.confirmarVenda = async function() {
   if (!itemSelecionadoParaVenda) return;
 
   const precoVenda = Number(document.getElementById("precoVenda").value);
+  const descricao = document.getElementById("descricaoVenda").value || '';
 
   if (precoVenda <= 0) {
     alert("❌ Digite um preço válido!");
@@ -424,27 +586,37 @@ window.confirmarVenda = async function() {
   }
 
   try {
-    // Adicionar Ryous
-    const novoRyous = (userData.ryous || 0) + precoVenda;
-    await updateDoc(doc(db, "fichas", fichaACarregar), { ryous: novoRyous });
-
-    // Remover item do inventário
-    await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", itemSelecionadoParaVenda.id), {
-      vendido: true,
-      vendidoEm: serverTimestamp()
+    // criar anúncio no mercado
+    const listingRef = await addDoc(collection(db, "market_listings"), {
+      sellerId: fichaACarregar,
+      sellerNick: userData.nick || userData.nome || '',
+      itemId: itemSelecionadoParaVenda.id,
+      itemName: itemSelecionadoParaVenda.nome,
+      icone: itemSelecionadoParaVenda.icone || '',
+      ranking: itemSelecionadoParaVenda.ranking || itemSelecionadoParaVenda.rank || '',
+      type: itemSelecionadoParaVenda.type || '',
+      marketPrice: itemSelecionadoParaVenda.preco || 0,
+      precoVenda: precoVenda,
+      descricao: descricao,
+      status: 'active',
+      sellerItemId: itemSelecionadoParaVenda.id,
+      dateListed: serverTimestamp()
     });
 
-    // TODO: criar "loja de players" se quiser que outros possam comprar
+    // marcar item do inventário como listado
+    await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", itemSelecionadoParaVenda.id), {
+      listingId: listingRef.id,
+      forSale: true
+    });
 
-    userData.ryous = novoRyous;
     fecharModal("modalVenda");
-    await carregarInventarioJogador();
+    await carregarDados();
     atualizarDisplay();
 
-    alert(`✅ Item "${itemSelecionadoParaVenda.nome}" vendido por ${precoVenda} Ryous!`);
+    alert(`✅ Item "${itemSelecionadoParaVenda.nome}" listado para venda!`);
   } catch (err) {
-    console.error("Erro ao vender:", err);
-    alert("❌ Erro ao vender item!");
+    console.error("Erro ao listar item:", err);
+    alert("❌ Erro ao listar item!");
   }
 };
 
@@ -465,5 +637,34 @@ window.onclick = (event) => {
   }
   if (event.target === modalVenda) {
     modalVenda.classList.remove("show");
+  }
+};
+
+// permite retirar anúncio do mercado
+window.retirarListing = async function(listingId) {
+  if (!listingId) return;
+  if (!confirm('Deseja realmente retirar este anúncio?')) return;
+  try {
+    const listingRef = doc(db, "market_listings", listingId);
+    const snap = await getDoc(listingRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.sellerId === fichaACarregar && data.status === 'active') {
+        await updateDoc(listingRef, { status: 'removed', removedDate: serverTimestamp() });
+        if (data.sellerItemId) {
+          await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", data.sellerItemId), {
+            listingId: null,
+            forSale: false
+          });
+        }
+      }
+    }
+    await carregarMarketListings();
+    renderMarketListings();
+    renderMyListings();
+    alert('Anúncio retirado.');
+  } catch (err) {
+    console.error('Erro ao retirar anúncio:', err);
+    alert('Erro ao retirar anúncio');
   }
 };

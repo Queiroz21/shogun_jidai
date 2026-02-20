@@ -3229,8 +3229,8 @@ function renderXPLogs() {
     <thead>
       <tr style="background: rgba(74, 170, 255, 0.1); border-bottom: 2px solid #4af;">
         <th style="padding: 12px; text-align: left; color: #4af;">Jogador</th>
-        <th style="padding: 12px; text-align: center; color: #4af;">XP Adicionado</th>
-        <th style="padding: 12px; text-align: left; color: #4af;">Comentário</th>
+        <th style="padding: 12px; text-align: center; color: #4af;">XP</th>
+        <th style="padding: 12px; text-align: left; color: #4af;">Comentário / Itens</th>
         <th style="padding: 12px; text-align: left; color: #4af;">Admin</th>
         <th style="padding: 12px; text-align: left; color: #4af;">Data</th>
       </tr>
@@ -3243,16 +3243,24 @@ function renderXPLogs() {
     const dateStr = date.toLocaleString("pt-BR");
     const adminNick = log.adminNick || "Admin";
 
+    // build comment + itens summary
+    let commentText = log.comment || "";
+    const parts = [];
+    if (log.itemsAdded && log.itemsAdded.length > 0) {
+      parts.push('📦 +' + log.itemsAdded.map(i => `${i.itemId}${i.quantidade ? ' x' + i.quantidade : ''}`).join(', '));
+    }
+    if (log.itemsRemoved && log.itemsRemoved.length > 0) {
+      parts.push('❌ ' + log.itemsRemoved.map(i => `${i.itemId}${i.quantidade ? ' x' + i.quantidade : ''}`).join(', '));
+    }
+    if (parts.length) {
+      commentText += (commentText ? '<br>' : '') + parts.join(' | ');
+    }
+
     html += `
       <tr style="border-bottom: 1px solid rgba(74, 170, 255, 0.1);">
         <td style="padding: 12px;">${log.playerNick} - ${log.playerClan}</td>
-        <td style="padding: 12px; text-align: center; color: #0f8;">+${log.xpAdded}</td>
-        <td style="padding: 12px; font-size: 0.9rem; color: #aaa;">${log.comment}</td>
-        <td style="padding: 12px; font-size: 0.9rem; color: #4af;">${adminNick}</td>
-        <td style="padding: 12px; font-size: 0.9rem; color: #888;">${dateStr}</td>
-      </tr>
-    `;
-  });
+        <td style="padding: 12px; text-align: center; color: #0f8;">+${log.xpAmount || log.xpAdded || 0}</td>
+        <td style="padding: 12px; font-size: 0.9rem; color: #aaa;">${commentText}</td>
 
   html += "</tbody></table>";
   container.innerHTML = html;
@@ -3278,11 +3286,18 @@ async function renderLogs() {
     const lojaLogs = [];
     lojaLogSnap.forEach(docSnap => lojaLogs.push(docSnap.data()));
 
-    // Combina XP logs com skill logs, ordena por data
+    // Carrega market_logs (transações entre jogadores)
+    const marketLogsQuery = query(collection(db, "market_logs"), orderBy("date", "desc"));
+    const marketLogSnap = await getDocs(marketLogsQuery);
+    const marketLogs = [];
+    marketLogSnap.forEach(docSnap => marketLogs.push(docSnap.data()));
+
+    // Combina XP logs com skill logs, loja logs e market logs, ordena por data
     const allLogs = [
       ...xpLogs.map(l => ({ type: 'xp', ...l })),
       ...skillLogs.map(l => ({ type: l.type || 'skill', ...l })),
-      ...lojaLogs.map(l => ({ type: l.type || 'item', ...l }))
+      ...lojaLogs.map(l => ({ type: l.type || 'item', ...l })),
+      ...marketLogs.map(l => ({ type: 'market', ...l }))
     ].sort((a, b) => {
       const dateA = (a.date || a.dateAdded)?.toDate?.() || new Date(a.date || a.dateAdded);
       const dateB = (b.date || b.dateAdded)?.toDate?.() || new Date(b.date || b.dateAdded);
@@ -3316,7 +3331,17 @@ async function renderLogs() {
         } else {
           invocationsDisplay = '✗ Nenhuma';
         }
-        
+
+        // Formata mudanças de inventário se houver
+        let itemsDisplay = '';
+        if (log.itemsAdded && log.itemsAdded.length > 0) {
+          itemsDisplay += '📦 +' + log.itemsAdded.map(i => `${i.itemId}${i.quantidade ? ' x' + i.quantidade : ''}`).join(', ');
+        }
+        if (log.itemsRemoved && log.itemsRemoved.length > 0) {
+          if (itemsDisplay) itemsDisplay += ' | ';
+          itemsDisplay += '❌ ' + log.itemsRemoved.map(i => `${i.itemId}${i.quantidade ? ' x' + i.quantidade : ''}`).join(', ');
+        }
+
         html += `
           <div style="background: rgba(0,200,100,0.1); border-left: 4px solid #0c8; padding: 12px; border-radius: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -3325,6 +3350,7 @@ async function renderLogs() {
                 <div style="color: #ccc; font-size: 0.85rem; margin-top: 4px;">
                   💰 Ryous: ${ryous > 0 ? '+' + ryous : '0'} | 🐉 Invocação: ${invocationsDisplay}
                 </div>
+                ${itemsDisplay ? `<div style="color: #ccc; font-size: 0.85rem; margin-top: 4px;">${itemsDisplay}</div>` : ''}
                 <div style="color: #aaa; font-size: 0.85rem; margin-top: 6px; line-height: 1.4;">
                   💬 <em>"${comment}"</em>
                 </div>
@@ -3402,30 +3428,43 @@ async function renderLogs() {
             </div>
           </div>
         `;
-        } else if (log.type === 'item' || log.type === 'loja') {
-          // Loja item create/edit
-          const action = log.action === 'create' ? 'Criado' : (log.action === 'edit' ? 'Atualizado' : 'Modificado');
-          const itemName = log.itemName || (log.newData && log.newData.nome) || 'Item?';
+        } else if (log.type === 'item' || log.type === 'loja' || log.type === 'market') {
           let details = '';
-          if (log.action === 'create') {
-            const price = log.newData?.preco ?? log.price ?? '';
-            const tipo = log.newData?.type ?? log.type ?? '';
-            details = `🛒 <strong>${itemName}</strong> criado — Preço: ${price} • Tipo: ${tipo}`;
-          } else if (log.action === 'edit') {
-            const oldD = log.oldData || {};
-            const newD = log.newData || {};
-            const changed = Object.keys(newD).filter(k => JSON.stringify(oldD[k]) !== JSON.stringify(newD[k]));
-            if (changed.length === 0) changed.push(' (sem mudanças detectadas)');
-            details = `✏️ <strong>${itemName}</strong> atualizado — Campos: ${changed.join(', ')}`;
+          let title = '';
+
+          if (log.type === 'market') {
+            // venda entre jogadores
+            const seller = log.sellerNick || log.sellerId || 'Vendedor?';
+            const buyer = log.buyerNick || log.buyerId || 'Comprador?';
+            const price = log.price || 0;
+            const marketPrice = log.marketPrice || 0;
+            details = `🛒 <strong>${log.itemName}</strong> vendido por ${price}Ry (mercado ${marketPrice}Ry) de ${seller} ➜ ${buyer}`;
+            title = 'Venda P2P';
           } else {
-            details = `📝 Ação: ${log.action || 'unknown'} em <strong>${itemName}</strong>`;
+            // Loja item create/edit
+            const action = log.action === 'create' ? 'Criado' : (log.action === 'edit' ? 'Atualizado' : 'Modificado');
+            const itemName = log.itemName || (log.newData && log.newData.nome) || 'Item?';
+            title = `Item ${action}`;
+            if (log.action === 'create') {
+              const price = log.newData?.preco ?? log.price ?? '';
+              const tipo = log.newData?.type ?? log.type ?? '';
+              details = `🛒 <strong>${itemName}</strong> criado — Preço: ${price} • Tipo: ${tipo}`;
+            } else if (log.action === 'edit') {
+              const oldD = log.oldData || {};
+              const newD = log.newData || {};
+              const changed = Object.keys(newD).filter(k => JSON.stringify(oldD[k]) !== JSON.stringify(newD[k]));
+              if (changed.length === 0) changed.push(' (sem mudanças detectadas)');
+              details = `✏️ <strong>${itemName}</strong> atualizado — Campos: ${changed.join(', ')}`;
+            } else {
+              details = `📝 Ação: ${log.action || 'unknown'} em <strong>${itemName}</strong>`;
+            }
           }
 
           html += `
             <div style="background: rgba(200,150,50,0.06); border-left: 4px solid #fa8; padding: 12px; border-radius: 6px;">
               <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div style="flex: 1;">
-                  <div style="color: #fa8; font-weight: bold; font-size: 0.95rem;">Item ${action}</div>
+                  <div style="color: #fa8; font-weight: bold; font-size: 0.95rem;">${title}</div>
                   <div style="color: #ddd; font-size: 0.9rem; margin-top: 4px;">${details}</div>
                   <div style="color: #aaa; font-size: 0.85rem; margin-top: 6px; line-height: 1.4;">${log.note || ''}</div>
                 </div>
