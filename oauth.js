@@ -84,20 +84,41 @@ export async function loadClans() {
 
   select.innerHTML = `<option value="">Selecione um Clã</option>`;
 
-  try {
-    const snap = await getDocs(collection(db, "clas"));
+  // tenta carregar a partir de diferentes nomes de coleção (compatibilidade)
+  const possibleCollections = ["clas", "clans", "cla", "clã", "clãs"];
+  let loaded = false;
 
-    snap.forEach(docSnap => {
-      const data = docSnap.data();
+  for (const col of possibleCollections) {
+    try {
+      const snap = await getDocs(collection(db, col));
+      if (snap.empty) continue;
 
-      const opt = document.createElement("option");
-      opt.value = docSnap.id;
-      opt.textContent = data.nome ?? docSnap.id;
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const opt = document.createElement("option");
+        opt.value = docSnap.id;
+        opt.textContent = data.nome ?? docSnap.id;
+        select.appendChild(opt);
+      });
 
-      select.appendChild(opt);
-    });
-  } catch (e) {
-    console.error("Erro ao carregar clãs:", e);
+      loaded = true;
+      console.log(`🔍 clãs carregados da coleção '${col}'`);
+      break;
+    } catch (err) {
+      console.warn(`Coleção '${col}' indisponível:`, err.message);
+      // se falha por permissão, não adianta tentar outras; sai e informa ao usuário
+      if (err.message && err.message.toLowerCase().includes('permission')) {
+        const opt = document.createElement("option");
+        opt.disabled = true;
+        opt.textContent = "Erro ao carregar clãs (permissão)";
+        select.appendChild(opt);
+        return;
+      }
+    }
+  }
+
+  if (!loaded) {
+    console.warn("Nenhuma coleção de clãs encontrada; formulário exibirá apenas a opção padrão.");
   }
 }
 
