@@ -158,60 +158,81 @@ if (document.getElementById("btnCriar")) {
     }
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, senha);
-      const newUID = cred.user.uid;
-
-      // Determinar se é ficha primária ou secundária
-      let mainUID = newUID; // por padrão, ele é o main
-      const isPrimary = !uidSecundario; // se não tem UID secundário, é primary
+      let newUID;
+      let isPrimary;
+      let mainUID;
 
       if (uidSecundario) {
-        // Vinculando como secondary à ficha fornecida
-        mainUID = uidSecundario;
-
+        // ===== FICHA SECUNDÁRIA =====
         // Verificar se o UID da ficha principal existe
-        const mainFichSnap = await getDoc(doc(db, "fichas", mainUID));
+        const mainFichSnap = await getDoc(doc(db, "fichas", uidSecundario));
         if (!mainFichSnap.exists()) {
           alert("❌ UID da ficha principal não existe! Verifique com o ADM.");
           return;
         }
-      }
 
-      // Criar documento da ficha
-      await setDoc(doc(db, "fichas", newUID), {
-        nick,
-        idade,
-        cla,
-        xp: 0,
-        nivel: 1,
-        pontos: 0,
-        skills: {},
-        isPrimary, // marca se é primary ou secondary
-        linkedTo: mainUID, // UID da ficha principal (ele mesmo se é primary)
-        createdAt: new Date()
-      });
+        // usar um UID gerado pelo Firestore para a ficha secundária (sem criar usuário no Auth)
+        newUID = doc(collection(db, "fichas")).id;
+        isPrimary = false;
+        mainUID = uidSecundario;
 
-      // Atualizar ou criar documento de linked accounts
-      const linksRef = doc(db, "user_account_links", mainUID);
-      const linksSnap = await getDoc(linksRef);
-
-      if (linksSnap.exists()) {
-        // Adicionar novo UID à lista (evitar duplicatas)
-        const fichas = linksSnap.data().fichas || [];
-        if (!fichas.includes(newUID)) {
-          fichas.push(newUID);
-          await setDoc(linksRef, { fichas }, { merge: true });
-        }
-      } else {
-        // Criar novo documento com ambas as fichas
-        await setDoc(linksRef, {
-          fichas: [mainUID, newUID],
-          criadoEm: new Date()
+        // criar documento da ficha secundária sem auth
+        await setDoc(doc(db, "fichas", newUID), {
+          nick,
+          idade,
+          cla,
+          xp: 0,
+          nivel: 1,
+          pontos: 0,
+          skills: {},
+          isPrimary: false,
+          linkedTo: mainUID,
+          createdAt: new Date()
         });
-      }
 
-      alert(`✅ Ficha "${nick}" criada com sucesso!`);
-      window.location.href = "arvore_habilidade.html";
+        // Atualizar ou criar documento de linked accounts
+        const linksRef = doc(db, "user_account_links", mainUID);
+        const linksSnap = await getDoc(linksRef);
+
+        if (linksSnap.exists()) {
+          const fichas = linksSnap.data().fichas || [];
+          if (!fichas.includes(newUID)) {
+            fichas.push(newUID);
+            await setDoc(linksRef, { fichas }, { merge: true });
+          }
+        } else {
+          await setDoc(linksRef, {
+            fichas: [mainUID, newUID],
+            criadoEm: new Date()
+          });
+        }
+
+        alert(`✅ Ficha secundária "${nick}" criada com sucesso!`);
+        window.location.href = "arvore_habilidade.html";
+      } else {
+        // ===== FICHA PRIMÁRIA =====
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        newUID = cred.user.uid;
+        isPrimary = true;
+        mainUID = newUID;
+
+        // criar documento da ficha primária
+        await setDoc(doc(db, "fichas", newUID), {
+          nick,
+          idade,
+          cla,
+          xp: 0,
+          nivel: 1,
+          pontos: 0,
+          skills: {},
+          isPrimary: true,
+          linkedTo: newUID,
+          createdAt: new Date()
+        });
+
+        alert(`✅ Ficha "${nick}" criada com sucesso!`);
+        window.location.href = "arvore_habilidade.html";
+      }
     } catch (e) {
       console.error("Erro ao criar conta:", e);
       if (e.code === 'auth/email-already-in-use') {
