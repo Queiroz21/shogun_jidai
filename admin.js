@@ -97,7 +97,11 @@ async function carregarFichasDisponiveisAdmin() {
 
     // Buscar linked accounts do UID autenticado
     const linksSnap = await getDoc(doc(db, "user_account_links", currentUID));
-    const fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+    let fichasUIDs = linksSnap.exists() ? (linksSnap.data().fichas || []) : [currentUID];
+    // evitar UID duplicado caso o documento de links tenha entradas repetidas
+    if (Array.isArray(fichasUIDs)) {
+      fichasUIDs = Array.from(new Set(fichasUIDs));
+    }
 
     // Carregar dados de todas as fichas
     const fichasCarregadas = [];
@@ -2151,6 +2155,14 @@ async function loadPlayers() {
       });
     });
 
+    // remover duplicatas por id (caso a query retorne duas vezes o mesmo documento)
+    const seen = new Set();
+    players = players.filter(p => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+
     // Se não encontrou players na coleção dedicada, tentar carregar a partir de `fichas`
     if (players.length === 0) {
       console.log("Nenhum documento em /players, tentando carregar a partir de /fichas...");
@@ -2230,8 +2242,11 @@ function loadPlayersSelect() {
   // Limpa opções
   select.innerHTML = `<option value="">Selecione um jogador...</option>`;
 
-  // Adiciona cada jogador
+  // Adiciona cada jogador (garantindo não repetir IDs caso o array ainda contenha duplicatas)
+  const seenIds = new Set();
   players.forEach(player => {
+    if (seenIds.has(player.id)) return;
+    seenIds.add(player.id);
     const option = document.createElement("option");
     option.value = player.id;
     option.textContent = `${player.nick || "Desconhecido"} - ${player.cla || "Sem clã"}`;

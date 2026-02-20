@@ -300,8 +300,11 @@ function renderMarketListings() {
   }
   container.innerHTML = marketListings.map(l => {
     const sellerName = l.sellerNick || l.sellerId;
+    const quantityBadge = (l.quantidade && l.quantidade > 1) ? 
+      `<div style="position:absolute;top:10px;right:10px;background:#0f8;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;">×${l.quantidade}</div>` : '';
     return `
-      <div class="item-card">
+      <div class="item-card" style="position:relative;">
+        ${quantityBadge}
         <div class="item-icon">
           ${l.icone ? `<img src="${l.icone}" alt="${l.itemName}">` : "📦"}
         </div>
@@ -325,14 +328,18 @@ function renderMyListings() {
     return;
   }
   container.innerHTML = myListings.map(l => {
+    const quantityBadge = (l.quantidade && l.quantidade > 1) ? 
+      `<div style="position:absolute;top:10px;right:10px;background:#0f8;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;">×${l.quantidade}</div>` : '';
     return `
-      <div class="item-card">
+      <div class="item-card" style="position:relative;">
+        ${quantityBadge}
         <div class="item-icon">
           ${l.icone ? `<img src="${l.icone}" alt="${l.itemName}">` : "📦"}
         </div>
         <div class="item-name">${l.itemName}</div>
         <div class="item-price">${l.precoVenda} 💰</div>
         <div class="item-desc" style="font-size:12px;color:#aaa;">${l.descricao || ''}</div>
+        <div style="font-size:11px;color:#888;">${l.status === 'active' ? '✓ Ativo' : '✕ Vendido'}</div>
         <button class="item-btn" onclick="retirarListing('${l.id}')">Retirar</button>
       </div>
     `;
@@ -449,6 +456,14 @@ window.abrirModalCompra = function(itemId, type = 'store') {
     if (!itemSelecionado) return;
     document.getElementById("modalItemImg").src = itemSelecionado.icone || "assets/icons/kuchiyose.png";
     document.getElementById("modalItemName").textContent = itemSelecionado.itemName;
+    
+    // mostrar quantidade se há múltiplos itens
+    let quantityLabel = '';
+    if (itemSelecionado.quantidade && itemSelecionado.quantidade > 1) {
+      quantityLabel = ` <span style="color: #0f8; font-size: 12px;">(×${itemSelecionado.quantidade})</span>`;
+    }
+    document.getElementById("modalItemName").innerHTML = itemSelecionado.itemName + quantityLabel;
+    
     document.getElementById("modalItemDesc").textContent = itemSelecionado.descricao || "Sem descrição";
     document.getElementById("modalItemPrice").textContent = itemSelecionado.precoVenda + " 💰";
   } else {
@@ -456,6 +471,7 @@ window.abrirModalCompra = function(itemId, type = 'store') {
     if (!itemSelecionado) return;
     document.getElementById("modalItemImg").src = itemSelecionado.icone || "assets/icons/kuchiyose.png";
     document.getElementById("modalItemName").textContent = itemSelecionado.nome;
+    document.getElementById("modalItemName").innerHTML = itemSelecionado.nome;
     document.getElementById("modalItemDesc").textContent = itemSelecionado.descricao || "Sem descrição";
     document.getElementById("modalItemPrice").textContent = itemSelecionado.preco + " 💰";
   }
@@ -481,6 +497,7 @@ window.confirmarCompra = async function() {
   }
 
   // validar que não está comprando seu próprio item
+  console.log('DEBUG - Comparing:', { sellerId: itemSelecionado.sellerId, currentPlayer: fichaACarregar, isListing });
   if (isListing && itemSelecionado.sellerId === fichaACarregar) {
     alert("❌ Você não pode comprar seu próprio anúncio!");
     return;
@@ -501,6 +518,7 @@ window.confirmarCompra = async function() {
     } else {
       // compra de anúncio parceiro
       const listing = itemSelecionado;
+      
       // desconta comprador
       const novoRyous = ryousAtuais - preco;
       await updateDoc(doc(db, "fichas", fichaACarregar), { ryous: novoRyous });
@@ -513,9 +531,13 @@ window.confirmarCompra = async function() {
       const novoRyousSeller = (sellerData.ryous || 0) + preco;
       await updateDoc(sellerRef, { ryous: novoRyousSeller });
 
-      // marca item no inventário do vendedor como vendido
-      if (listing.sellerItemId) {
-        await updateDoc(doc(db, "player_inventory", listing.sellerId, "items", listing.sellerItemId), {
+      // pega o primeiro inventoryItemId disponível
+      const inventoryItemIds = listing.inventoryItemIds || [];
+      if (inventoryItemIds.length > 0) {
+        const itemIdToRemove = inventoryItemIds[0];
+        
+        // marca item no inventário do vendedor como vendido
+        await updateDoc(doc(db, "player_inventory", listing.sellerId, "items", itemIdToRemove), {
           vendido: true,
           vendidoEm: serverTimestamp(),
           soldTo: fichaACarregar
@@ -533,19 +555,29 @@ window.confirmarCompra = async function() {
         adquiridoEm: serverTimestamp()
       });
 
-      // atualiza listing como vendido
-      await updateDoc(doc(db, "market_listings", listing.id), {
-        status: 'sold',
-        buyerId: fichaACarregar,
-        soldDate: serverTimestamp(),
-        salePrice: preco
-      });
+      // atualizar listing - decrementar quantidade ou marcar como sold
+      if (listing.quantidade > 1) {
+        // remove o item vendido do array
+        const novoInventoryItemIds = inventoryItemIds.slice(1);
+        await updateDoc(doc(db, "market_listings", listing.id), {
+          quantidade: listing.quantidade - 1,
+          inventoryItemIds: novoInventoryItemIds,
+          status: novoInventoryItemIds.length === 0 ? 'sold' : 'active'
+        });
+      } else {
+        // último item - marca como vendido
+        await updateDoc(doc(db, "market_listings", listing.id), {
+          status: 'sold',
+          buyerId: fichaACarregar,
+          soldDate: serverTimestamp(),
+          salePrice: preco
+        });
+      }
 
       // registrar log de mercado
       await addDoc(collection(db, "market_logs"), {
         sellerId: listing.sellerId,
         buyerId: fichaACarregar,
-        itemId: listing.itemId,
         itemName: listing.itemName,
         price: preco,
         marketPrice: listing.marketPrice,
@@ -631,25 +663,25 @@ window.confirmarVenda = async function() {
       return;
     }
 
-    // criar um anúncio para cada item
-    for (const item of itemsAVender) {
-      const listingRef = await addDoc(collection(db, 'market_listings'), {
-        sellerId: fichaACarregar,
-        sellerNick: userData.nick || userData.nome || '',
-        itemId: item.id,
-        itemName: item.nome,
-        icone: item.icone || '',
-        ranking: item.ranking || item.rank || '',
-        type: item.type || '',
-        marketPrice: item.preco || 0,
-        precoVenda: precoVenda,
-        descricao: descricao,
-        status: 'active',
-        sellerItemId: item.id,
-        dateListed: serverTimestamp()
-      });
+    // criar UM ÚNICO anúncio com quantidade
+    const listingRef = await addDoc(collection(db, 'market_listings'), {
+      sellerId: fichaACarregar,
+      sellerNick: userData.nick || userData.nome || '',
+      itemName: itemSelecionadoParaVenda.nome,
+      icone: itemSelecionadoParaVenda.icone || '',
+      ranking: itemSelecionadoParaVenda.ranking || itemSelecionadoParaVenda.rank || '',
+      type: itemSelecionadoParaVenda.type || '',
+      marketPrice: itemSelecionadoParaVenda.preco || 0,
+      precoVenda: precoVenda,
+      descricao: descricao,
+      quantidade: itemsAVender.length,
+      inventoryItemIds: itemsAVender.map(i => i.id),
+      status: 'active',
+      dateListed: serverTimestamp()
+    });
 
-      // marcar item como listado
+    // marcar todos os items como listados
+    for (const item of itemsAVender) {
       await updateDoc(doc(db, 'player_inventory', fichaACarregar, 'items', item.id), {
         listingId: listingRef.id,
         forSale: true
@@ -699,8 +731,16 @@ window.retirarListing = async function(listingId) {
       const data = snap.data();
       if (data.sellerId === fichaACarregar && data.status === 'active') {
         await updateDoc(listingRef, { status: 'removed', removedDate: serverTimestamp() });
-        if (data.sellerItemId) {
-          await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", data.sellerItemId), {
+        
+        // desmarcar todos os items como forSale (suporta formato antigo e novo)
+        let inventoryItemIds = [];
+        if (Array.isArray(data.inventoryItemIds) && data.inventoryItemIds.length) {
+          inventoryItemIds = data.inventoryItemIds.slice();
+        } else if (data.sellerItemId) {
+          inventoryItemIds = [data.sellerItemId];
+        }
+        for (const itemId of inventoryItemIds) {
+          await updateDoc(doc(db, "player_inventory", fichaACarregar, "items", itemId), {
             listingId: null,
             forSale: false
           });
