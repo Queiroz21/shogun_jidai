@@ -4253,6 +4253,12 @@ window.approveTransaction = async function(txId) {
       });
     }
     
+    // buscar nick do admin aprovador
+    const adminRef = doc(db, 'fichas', currentUID);
+    const adminSnap = await getDoc(adminRef);
+    const adminData = adminSnap.data() || {};
+    const adminNick = adminData.nick || adminData.nome || 'Admin';
+    
     // registrar log
     await addDoc(collection(db, 'market_logs'), {
       sellerId: tx.sellerId,
@@ -4264,7 +4270,9 @@ window.approveTransaction = async function(txId) {
       sellerNick: tx.sellerNick,
       buyerNick: tx.buyerNick,
       date: serverTimestamp(),
-      approvedBy: currentUID
+      approvedBy: currentUID,
+      adminId: currentUID,
+      adminNick: adminNick
     });
     
     // marcar transação como aprovada
