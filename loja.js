@@ -506,6 +506,14 @@ window.confirmarCompra = async function() {
   const isListing = !!itemSelecionado.sellerId;
   const preco = isListing ? itemSelecionado.precoVenda : itemSelecionado.preco;
 
+  console.log('🔍 DEBUG COMPRA:', {
+    isListing,
+    sellerId: itemSelecionado.sellerId,
+    itemName: itemSelecionado.nome || itemSelecionado.itemName,
+    preco,
+    itemCompleto: itemSelecionado
+  });
+
   if (ryousAtuais < preco) {
     alert("❌ Você não tem Ryous suficientes!");
     comprando = false;
@@ -536,13 +544,16 @@ window.confirmarCompra = async function() {
       // compra de anúncio parceiro – criar transação pendente para aprovação do admin
       const listing = itemSelecionado;
       
+      console.log('💳 PASSO 1: Debitando ryous do comprador...');
       // debitar ryous do comprador e bloquear item
       await updateDoc(doc(db, "fichas", fichaACarregar), { 
         ryous: ryousAtuais - preco 
       });
+      console.log('✅ Ryous debitados com sucesso');
 
+      console.log('💳 PASSO 2: Criando transação pendente...');
       // criar transação pendente
-      await addDoc(collection(db, "market_transactions"), {
+      const txDoc = await addDoc(collection(db, "market_transactions"), {
         listingId: listing.id,
         sellerId: listing.sellerId,
         sellerNick: listing.sellerNick || 'Vendedor',
@@ -560,12 +571,15 @@ window.confirmarCompra = async function() {
         status: 'pending',
         createdAt: serverTimestamp()
       });
+      console.log('✅ Transação criada com ID:', txDoc.id);
 
+      console.log('💳 PASSO 3: Marcando listing como pendente...');
       // marcar listing como pendente
       await updateDoc(doc(db, "market_listings", listing.id), {
         status: 'pending',
         pendingBuyer: fichaACarregar
       });
+      console.log('✅ Listing marcado como pendente');
 
       alert(`🚨 Pedido enviado! Aguarde aprovação do administrador.\n\nOs ${preco} Ryous foram debitados e serão devolvidos se a compra for rejeitada.`);
 

@@ -188,9 +188,6 @@ async function initAdmin() {
   setupAddDoujutsuForm();
   // diagnostic button to inspect token claims and own ficha
   setupAdminDiagnostics();
-  
-  // atualizar contador de transações pendentes
-  updateTransactionCount();
 }
 
 /* =========================================================
@@ -4233,19 +4230,26 @@ window.approveTransaction = async function(txId) {
     
     // atualizar status do listing
     const listingRef = doc(db, 'market_listings', tx.listingId);
-    if (tx.quantidade > 1) {
+    const listingSnap = await getDoc(listingRef);
+    const currentQtd = listingSnap.data()?.quantidade || 1;
+    
+    if (currentQtd > 1) {
+      // decrementar quantidade do listing
+      const newQtd = currentQtd - 1;
       const newIds = tx.inventoryItemIds.slice(1);
       await updateDoc(listingRef, {
-        quantidade: tx.quantidade - 1,
+        quantidade: newQtd,
         inventoryItemIds: newIds,
-        status: newIds.length === 0 ? 'sold' : 'active'
+        status: newQtd === 0 ? 'sold' : 'active',
+        pendingBuyer: null
       });
     } else {
       await updateDoc(listingRef, {
         status: 'sold',
         buyerId: tx.buyerId,
         soldDate: serverTimestamp(),
-        salePrice: tx.price
+        salePrice: tx.price,
+        pendingBuyer: null
       });
     }
     
