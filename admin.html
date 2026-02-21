@@ -260,6 +260,15 @@
     .suggestions { background: rgba(10,20,40,0.6); border: 1px solid rgba(74,170,255,0.08); margin-top:6px; border-radius:6px; max-height:160px; overflow:auto; }
     .suggestion-item { padding:8px 10px; cursor:pointer; color:#ddd; }
     .suggestion-item:hover { background: rgba(74,170,255,0.06); color:#4af; }
+
+    /* Transações P2P */
+    .transaction-card button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .transaction-card button:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -296,6 +305,7 @@
       <button class="tab-btn" data-tab="add-doujutsu">Adicionar Doujutsu</button>
       <button class="tab-btn" data-tab="create-item-loja">Criar Item Loja</button>
       <button class="tab-btn" data-tab="edit-item-loja">Editar Items Loja</button>
+      <button class="tab-btn" data-tab="transactions">Transações P2P <span id="tab-transaction-count" style="opacity: 0.7;">(0)</span></button>
       <button class="tab-btn" data-tab="logs">Histórico</button>
     </div>
 
@@ -955,6 +965,20 @@
       <div class="section-card">
         <div class="section-header"><h3 style="margin: 0; color: #4af;">✏️ Editar Items Loja</h3></div>
         <div id="item-loja-list" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- TAB: TRANSAÇÕES P2P -->
+    <div id="transactions-tab" class="tab-content">
+      <div class="section-card">
+        <div class="section-header">
+          <h3 style="margin: 0; color: #4af;">💰 Transações P2P Pendentes</h3>
+          <span id="pending-count" style="background: rgba(255,170,0,0.2); padding: 4px 12px; border-radius: 12px; color: #fa0; font-weight: bold;">0</span>
+        </div>
+        <p style="color: #aaa; margin: 10px 0;">Aprove ou rejeite compras entre jogadores no marketplace.</p>
+        <div id="transactions-list" style="margin-top: 16px;">
+          <div class="loading">Carregando transações...</div>
+        </div>
       </div>
     </div>
   </div>

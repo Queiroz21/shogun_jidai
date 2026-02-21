@@ -2,7 +2,7 @@
 
 import { auth, db } from "./oauth.js";
 import {
-  doc, getDoc, updateDoc, setDoc, collection, getDocs, addDoc, query, orderBy, where
+  doc, getDoc, updateDoc, setDoc, collection, getDocs, addDoc, query, orderBy, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -188,6 +188,9 @@ async function initAdmin() {
   setupAddDoujutsuForm();
   // diagnostic button to inspect token claims and own ficha
   setupAdminDiagnostics();
+  
+  // atualizar contador de transações pendentes
+  updateTransactionCount();
 }
 
 /* =========================================================
@@ -4111,4 +4114,219 @@ if (createItemForm) {
   }
   // Carrega dados assim que possível para popular `lojaItens`.
   carregarItensLoja();
+}
+
+/* =========================================================
+   TRANSAÇÕES P2P - SISTEMA DE APROVAÇÃO ADMIN
+========================================================= */
+
+async function loadPendingTransactions() {
+  const container = document.getElementById('transactions-list');
+  const countBadge = document.getElementById('pending-count');
+  
+  if (!container) return;
+  
+  container.innerHTML = '<div class="loading">Carregando transações...</div>';
+  
+  try {
+    const q = query(
+      collection(db, 'market_transactions'),
+      where('status', '==', 'pending')
+    );
+    const snapshot = await getDocs(q);
+    
+    const transactions = [];
+    snapshot.forEach(doc => {
+      transactions.push({ id: doc.id, ...doc.data() });
+    });
+    
+    if (countBadge) {
+      countBadge.textContent = transactions.length;
+    }
+    
+    // atualizar contador na aba
+    const tabCount = document.getElementById('tab-transaction-count');
+    if (tabCount) {
+      tabCount.textContent = `(${transactions.length})`;
+    }
+    
+    if (transactions.length === 0) {
+      container.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Nenhuma transação pendente</div>';
+      return;
+    }
+    
+    container.innerHTML = transactions.map(tx => `
+      <div class="section-card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <img src="${tx.itemIcon || 'assets/icons/kuchiyose.png'}" alt="${tx.itemName}" 
+               style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid rgba(74,170,255,0.3);">
+          <div style="flex: 1;">
+            <h4 style="margin: 0 0 8px 0; color: #4af;">${tx.itemName}</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.9rem;">
+              <div><strong style="color: #0f8;">Comprador:</strong> ${tx.buyerNick}</div>
+              <div><strong style="color: #f80;">Vendedor:</strong> ${tx.sellerNick}</div>
+              <div><strong>Preço:</strong> ${tx.price} 💰</div>
+              <div><strong>Qtd:</strong> ${tx.quantidade || 1}</div>
+            </div>
+            ${tx.description ? `<p style="margin: 8px 0 0 0; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-size: 0.85rem; color: #aaa;">${tx.description}</p>` : ''}
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button onclick="approveTransaction('${tx.id}')" 
+                  style="flex: 1; padding: 10px; background: linear-gradient(135deg, #0f8, #0c6); border: none; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer;">
+            ✓ Aprovar
+          </button>
+          <button onclick="rejectTransaction('${tx.id}')" 
+                  style="flex: 1; padding: 10px; background: linear-gradient(135deg, #f66, #c44); border: none; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer;">
+            ✗ Rejeitar
+          </button>
+        </div>
+      </div>
+    `).join('');
+    
+  } catch (err) {
+    console.error('Erro ao carregar transações:', err);
+    container.innerHTML = '<div style="padding: 20px; color: #f66;">Erro ao carregar transações</div>';
+  }
+}
+
+window.approveTransaction = async function(txId) {
+  if (!confirm('Aprovar esta transação?')) return;
+  
+  try {
+    const txRef = doc(db, 'market_transactions', txId);
+    const txSnap = await getDoc(txRef);
+    
+    if (!txSnap.exists()) {
+      alert('❌ Transação não encontrada');
+      return;
+    }
+    
+    const tx = txSnap.data();
+    
+    // creditar vendedor
+    const sellerRef = doc(db, 'fichas', tx.sellerId);
+    const sellerSnap = await getDoc(sellerRef);
+    const sellerRyous = (sellerSnap.data()?.ryous || 0) + tx.price;
+    await updateDoc(sellerRef, { ryous: sellerRyous });
+    
+    // marcar item como vendido no inventário do vendedor
+    if (tx.inventoryItemIds && tx.inventoryItemIds.length > 0) {
+      const itemRef = doc(db, 'player_inventory', tx.sellerId, 'items', tx.inventoryItemIds[0]);
+      await updateDoc(itemRef, {
+        vendido: true,
+        vendidoEm: serverTimestamp(),
+        soldTo: tx.buyerId
+      });
+    }
+    
+    // adicionar item ao inventário do comprador
+    await addDoc(collection(db, 'player_inventory', tx.buyerId, 'items'), {
+      nome: tx.itemName,
+      descricao: tx.description || '',
+      icone: tx.itemIcon || '',
+      preco: tx.marketPrice || 0,
+      ranking: tx.ranking || '',
+      regiao: tx.regiao || 'Geral',
+      adquiridoEm: serverTimestamp()
+    });
+    
+    // atualizar status do listing
+    const listingRef = doc(db, 'market_listings', tx.listingId);
+    if (tx.quantidade > 1) {
+      const newIds = tx.inventoryItemIds.slice(1);
+      await updateDoc(listingRef, {
+        quantidade: tx.quantidade - 1,
+        inventoryItemIds: newIds,
+        status: newIds.length === 0 ? 'sold' : 'active'
+      });
+    } else {
+      await updateDoc(listingRef, {
+        status: 'sold',
+        buyerId: tx.buyerId,
+        soldDate: serverTimestamp(),
+        salePrice: tx.price
+      });
+    }
+    
+    // registrar log
+    await addDoc(collection(db, 'market_logs'), {
+      sellerId: tx.sellerId,
+      buyerId: tx.buyerId,
+      itemName: tx.itemName,
+      price: tx.price,
+      marketPrice: tx.marketPrice,
+      description: tx.description || '',
+      sellerNick: tx.sellerNick,
+      buyerNick: tx.buyerNick,
+      date: serverTimestamp(),
+      approvedBy: currentUID
+    });
+    
+    // marcar transação como aprovada
+    await updateDoc(txRef, {
+      status: 'approved',
+      approvedAt: serverTimestamp(),
+      approvedBy: currentUID
+    });
+    
+    alert('✅ Transação aprovada com sucesso!');
+    loadPendingTransactions();
+    
+  } catch (err) {
+    console.error('Erro ao aprovar transação:', err);
+    alert('❌ Erro ao aprovar transação: ' + err.message);
+  }
+};
+
+window.rejectTransaction = async function(txId) {
+  if (!confirm('Rejeitar esta transação? O dinheiro será devolvido ao comprador.')) return;
+  
+  try {
+    const txRef = doc(db, 'market_transactions', txId);
+    const txSnap = await getDoc(txRef);
+    
+    if (!txSnap.exists()) {
+      alert('❌ Transação não encontrada');
+      return;
+    }
+    
+    const tx = txSnap.data();
+    
+    // devolver ryous ao comprador
+    const buyerRef = doc(db, 'fichas', tx.buyerId);
+    const buyerSnap = await getDoc(buyerRef);
+    const buyerRyous = (buyerSnap.data()?.ryous || 0) + tx.price;
+    await updateDoc(buyerRef, { ryous: buyerRyous });
+    
+    // restaurar status do listing
+    await updateDoc(doc(db, 'market_listings', tx.listingId), {
+      status: 'active',
+      pendingBuyer: null
+    });
+    
+    // marcar transação como rejeitada
+    await updateDoc(txRef, {
+      status: 'rejected',
+      rejectedAt: serverTimestamp(),
+      rejectedBy: currentUID
+    });
+    
+    alert('✅ Transação rejeitada. Ryous devolvidos ao comprador.');
+    loadPendingTransactions();
+    
+  } catch (err) {
+    console.error('Erro ao rejeitar transação:', err);
+    alert('❌ Erro ao rejeitar transação: ' + err.message);
+  }
+};
+
+// Registrar listener para a aba de transações
+{
+  const transactionsTab = document.querySelector('[data-tab="transactions"]');
+  if (transactionsTab) {
+    transactionsTab.addEventListener('click', () => {
+      loadPendingTransactions();
+    });
+  }
 }

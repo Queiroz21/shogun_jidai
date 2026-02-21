@@ -1,4 +1,4 @@
-// loja.js - Sistema de loja dinâmica com sorteio semanal
+﻿// loja.js - Sistema de loja dinâmica com sorteio semanal
 
 import { auth, db, requireAuth } from "./oauth.js";
 import {
@@ -17,6 +17,9 @@ let itensDisponiveis = [];
 let itensDoJogo = [];
 let itemSelecionado = null;
 let itemSelecionadoParaVenda = null;
+
+// flag para prevenir múltiplas compras simultâneas
+let comprando = false;
 
 // mercado peer-to-peer
 let marketListings = [];
@@ -488,6 +491,14 @@ window.abrirModalCompra = function(itemId, type = 'store') {
 ========================================================= */
 window.confirmarCompra = async function() {
   if (!itemSelecionado) return;
+  
+  // prevenir múltiplos cliques
+  if (comprando) {
+    console.log('⚠️ Compra já em andamento, aguarde...');
+    return;
+  }
+  
+  comprando = true;
 
   const ryousAtuais = userData.ryous || 0;
 
@@ -497,6 +508,7 @@ window.confirmarCompra = async function() {
 
   if (ryousAtuais < preco) {
     alert("❌ Você não tem Ryous suficientes!");
+    comprando = false;
     return;
   }
 
@@ -504,6 +516,7 @@ window.confirmarCompra = async function() {
   console.log('DEBUG - Comparing:', { sellerId: itemSelecionado.sellerId, currentPlayer: fichaACarregar, isListing });
   if (isListing && itemSelecionado.sellerId === fichaACarregar) {
     alert("❌ Você não pode comprar seu próprio anúncio!");
+    comprando = false;
     return;
   }
 
@@ -520,90 +533,47 @@ window.confirmarCompra = async function() {
         adquiridoEm: serverTimestamp()
       });
     } else {
-      // compra de anúncio parceiro – tudo em transação para evitar débitos não revertidos
+      // compra de anúncio parceiro – criar transação pendente para aprovação do admin
       const listing = itemSelecionado;
-      const buyerRef = doc(db, "fichas", fichaACarregar);
-      const sellerRef = doc(db, "fichas", listing.sellerId);
-      const listingRef = doc(db, "market_listings", listing.id);
-
-      await runTransaction(db, async (tx) => {
-        // ler ficha do comprador e verificar saldo
-        const buyerSnap = await tx.get(buyerRef);
-        if (!buyerSnap.exists()) throw new Error('Sua ficha não existe');
-        const currRyous = buyerSnap.data().ryous || 0;
-        if (currRyous < preco) throw new Error('Saldo insuficiente');
-        const novoRyous = currRyous - preco;
-
-        // ler ficha do vendedor para creditar
-        const sellerSnap = await tx.get(sellerRef);
-        const sellerData = sellerSnap.exists() ? sellerSnap.data() : {};
-        const novoRyousSeller = (sellerData.ryous || 0) + preco;
-
-        // marca item no inventário do vendedor como vendido (se permitido)
-        const inventoryItemIds = listing.inventoryItemIds || [];
-        let firstItemRef = null;
-        if (inventoryItemIds.length > 0) {
-          firstItemRef = doc(db, "player_inventory", listing.sellerId, "items", inventoryItemIds[0]);
-          tx.update(firstItemRef, {
-            vendido: true,
-            vendidoEm: serverTimestamp(),
-            soldTo: fichaACarregar
-          });
-        }
-
-        // atualizar fichas e listing
-        tx.update(buyerRef, { ryous: novoRyous });
-        tx.update(sellerRef, { ryous: novoRyousSeller });
-
-        if (listing.quantidade > 1) {
-          const newIds = inventoryItemIds.slice(1);
-          tx.update(listingRef, {
-            quantidade: listing.quantidade - 1,
-            inventoryItemIds: newIds,
-            status: newIds.length === 0 ? 'sold' : 'active'
-          });
-        } else {
-          tx.update(listingRef, {
-            status: 'sold',
-            buyerId: fichaACarregar,
-            soldDate: serverTimestamp(),
-            salePrice: preco
-          });
-        }
-
-        // adicionar item ao inventário do comprador dentro da transação
-        const newItemRef = doc(collection(db, "player_inventory", fichaACarregar, "items"));
-        tx.set(newItemRef, {
-          nome: listing.itemName,
-          descricao: listing.descricao || "",
-          icone: listing.icone || "",
-          preco: listing.marketPrice || 0,
-          ranking: listing.ranking || '',
-          regiao: listing.regiao || "Geral",
-          adquiridoEm: serverTimestamp()
-        });
-
-        // registrar log de mercado
-        const logRef = doc(collection(db, "market_logs"));
-        tx.set(logRef, {
-          sellerId: listing.sellerId,
-          buyerId: fichaACarregar,
-          itemName: listing.itemName,
-          price: preco,
-          marketPrice: listing.marketPrice,
-          description: listing.descricao || '',
-          sellerNick: listing.sellerNick || '',
-          buyerNick: userData.nick || userData.nome || '',
-          date: serverTimestamp()
-        });
+      
+      // debitar ryous do comprador e bloquear item
+      await updateDoc(doc(db, "fichas", fichaACarregar), { 
+        ryous: ryousAtuais - preco 
       });
 
-      alert(`✅ Você comprou "${listing.itemName}" de ${listing.sellerNick || listing.sellerId} por ${preco} Ryous!`);
+      // criar transação pendente
+      await addDoc(collection(db, "market_transactions"), {
+        listingId: listing.id,
+        sellerId: listing.sellerId,
+        sellerNick: listing.sellerNick || 'Vendedor',
+        buyerId: fichaACarregar,
+        buyerNick: userData.nick || userData.nome || 'Comprador',
+        itemName: listing.itemName,
+        itemIcon: listing.icone || '',
+        price: preco,
+        marketPrice: listing.marketPrice || 0,
+        quantidade: listing.quantidade || 1,
+        inventoryItemIds: listing.inventoryItemIds || [],
+        description: listing.descricao || '',
+        ranking: listing.ranking || '',
+        regiao: listing.regiao || 'Geral',
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+
+      // marcar listing como pendente
+      await updateDoc(doc(db, "market_listings", listing.id), {
+        status: 'pending',
+        pendingBuyer: fichaACarregar
+      });
+
+      alert(`🚨 Pedido enviado! Aguarde aprovação do administrador.\n\nOs ${preco} Ryous foram debitados e serão devolvidos se a compra for rejeitada.`);
 
       // recarrega inventário/market
       await carregarDados();
       atualizarDisplay();
       fecharModal("modalCompra");
+      comprando = false;
       return;
     }
 
@@ -616,6 +586,7 @@ window.confirmarCompra = async function() {
     atualizarDisplay();
 
     alert(`✅ Item "${itemSelecionado.nome}" comprado com sucesso!`);
+    comprando = false;
   } catch (err) {
     console.error("Erro ao comprar:", err);
     // recarregar caso algo tenha sido parcialmente modificado
@@ -626,6 +597,7 @@ window.confirmarCompra = async function() {
     const msg = (err.message || "").toString();
     if (msg.includes('ERR_BLOCKED_BY_CLIENT')) {
       alert("❌ Requisição bloqueada pelo navegador (ex: adblock ou extensão).\nPor favor, desative extensões de bloqueio ou tente em outra janela/sem extensões e tente de novo.");
+      comprando = false;
       return;
     }
 
@@ -634,6 +606,7 @@ window.confirmarCompra = async function() {
     } else {
       alert("❌ Erro ao comprar item: " + msg);
     }
+    comprando = false;
   }
 };
 
